@@ -1,14 +1,34 @@
 /**
  * Global Type Definitions
  *
- * Shared TypeScript types used across the application.
- * Domain-specific types should live close to their feature.
+ * Re-exports domain types from the Supabase schema
+ * and adds app-specific derived types.
  */
 
-/** User roles in the system */
-export type UserRole = "employee" | "management" | "admin";
+import type { SpotType as SpotTypeEnum } from "@/lib/supabase/types";
 
-/** Parking spot status for a given date */
+// Re-export all DB types as the single source of truth
+export type {
+  UserRole,
+  SpotType,
+  ReservationStatus,
+  CessionStatus,
+  CessionRuleType,
+  Profile,
+  Spot,
+  Reservation,
+  Cession,
+  VisitorReservation,
+  Alert,
+  CessionRule,
+  SystemConfig,
+  Database,
+} from "@/lib/supabase/types";
+
+/**
+ * Computed spot status for a given date.
+ * Derived at query time, not stored in DB.
+ */
 export type SpotStatus =
   | "free"
   | "occupied"
@@ -16,9 +36,19 @@ export type SpotStatus =
   | "ceded"
   | "visitor-blocked";
 
-/** Base entity with audit fields */
-export interface BaseEntity {
+/**
+ * Spot with its computed status for a specific date.
+ * Used by the parking map and calendar views.
+ */
+export interface SpotWithStatus {
   id: string;
-  created_at: string;
-  updated_at: string;
+  label: string;
+  type: SpotTypeEnum;
+  assigned_to: string | null;
+  position_x: number | null;
+  position_y: number | null;
+  status: SpotStatus;
+  /** The reservation/cession occupying this spot, if any */
+  reservation_id?: string;
+  reserved_by_name?: string;
 }
