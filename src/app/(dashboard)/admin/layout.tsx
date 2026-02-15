@@ -1,13 +1,17 @@
+import { requireAdmin } from "@/lib/supabase/auth";
+
 /**
  * Admin Layout
  *
  * Wraps admin-only pages. Adds role guard (admin only).
  */
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // TODO: Role guard — redirect if user is not admin
+  // Require admin role - redirects to /dashboard if not admin
+  await requireAdmin();
+
   return children;
 }

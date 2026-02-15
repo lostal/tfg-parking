@@ -1,17 +1,55 @@
 /**
  * Header Component
  *
- * Top bar with user menu, mobile nav trigger, breadcrumbs.
+ * Page header with SidebarTrigger, separator and children slots.
+ * Supports sticky positioning with scroll-aware shadow.
+ * Based on shadcn-admin Header pattern.
  */
 
-export function Header() {
+"use client";
+
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+
+type HeaderProps = React.HTMLAttributes<HTMLElement> & {
+  fixed?: boolean;
+};
+
+export function Header({ className, fixed, children, ...props }: HeaderProps) {
+  const [offset, setOffset] = useState(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      setOffset(document.body.scrollTop || document.documentElement.scrollTop);
+    };
+
+    document.addEventListener("scroll", onScroll, { passive: true });
+    return () => document.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className="flex h-14 items-center border-b px-4 md:px-6">
-      {/* TODO: Mobile menu trigger */}
-      <div className="flex-1" />
-      {/* TODO: User avatar + dropdown */}
-      <div className="flex items-center gap-2">
-        <span className="text-muted-foreground text-sm">Usuario</span>
+    <header
+      className={cn(
+        "z-50 h-16",
+        fixed && "header-fixed peer/header sticky top-0 w-[inherit]",
+        offset > 10 && fixed ? "shadow" : "shadow-none",
+        className
+      )}
+      {...props}
+    >
+      <div
+        className={cn(
+          "relative flex h-full items-center gap-3 p-4 sm:gap-4",
+          offset > 10 &&
+            fixed &&
+            "after:bg-background/20 after:absolute after:inset-0 after:-z-10 after:backdrop-blur-lg"
+        )}
+      >
+        <SidebarTrigger variant="outline" className="max-md:scale-125" />
+        <Separator orientation="vertical" className="h-6" />
+        {children}
       </div>
     </header>
   );

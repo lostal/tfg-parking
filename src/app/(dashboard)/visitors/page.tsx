@@ -4,13 +4,28 @@
  * Manage external visitor reservations.
  * Book a spot for clients/suppliers with email notification.
  */
+
+"use client";
+
+import { Header, Main } from "@/components/layout";
+import { Search } from "@/components/search";
+import { ThemeSwitch } from "@/components/layout/theme-switch";
+import { ProfileDropdown } from "@/components/profile-dropdown";
+import { ComingSoon } from "@/components/coming-soon";
+
 export default function VisitorsPage() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Visitantes</h1>
-      <p className="text-muted-foreground mt-2">
-        Gestión de reservas para visitantes externos.
-      </p>
-    </div>
+    <>
+      <Header fixed>
+        <Search />
+        <div className="ml-auto flex items-center gap-2">
+          <ThemeSwitch />
+          <ProfileDropdown />
+        </div>
+      </Header>
+      <Main>
+        <ComingSoon />
+      </Main>
+    </>
   );
 }
