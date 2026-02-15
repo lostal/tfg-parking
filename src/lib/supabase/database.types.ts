@@ -277,6 +277,154 @@ export type Database = {
           },
         ];
       };
+      user_microsoft_tokens: {
+        Row: {
+          access_token: string;
+          created_at: string;
+          current_ooo_status: boolean;
+          current_ooo_until: string | null;
+          last_calendar_sync_at: string | null;
+          last_ooo_check_at: string | null;
+          outlook_calendar_id: string | null;
+          refresh_token: string;
+          scopes: string[];
+          teams_conversation_id: string | null;
+          teams_tenant_id: string | null;
+          teams_user_id: string | null;
+          token_expires_at: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          access_token: string;
+          created_at?: string;
+          current_ooo_status?: boolean;
+          current_ooo_until?: string | null;
+          last_calendar_sync_at?: string | null;
+          last_ooo_check_at?: string | null;
+          outlook_calendar_id?: string | null;
+          refresh_token: string;
+          scopes?: string[];
+          teams_conversation_id?: string | null;
+          teams_tenant_id?: string | null;
+          teams_user_id?: string | null;
+          token_expires_at: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          access_token?: string;
+          created_at?: string;
+          current_ooo_status?: boolean;
+          current_ooo_until?: string | null;
+          last_calendar_sync_at?: string | null;
+          last_ooo_check_at?: string | null;
+          outlook_calendar_id?: string | null;
+          refresh_token?: string;
+          scopes?: string[];
+          teams_conversation_id?: string | null;
+          teams_tenant_id?: string | null;
+          teams_user_id?: string | null;
+          token_expires_at?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_microsoft_tokens_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      user_preferences: {
+        Row: {
+          auto_cede_days: number[] | null;
+          auto_cede_notify: boolean;
+          auto_cede_on_ooo: boolean;
+          created_at: string;
+          daily_digest_time: string | null;
+          default_view: string;
+          favorite_spot_ids: string[] | null;
+          locale: string;
+          notification_channel: string;
+          notify_alert_triggered: boolean;
+          notify_cession_reserved: boolean;
+          notify_daily_digest: boolean;
+          notify_reservation_confirmed: boolean;
+          notify_reservation_reminder: boolean;
+          notify_visitor_confirmed: boolean;
+          outlook_calendar_name: string | null;
+          outlook_create_events: boolean;
+          outlook_sync_enabled: boolean;
+          outlook_sync_interval: number | null;
+          theme: string;
+          updated_at: string;
+          user_id: string;
+          usual_arrival_time: string | null;
+        };
+        Insert: {
+          auto_cede_days?: number[] | null;
+          auto_cede_notify?: boolean;
+          auto_cede_on_ooo?: boolean;
+          created_at?: string;
+          daily_digest_time?: string | null;
+          default_view?: string;
+          favorite_spot_ids?: string[] | null;
+          locale?: string;
+          notification_channel?: string;
+          notify_alert_triggered?: boolean;
+          notify_cession_reserved?: boolean;
+          notify_daily_digest?: boolean;
+          notify_reservation_confirmed?: boolean;
+          notify_reservation_reminder?: boolean;
+          notify_visitor_confirmed?: boolean;
+          outlook_calendar_name?: string | null;
+          outlook_create_events?: boolean;
+          outlook_sync_enabled?: boolean;
+          outlook_sync_interval?: number | null;
+          theme?: string;
+          updated_at?: string;
+          user_id: string;
+          usual_arrival_time?: string | null;
+        };
+        Update: {
+          auto_cede_days?: number[] | null;
+          auto_cede_notify?: boolean;
+          auto_cede_on_ooo?: boolean;
+          created_at?: string;
+          daily_digest_time?: string | null;
+          default_view?: string;
+          favorite_spot_ids?: string[] | null;
+          locale?: string;
+          notification_channel?: string;
+          notify_alert_triggered?: boolean;
+          notify_cession_reserved?: boolean;
+          notify_daily_digest?: boolean;
+          notify_reservation_confirmed?: boolean;
+          notify_reservation_reminder?: boolean;
+          notify_visitor_confirmed?: boolean;
+          outlook_calendar_name?: string | null;
+          outlook_create_events?: boolean;
+          outlook_sync_enabled?: boolean;
+          outlook_sync_interval?: number | null;
+          theme?: string;
+          updated_at?: string;
+          user_id?: string;
+          usual_arrival_time?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_preferences_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       visitor_reservations: {
         Row: {
           created_at: string;

@@ -103,3 +103,79 @@ export const updateUserRoleSchema = z.object({
 });
 
 export type UpdateUserRoleInput = z.infer<typeof updateUserRoleSchema>;
+
+// ─── Settings: Profile ───────────────────────────────────────
+
+export const updateProfileSchema = z.object({
+  full_name: z.string().min(1, "Nombre requerido").max(200).optional(),
+  avatar_url: z.string().url("URL inválida").optional(),
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+// ─── Settings: Notifications ─────────────────────────────────
+
+export const updateNotificationPreferencesSchema = z.object({
+  notification_channel: z.enum(["teams", "email", "both"]),
+  notify_reservation_confirmed: z.boolean(),
+  notify_reservation_reminder: z.boolean(),
+  notify_cession_reserved: z.boolean(),
+  notify_alert_triggered: z.boolean(),
+  notify_visitor_confirmed: z.boolean(),
+  notify_daily_digest: z.boolean(),
+  daily_digest_time: z
+    .string()
+    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:MM")
+    .optional(),
+});
+
+export type UpdateNotificationPreferencesInput = z.infer<
+  typeof updateNotificationPreferencesSchema
+>;
+
+// ─── Settings: Parking ───────────────────────────────────────
+
+export const updateParkingPreferencesSchema = z.object({
+  default_view: z.enum(["map", "list", "calendar"]),
+  favorite_spot_ids: z.array(z.string().uuid()),
+  usual_arrival_time: z
+    .string()
+    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:MM")
+    .optional(),
+});
+
+export type UpdateParkingPreferencesInput = z.infer<
+  typeof updateParkingPreferencesSchema
+>;
+
+// ─── Settings: Outlook Sync ──────────────────────────────────
+
+export const updateOutlookPreferencesSchema = z.object({
+  outlook_create_events: z.boolean(),
+  outlook_calendar_name: z.string().min(1).max(100).optional(),
+  outlook_sync_enabled: z.boolean(),
+  outlook_sync_interval: z.number().int().min(5).max(120).optional(), // 5-120 minutes
+});
+
+export type UpdateOutlookPreferencesInput = z.infer<
+  typeof updateOutlookPreferencesSchema
+>;
+
+// ─── Settings: Auto-Cession Rules (Management) ───────────────
+
+export const updateCessionRulesSchema = z.object({
+  auto_cede_on_ooo: z.boolean(),
+  auto_cede_notify: z.boolean(),
+  auto_cede_days: z.array(z.number().int().min(0).max(6)), // 0-6 (Sun-Sat)
+});
+
+export type UpdateCessionRulesInput = z.infer<typeof updateCessionRulesSchema>;
+
+// ─── Settings: Appearance ────────────────────────────────────
+
+export const updateAppearanceSchema = z.object({
+  theme: z.enum(["light", "dark", "system"]),
+  locale: z.enum(["es", "en"]),
+});
+
+export type UpdateAppearanceInput = z.infer<typeof updateAppearanceSchema>;
