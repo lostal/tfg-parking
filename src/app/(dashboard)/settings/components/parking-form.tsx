@@ -118,7 +118,7 @@ export function ParkingForm({ preferences, availableSpots }: ParkingFormProps) {
             </p>
           </div>
 
-          <div className="grid max-h-48 grid-cols-4 gap-2 overflow-y-auto rounded-md border p-3">
+          <div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto rounded-md border p-3 sm:grid-cols-3 md:grid-cols-4">
             {availableSpots.map((spot) => (
               <Button
                 key={spot.id}

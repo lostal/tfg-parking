@@ -103,7 +103,7 @@ export default async function DashboardPage() {
 
       {/* ===== Main ===== */}
       <Main>
-        <div className="mb-2 flex items-center justify-between space-y-2">
+        <div className="mb-2 flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground text-sm">
             {formatDateLong(today)}

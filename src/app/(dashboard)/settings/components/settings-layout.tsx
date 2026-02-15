@@ -6,6 +6,14 @@ import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { User, Bell, Car, Cloud, Palette, Shield } from "lucide-react";
@@ -83,8 +91,8 @@ export function SettingsLayout({
           <ProfileDropdown />
         </div>
       </Header>
-      <Main>
-        <div className="space-y-6">
+      <Main fixed>
+        <div className="flex flex-1 flex-col space-y-6 overflow-hidden">
           {/* Page Header */}
           <div className="space-y-0.5">
             <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
@@ -96,38 +104,72 @@ export function SettingsLayout({
             </p>
           </div>
 
-          <Separator />
+          <Separator className="my-4 flex-none lg:my-6" />
 
           {/* Settings Layout: Sidebar + Content */}
-          <div className="flex flex-col space-y-8 lg:flex-row lg:space-y-0 lg:space-x-12">
+          <div className="flex flex-1 flex-col space-y-2 overflow-hidden md:space-y-2 lg:flex-row lg:space-y-0 lg:space-x-12">
             {/* Sidebar Navigation */}
-            <aside className="lg:w-1/5">
-              <nav className="flex space-x-2 lg:flex-col lg:space-y-1 lg:space-x-0">
-                {settingsSections.map((section) => {
-                  const Icon = section.icon;
-                  return (
-                    <button
-                      key={section.id}
-                      onClick={() => setActiveSection(section.id)}
-                      className={cn(
-                        buttonVariants({ variant: "ghost" }),
-                        activeSection === section.id
-                          ? "bg-muted hover:bg-muted"
-                          : "hover:bg-transparent hover:underline",
-                        "justify-start whitespace-nowrap"
-                      )}
-                    >
-                      <Icon className="mr-2 h-4 w-4" />
-                      {section.label}
-                    </button>
-                  );
-                })}
-              </nav>
+            <aside className="top-0 lg:sticky lg:w-1/5">
+              {/* Mobile: Select Dropdown */}
+              <div className="p-1 md:hidden">
+                <Select
+                  value={activeSection}
+                  onValueChange={(value) => setActiveSection(value as SectionId)}
+                >
+                  <SelectTrigger className="h-12 sm:w-48">
+                    <SelectValue placeholder="Seleccionar sección" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {settingsSections.map((section) => {
+                      const Icon = section.icon;
+                      return (
+                        <SelectItem key={section.id} value={section.id}>
+                          <div className="flex gap-x-4 px-2 py-1">
+                            <span className="scale-125">
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <span className="text-md">{section.label}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Tablet/Desktop: Horizontal ScrollArea → Vertical nav */}
+              <ScrollArea
+                orientation="horizontal"
+                type="always"
+                className="hidden w-full min-w-40 bg-background px-1 py-2 md:block"
+              >
+                <nav className="flex space-x-2 py-1 lg:flex-col lg:space-y-1 lg:space-x-0">
+                  {settingsSections.map((section) => {
+                    const Icon = section.icon;
+                    return (
+                      <button
+                        key={section.id}
+                        onClick={() => setActiveSection(section.id)}
+                        className={cn(
+                          buttonVariants({ variant: "ghost" }),
+                          activeSection === section.id
+                            ? "bg-muted hover:bg-accent"
+                            : "hover:bg-accent hover:underline",
+                          "justify-start"
+                        )}
+                      >
+                        <Icon className="me-2 h-4 w-4" />
+                        {section.label}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </ScrollArea>
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 lg:max-w-2xl">
-              <div className="space-y-6">
+            <div className="flex w-full overflow-y-hidden p-1">
+              <div className="flex-1 space-y-6 lg:max-w-2xl">
                 {activeSection === "profile" && (
                   <ProfileForm profile={profile} />
                 )}
