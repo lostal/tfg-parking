@@ -5,10 +5,14 @@
  * Adapted from shadcn-admin for Next.js App Router.
  */
 
+import type { UserRole } from "@/lib/supabase/types";
+
 type BaseNavItem = {
   title: string;
   badge?: string;
   icon?: React.ElementType;
+  /** If set, only users with one of these roles will see this item */
+  roles?: UserRole[];
 };
 
 type NavLink = BaseNavItem & {

@@ -2,11 +2,13 @@
  * AppSidebar Component
  *
  * Main sidebar using shadcn/ui Sidebar with data-driven navigation.
+ * Filters nav items based on user role.
  * Based on shadcn-admin AppSidebar pattern.
  */
 
 "use client";
 
+import { useMemo } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -18,15 +20,30 @@ import { sidebarData } from "./data/sidebar-data";
 import { AppTitle } from "./app-title";
 import { NavGroup } from "./nav-group";
 import { NavUser } from "./nav-user";
+import { useUser } from "@/hooks/use-user";
 
 export function AppSidebar() {
+  const { profile } = useUser();
+  const role = profile?.role ?? "employee";
+
+  const filteredNavGroups = useMemo(() => {
+    return sidebarData.navGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter(
+          (item) => !item.roles || item.roles.includes(role)
+        ),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [role]);
+
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
         <AppTitle />
       </SidebarHeader>
       <SidebarContent>
-        {sidebarData.navGroups.map((props) => (
+        {filteredNavGroups.map((props) => (
           <NavGroup key={props.title} {...props} />
         ))}
       </SidebarContent>

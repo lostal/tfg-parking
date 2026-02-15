@@ -64,3 +64,42 @@ export const updateSpotSchema = createSpotSchema.partial().extend({
 });
 
 export type UpdateSpotInput = z.infer<typeof updateSpotSchema>;
+
+// ─── Cancel Operations ───────────────────────────────────────
+
+export const cancelReservationSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export type CancelReservationInput = z.infer<typeof cancelReservationSchema>;
+
+export const cancelCessionSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export type CancelCessionInput = z.infer<typeof cancelCessionSchema>;
+
+export const cancelVisitorReservationSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export type CancelVisitorReservationInput = z.infer<
+  typeof cancelVisitorReservationSchema
+>;
+
+// ─── Admin: Spots Delete ─────────────────────────────────────
+
+export const deleteSpotSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export type DeleteSpotInput = z.infer<typeof deleteSpotSchema>;
+
+// ─── Admin: Users ────────────────────────────────────────────
+
+export const updateUserRoleSchema = z.object({
+  user_id: z.string().uuid(),
+  role: z.enum(["employee", "management", "admin"]),
+});
+
+export type UpdateUserRoleInput = z.infer<typeof updateUserRoleSchema>;

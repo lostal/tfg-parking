@@ -50,6 +50,7 @@ export const sidebarData: SidebarData = {
           title: "Administración",
           url: ROUTES.ADMIN,
           icon: Shield,
+          roles: ["admin"],
         },
         {
           title: "Configuración",
