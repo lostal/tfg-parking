@@ -1,16 +1,18 @@
 /**
- * Next.js Middleware
+ * Next.js Proxy
  *
  * Runs on every matched request to:
  * 1. Refresh Supabase auth tokens
  * 2. Redirect unauthenticated users to /login
  * 3. Redirect authenticated users away from /login
+ *
+ * @see https://nextjs.org/docs/app/api-reference/file-conventions/proxy
  */
 
 import { type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { updateSession } from "@/lib/supabase/proxy";
 
-export async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   return await updateSession(request);
 }
 

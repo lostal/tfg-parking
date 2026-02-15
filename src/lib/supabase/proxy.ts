@@ -1,7 +1,7 @@
 /**
- * Supabase Middleware Client
+ * Supabase Proxy Client
  *
- * Creates a Supabase client for use in Next.js middleware
+ * Creates a Supabase client for use in Next.js proxy
  * to refresh auth tokens on every request.
  *
  * @see https://supabase.com/docs/guides/auth/server-side/nextjs
