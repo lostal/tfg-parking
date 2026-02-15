@@ -1,0 +1,8 @@
+/**
+ * Booking Feature Components
+ *
+ * Reservation forms, cession dialogs, date pickers.
+ * Will be implemented in P0.
+ */
+
+export {};
