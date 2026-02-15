@@ -23,6 +23,11 @@ export const ROUTES = {
   VISITORS: "/visitors",
   ADMIN: "/admin",
   SETTINGS: "/settings",
+  SETTINGS_PROFILE: "/settings",
+  SETTINGS_NOTIFICATIONS: "/settings/notifications",
+  SETTINGS_PREFERENCES: "/settings/preferences",
+  SETTINGS_MICROSOFT: "/settings/microsoft",
+  SETTINGS_SECURITY: "/settings/security",
 } as const;
 
 /** External links */

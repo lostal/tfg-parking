@@ -1,25 +1,25 @@
 /**
- * Settings - Profile Page
+ * Settings - Preferences Page
  *
- * User profile information and settings.
+ * App preferences: theme and parking view settings.
  */
 
 import { requireAuth } from "@/lib/supabase/auth";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
-import { ProfileForm } from "./components/profile-form";
+import { PreferencesForm } from "../components/preferences-form";
 
-export default async function SettingsProfilePage() {
+export default async function SettingsPreferencesPage() {
   const user = await requireAuth();
 
   // Fetch user profile with preferences
   const data = await getUserProfileWithPreferences(user.id);
 
-  if (!data || !data.profile) {
+  if (!data || !data.preferences) {
     redirect("/dashboard");
   }
 
-  const { profile } = data;
+  const { preferences } = data;
 
-  return <ProfileForm profile={profile} />;
+  return <PreferencesForm preferences={preferences} />;
 }

@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { updateParkingPreferences } from "../actions";
 import type { ValidatedUserPreferences } from "@/lib/supabase/helpers";
@@ -16,33 +15,25 @@ import {
 } from "@/lib/validations";
 
 interface ParkingFormProps {
-  preferences: Pick<
-    ValidatedUserPreferences,
-    "default_view" | "favorite_spot_ids" | "usual_arrival_time"
-  >;
-  availableSpots: Array<{ id: string; label: string }>;
+  preferences: Pick<ValidatedUserPreferences, "default_view">;
 }
 
-export function ParkingForm({ preferences, availableSpots }: ParkingFormProps) {
+export function ParkingForm({ preferences }: ParkingFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const {
-    register,
     handleSubmit,
     watch,
     setValue,
-    formState: { errors, isDirty },
+    formState: { isDirty },
   } = useForm<UpdateParkingPreferencesInput>({
     resolver: zodResolver(updateParkingPreferencesSchema),
     defaultValues: {
       default_view: preferences.default_view,
-      favorite_spot_ids: preferences.favorite_spot_ids,
-      usual_arrival_time: preferences.usual_arrival_time || "09:00",
     },
   });
 
   const defaultView = watch("default_view");
-  const favoriteSpotIds = watch("favorite_spot_ids");
 
   const onSubmit = async (data: UpdateParkingPreferencesInput) => {
     try {
@@ -57,20 +48,12 @@ export function ParkingForm({ preferences, availableSpots }: ParkingFormProps) {
     }
   };
 
-  const toggleFavoriteSpot = (spotId: string): void => {
-    const newFavorites = favoriteSpotIds.includes(spotId)
-      ? favoriteSpotIds.filter((id) => id !== spotId)
-      : [...favoriteSpotIds, spotId];
-
-    setValue("favorite_spot_ids", newFavorites, { shouldDirty: true });
-  };
-
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">Preferencias de Parking</h3>
+        <h3 className="text-lg font-medium">Preferencias de Visualización</h3>
         <p className="text-muted-foreground text-sm">
-          Personaliza tu experiencia de uso
+          Configura cómo prefieres ver la información del parking
         </p>
       </div>
       <div className="border-t" />
@@ -78,6 +61,9 @@ export function ParkingForm({ preferences, availableSpots }: ParkingFormProps) {
         {/* Default View */}
         <div className="space-y-3">
           <Label>Vista por Defecto</Label>
+          <p className="text-muted-foreground text-sm">
+            Selecciona la vista que se mostrará al abrir la sección de parking
+          </p>
           <RadioGroup
             value={defaultView}
             onValueChange={(value) =>
@@ -85,92 +71,52 @@ export function ParkingForm({ preferences, availableSpots }: ParkingFormProps) {
                 shouldDirty: true,
               })
             }
+            className="grid gap-4"
           >
-            <div className="flex items-center space-x-2">
+            <Label
+              htmlFor="view-map"
+              className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
+            >
               <RadioGroupItem value="map" id="view-map" />
-              <Label htmlFor="view-map" className="font-normal">
-                Mapa Interactivo
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
+              <div className="flex-1">
+                <div className="font-medium">Mapa Interactivo</div>
+                <div className="text-muted-foreground text-sm">
+                  Visualiza las plazas en un mapa 2D del parking
+                </div>
+              </div>
+            </Label>
+
+            <Label
+              htmlFor="view-list"
+              className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
+            >
               <RadioGroupItem value="list" id="view-list" />
-              <Label htmlFor="view-list" className="font-normal">
-                Lista
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
+              <div className="flex-1">
+                <div className="font-medium">Lista</div>
+                <div className="text-muted-foreground text-sm">
+                  Muestra todas las plazas en formato de lista
+                </div>
+              </div>
+            </Label>
+
+            <Label
+              htmlFor="view-calendar"
+              className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
+            >
               <RadioGroupItem value="calendar" id="view-calendar" />
-              <Label htmlFor="view-calendar" className="font-normal">
-                Calendario
-              </Label>
-            </div>
+              <div className="flex-1">
+                <div className="font-medium">Calendario</div>
+                <div className="text-muted-foreground text-sm">
+                  Vista de calendario con disponibilidad por día
+                </div>
+              </div>
+            </Label>
           </RadioGroup>
-        </div>
-
-        <div className="border-t" />
-
-        {/* Favorite Spots */}
-        <div className="space-y-3">
-          <div>
-            <Label>Plazas Favoritas</Label>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Recibirás alertas prioritarias cuando estas plazas se liberen
-            </p>
-          </div>
-
-          <div className="grid max-h-48 grid-cols-2 gap-2 overflow-y-auto rounded-md border p-3 sm:grid-cols-3 md:grid-cols-4">
-            {availableSpots.map((spot) => (
-              <Button
-                key={spot.id}
-                type="button"
-                variant={
-                  favoriteSpotIds.includes(spot.id) ? "default" : "outline"
-                }
-                size="sm"
-                onClick={() => toggleFavoriteSpot(spot.id)}
-                className="h-10"
-              >
-                {spot.label}
-              </Button>
-            ))}
-          </div>
-
-          {favoriteSpotIds.length === 0 && (
-            <p className="text-muted-foreground text-sm">
-              No has seleccionado plazas favoritas
-            </p>
-          )}
-          {favoriteSpotIds.length > 0 && (
-            <p className="text-muted-foreground text-sm">
-              {favoriteSpotIds.length} plaza(s) seleccionada(s)
-            </p>
-          )}
-        </div>
-
-        <div className="border-t" />
-
-        {/* Usual Arrival Time */}
-        <div className="space-y-2">
-          <Label htmlFor="usual_arrival_time">Hora Habitual de Llegada</Label>
-          <Input
-            id="usual_arrival_time"
-            type="time"
-            className="w-40"
-            {...register("usual_arrival_time")}
-          />
-          {errors.usual_arrival_time && (
-            <p className="text-destructive text-sm">
-              {errors.usual_arrival_time.message}
-            </p>
-          )}
-          <p className="text-muted-foreground text-xs">
-            Se usará para estadísticas y sugerencias futuras
-          </p>
         </div>
 
         {/* Submit */}
         <Button type="submit" disabled={!isDirty || isLoading}>
-          {isLoading ? "Guardando..." : "Guardar Cambios"}
+          {isLoading ? "Guardando..." : "Actualizar preferencias"}
         </Button>
       </form>
     </div>

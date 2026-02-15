@@ -12,6 +12,9 @@ import {
   Users,
   Shield,
   Settings,
+  User,
+  Bell,
+  Cloud,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { type SidebarData } from "../types";
@@ -53,9 +56,35 @@ export const sidebarData: SidebarData = {
           roles: ["admin"],
         },
         {
-          title: "Configuración",
-          url: ROUTES.SETTINGS,
+          title: "Ajustes",
           icon: Settings,
+          items: [
+            {
+              title: "Perfil",
+              url: ROUTES.SETTINGS_PROFILE,
+              icon: User,
+            },
+            {
+              title: "Notificaciones",
+              url: ROUTES.SETTINGS_NOTIFICATIONS,
+              icon: Bell,
+            },
+            {
+              title: "Preferencias",
+              url: ROUTES.SETTINGS_PREFERENCES,
+              icon: Settings,
+            },
+            {
+              title: "Microsoft 365",
+              url: ROUTES.SETTINGS_MICROSOFT,
+              icon: Cloud,
+            },
+            {
+              title: "Seguridad",
+              url: ROUTES.SETTINGS_SECURITY,
+              icon: Shield,
+            },
+          ],
         },
       ],
     },

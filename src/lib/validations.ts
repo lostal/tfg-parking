@@ -133,15 +133,18 @@ export type UpdateNotificationPreferencesInput = z.infer<
   typeof updateNotificationPreferencesSchema
 >;
 
-// ─── Settings: Parking ───────────────────────────────────────
+// ─── Settings: Preferences (Theme + View) ────────────────────
 
-export const updateParkingPreferencesSchema = z.object({
+export const updatePreferencesSchema = z.object({
+  theme: z.enum(["light", "dark"]),
   default_view: z.enum(["map", "list", "calendar"]),
-  favorite_spot_ids: z.array(z.string().uuid()),
-  usual_arrival_time: z
-    .string()
-    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato HH:MM")
-    .optional(),
+});
+
+export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;
+
+// Legacy schemas for backwards compatibility (deprecated)
+export const updateParkingPreferencesSchema = updatePreferencesSchema.pick({
+  default_view: true,
 });
 
 export type UpdateParkingPreferencesInput = z.infer<
@@ -171,11 +174,9 @@ export const updateCessionRulesSchema = z.object({
 
 export type UpdateCessionRulesInput = z.infer<typeof updateCessionRulesSchema>;
 
-// ─── Settings: Appearance ────────────────────────────────────
-
-export const updateAppearanceSchema = z.object({
-  theme: z.enum(["light", "dark", "system"]),
-  locale: z.enum(["es", "en"]),
+// Legacy schema for backwards compatibility (deprecated)
+export const updateAppearanceSchema = updatePreferencesSchema.pick({
+  theme: true,
 });
 
 export type UpdateAppearanceInput = z.infer<typeof updateAppearanceSchema>;

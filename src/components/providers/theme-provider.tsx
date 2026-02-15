@@ -12,12 +12,7 @@ export function ThemeProvider({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <NextThemesProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
+    <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
       {children}
     </NextThemesProvider>
   );

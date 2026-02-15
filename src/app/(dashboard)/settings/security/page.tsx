@@ -1,15 +1,15 @@
 /**
- * Settings - Profile Page
+ * Settings - Security Page
  *
- * User profile information and settings.
+ * Security settings and account information.
  */
 
 import { requireAuth } from "@/lib/supabase/auth";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
-import { ProfileForm } from "./components/profile-form";
+import { SecuritySection } from "../components/security-section";
 
-export default async function SettingsProfilePage() {
+export default async function SettingsSecurityPage() {
   const user = await requireAuth();
 
   // Fetch user profile with preferences
@@ -21,5 +21,12 @@ export default async function SettingsProfilePage() {
 
   const { profile } = data;
 
-  return <ProfileForm profile={profile} />;
+  return (
+    <SecuritySection
+      user={{
+        email: profile.email,
+        created_at: profile.created_at,
+      }}
+    />
+  );
 }

@@ -8,18 +8,18 @@ import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { updateAppearance } from "../actions";
+import { updatePreferences } from "../actions";
 import type { ValidatedUserPreferences } from "@/lib/supabase/helpers";
 import {
-  updateAppearanceSchema,
-  type UpdateAppearanceInput,
+  updatePreferencesSchema,
+  type UpdatePreferencesInput,
 } from "@/lib/validations";
 
-interface AppearanceFormProps {
-  preferences: Pick<ValidatedUserPreferences, "theme">;
+interface PreferencesFormProps {
+  preferences: Pick<ValidatedUserPreferences, "theme" | "default_view">;
 }
 
-export function AppearanceForm({ preferences }: AppearanceFormProps) {
+export function PreferencesForm({ preferences }: PreferencesFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { setTheme } = useTheme();
 
@@ -28,16 +28,18 @@ export function AppearanceForm({ preferences }: AppearanceFormProps) {
     watch,
     setValue,
     formState: { isDirty },
-  } = useForm<UpdateAppearanceInput>({
-    resolver: zodResolver(updateAppearanceSchema),
+  } = useForm<UpdatePreferencesInput>({
+    resolver: zodResolver(updatePreferencesSchema),
     defaultValues: {
       theme: preferences.theme === "system" ? "light" : preferences.theme,
+      default_view: preferences.default_view,
     },
   });
 
   const themeValue = watch("theme");
+  const defaultView = watch("default_view");
 
-  const onSubmit = async (data: UpdateAppearanceInput) => {
+  const onSubmit = async (data: UpdatePreferencesInput) => {
     try {
       setIsLoading(true);
 
@@ -45,10 +47,10 @@ export function AppearanceForm({ preferences }: AppearanceFormProps) {
       setTheme(data.theme);
 
       // Save to database
-      await updateAppearance(data);
-      toast.success("Apariencia actualizada correctamente");
+      await updatePreferences(data);
+      toast.success("Preferencias actualizadas correctamente");
     } catch (error) {
-      toast.error("Error al actualizar la apariencia");
+      toast.error("Error al actualizar las preferencias");
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -58,13 +60,13 @@ export function AppearanceForm({ preferences }: AppearanceFormProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">Apariencia</h3>
+        <h3 className="text-lg font-medium">Preferencias</h3>
         <p className="text-muted-foreground text-sm">
-          Personaliza el tema de la aplicación
+          Personaliza la apariencia y el comportamiento de la aplicación
         </p>
       </div>
       <div className="border-t" />
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         {/* Theme with Visual Previews */}
         <div className="space-y-3">
           <Label>Tema</Label>
@@ -140,6 +142,64 @@ export function AppearanceForm({ preferences }: AppearanceFormProps) {
               <span className="block w-full p-2 text-center font-normal">
                 Oscuro
               </span>
+            </Label>
+          </RadioGroup>
+        </div>
+
+        <div className="border-t" />
+
+        {/* Default View */}
+        <div className="space-y-3">
+          <Label>Vista por Defecto del Parking</Label>
+          <p className="text-muted-foreground text-sm">
+            Selecciona la vista que se mostrará al abrir la sección de parking
+          </p>
+          <RadioGroup
+            value={defaultView}
+            onValueChange={(value) =>
+              setValue("default_view", value as "map" | "list" | "calendar", {
+                shouldDirty: true,
+              })
+            }
+            className="grid gap-4"
+          >
+            <Label
+              htmlFor="view-map"
+              className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
+            >
+              <RadioGroupItem value="map" id="view-map" />
+              <div className="flex-1">
+                <div className="font-medium">Mapa Interactivo</div>
+                <div className="text-muted-foreground text-sm">
+                  Visualiza las plazas en un mapa 2D del parking
+                </div>
+              </div>
+            </Label>
+
+            <Label
+              htmlFor="view-list"
+              className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
+            >
+              <RadioGroupItem value="list" id="view-list" />
+              <div className="flex-1">
+                <div className="font-medium">Lista</div>
+                <div className="text-muted-foreground text-sm">
+                  Muestra todas las plazas en formato de lista
+                </div>
+              </div>
+            </Label>
+
+            <Label
+              htmlFor="view-calendar"
+              className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
+            >
+              <RadioGroupItem value="calendar" id="view-calendar" />
+              <div className="flex-1">
+                <div className="font-medium">Calendario</div>
+                <div className="text-muted-foreground text-sm">
+                  Vista de calendario con disponibilidad por día
+                </div>
+              </div>
             </Label>
           </RadioGroup>
         </div>

@@ -16,12 +16,14 @@ import {
   updateOutlookPreferencesSchema,
   updateCessionRulesSchema,
   updateAppearanceSchema,
+  updatePreferencesSchema,
   type UpdateProfileInput,
   type UpdateNotificationPreferencesInput,
   type UpdateParkingPreferencesInput,
   type UpdateOutlookPreferencesInput,
   type UpdateCessionRulesInput,
   type UpdateAppearanceInput,
+  type UpdatePreferencesInput,
 } from "@/lib/validations";
 
 // ─── Update Profile ──────────────────────────────────────────
@@ -98,8 +100,6 @@ export async function updateParkingPreferences(
     .from("user_preferences")
     .update({
       default_view: validated.default_view,
-      favorite_spot_ids: validated.favorite_spot_ids,
-      usual_arrival_time: validated.usual_arrival_time || null,
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", user.id);
@@ -193,7 +193,6 @@ export async function updateAppearance(data: UpdateAppearanceInput) {
     .from("user_preferences")
     .update({
       theme: validated.theme,
-      locale: validated.locale,
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", user.id);
@@ -201,6 +200,32 @@ export async function updateAppearance(data: UpdateAppearanceInput) {
   if (error) {
     console.error("Error updating appearance:", error);
     throw new Error("No se pudieron actualizar las preferencias de apariencia");
+  }
+
+  revalidatePath("/settings");
+  return { success: true };
+}
+
+// ─── Update Preferences (Combined Theme + View) ─────────────
+
+export async function updatePreferences(data: UpdatePreferencesInput) {
+  const user = await requireAuth();
+  const validated = updatePreferencesSchema.parse(data);
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("user_preferences")
+    .update({
+      theme: validated.theme,
+      default_view: validated.default_view,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Error updating preferences:", error);
+    throw new Error("No se pudieron actualizar las preferencias");
   }
 
   revalidatePath("/settings");
