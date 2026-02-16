@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { MicrosoftConnectionCard } from "../components/microsoft-connection-card";
 import { OutlookSyncForm } from "../components/outlook-sync-form";
 import { ManagementCessionRules } from "../components/management-cession-rules";
+import { ContentSection } from "../components/content-section";
 
 export default async function SettingsMicrosoftPage() {
   const user = await requireAuth();
@@ -24,20 +25,25 @@ export default async function SettingsMicrosoftPage() {
   const { profile, preferences, microsoftStatus, managementSpot } = data;
 
   return (
-    <div className="space-y-6">
-      <MicrosoftConnectionCard status={microsoftStatus} />
-      <OutlookSyncForm
-        preferences={preferences}
-        microsoftConnected={microsoftStatus?.connected || false}
-        lastSync={microsoftStatus?.lastSync || null}
-      />
-      {(profile.role === "management" || profile.role === "admin") && (
-        <ManagementCessionRules
+    <ContentSection
+      title="Integración con Microsoft 365"
+      desc="Conecta tu cuenta de Microsoft 365 y sincroniza tu calendario de Outlook."
+    >
+      <div className="space-y-6">
+        <MicrosoftConnectionCard status={microsoftStatus} />
+        <OutlookSyncForm
           preferences={preferences}
-          spotInfo={managementSpot}
           microsoftConnected={microsoftStatus?.connected || false}
+          lastSync={microsoftStatus?.lastSync || null}
         />
-      )}
-    </div>
+        {(profile.role === "management" || profile.role === "admin") && (
+          <ManagementCessionRules
+            preferences={preferences}
+            spotInfo={managementSpot}
+            microsoftConnected={microsoftStatus?.connected || false}
+          />
+        )}
+      </div>
+    </ContentSection>
   );
 }

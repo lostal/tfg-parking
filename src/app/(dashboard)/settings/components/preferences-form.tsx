@@ -58,157 +58,144 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Preferencias</h3>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      {/* Theme with Visual Previews */}
+      <div className="space-y-3">
+        <Label>Tema</Label>
         <p className="text-muted-foreground text-sm">
-          Personaliza la apariencia y el comportamiento de la aplicación
+          Selecciona el tema para el dashboard
         </p>
+        <RadioGroup
+          value={themeValue}
+          onValueChange={(value) =>
+            setValue("theme", value as "light" | "dark", {
+              shouldDirty: true,
+            })
+          }
+          className="grid max-w-md grid-cols-2 gap-8 pt-2"
+        >
+          {/* Light Theme Preview */}
+          <Label
+            htmlFor="theme-light"
+            className="[&:has([data-state=checked])>div]:border-primary cursor-pointer"
+          >
+            <RadioGroupItem
+              value="light"
+              id="theme-light"
+              className="sr-only"
+            />
+            <div className="border-muted hover:border-accent items-center rounded-md border-2 p-1">
+              <div className="space-y-2 rounded-sm bg-[#ecedef] p-2">
+                <div className="space-y-2 rounded-md bg-white p-2 shadow-xs">
+                  <div className="h-2 w-[80px] rounded-lg bg-[#ecedef]" />
+                  <div className="h-2 w-[100px] rounded-lg bg-[#ecedef]" />
+                </div>
+                <div className="flex items-center space-x-2 rounded-md bg-white p-2 shadow-xs">
+                  <div className="h-4 w-4 rounded-full bg-[#ecedef]" />
+                  <div className="h-2 w-[100px] rounded-lg bg-[#ecedef]" />
+                </div>
+                <div className="flex items-center space-x-2 rounded-md bg-white p-2 shadow-xs">
+                  <div className="h-4 w-4 rounded-full bg-[#ecedef]" />
+                  <div className="h-2 w-[100px] rounded-lg bg-[#ecedef]" />
+                </div>
+              </div>
+            </div>
+            <span className="block w-full p-2 text-center font-normal">
+              Claro
+            </span>
+          </Label>
+
+          {/* Dark Theme Preview */}
+          <Label
+            htmlFor="theme-dark"
+            className="[&:has([data-state=checked])>div]:border-primary cursor-pointer"
+          >
+            <RadioGroupItem value="dark" id="theme-dark" className="sr-only" />
+            <div className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground items-center rounded-md border-2 p-1">
+              <div className="space-y-2 rounded-sm bg-slate-950 p-2">
+                <div className="space-y-2 rounded-md bg-slate-800 p-2 shadow-xs">
+                  <div className="h-2 w-[80px] rounded-lg bg-slate-400" />
+                  <div className="h-2 w-[100px] rounded-lg bg-slate-400" />
+                </div>
+                <div className="flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-xs">
+                  <div className="h-4 w-4 rounded-full bg-slate-400" />
+                  <div className="h-2 w-[100px] rounded-lg bg-slate-400" />
+                </div>
+                <div className="flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-xs">
+                  <div className="h-4 w-4 rounded-full bg-slate-400" />
+                  <div className="h-2 w-[100px] rounded-lg bg-slate-400" />
+                </div>
+              </div>
+            </div>
+            <span className="block w-full p-2 text-center font-normal">
+              Oscuro
+            </span>
+          </Label>
+        </RadioGroup>
       </div>
+
       <div className="border-t" />
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        {/* Theme with Visual Previews */}
-        <div className="space-y-3">
-          <Label>Tema</Label>
-          <p className="text-muted-foreground text-sm">
-            Selecciona el tema para el dashboard
-          </p>
-          <RadioGroup
-            value={themeValue}
-            onValueChange={(value) =>
-              setValue("theme", value as "light" | "dark", {
-                shouldDirty: true,
-              })
-            }
-            className="grid max-w-md grid-cols-2 gap-8 pt-2"
+
+      {/* Default View */}
+      <div className="space-y-3">
+        <Label>Vista por Defecto del Parking</Label>
+        <p className="text-muted-foreground text-sm">
+          Selecciona la vista que se mostrará al abrir la sección de parking
+        </p>
+        <RadioGroup
+          value={defaultView}
+          onValueChange={(value) =>
+            setValue("default_view", value as "map" | "list" | "calendar", {
+              shouldDirty: true,
+            })
+          }
+          className="grid gap-4"
+        >
+          <Label
+            htmlFor="view-map"
+            className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
           >
-            {/* Light Theme Preview */}
-            <Label
-              htmlFor="theme-light"
-              className="[&:has([data-state=checked])>div]:border-primary cursor-pointer"
-            >
-              <RadioGroupItem
-                value="light"
-                id="theme-light"
-                className="sr-only"
-              />
-              <div className="border-muted hover:border-accent items-center rounded-md border-2 p-1">
-                <div className="space-y-2 rounded-sm bg-[#ecedef] p-2">
-                  <div className="space-y-2 rounded-md bg-white p-2 shadow-xs">
-                    <div className="h-2 w-[80px] rounded-lg bg-[#ecedef]" />
-                    <div className="h-2 w-[100px] rounded-lg bg-[#ecedef]" />
-                  </div>
-                  <div className="flex items-center space-x-2 rounded-md bg-white p-2 shadow-xs">
-                    <div className="h-4 w-4 rounded-full bg-[#ecedef]" />
-                    <div className="h-2 w-[100px] rounded-lg bg-[#ecedef]" />
-                  </div>
-                  <div className="flex items-center space-x-2 rounded-md bg-white p-2 shadow-xs">
-                    <div className="h-4 w-4 rounded-full bg-[#ecedef]" />
-                    <div className="h-2 w-[100px] rounded-lg bg-[#ecedef]" />
-                  </div>
-                </div>
+            <RadioGroupItem value="map" id="view-map" />
+            <div className="flex-1">
+              <div className="font-medium">Mapa Interactivo</div>
+              <div className="text-muted-foreground text-sm">
+                Visualiza las plazas en un mapa 2D del parking
               </div>
-              <span className="block w-full p-2 text-center font-normal">
-                Claro
-              </span>
-            </Label>
+            </div>
+          </Label>
 
-            {/* Dark Theme Preview */}
-            <Label
-              htmlFor="theme-dark"
-              className="[&:has([data-state=checked])>div]:border-primary cursor-pointer"
-            >
-              <RadioGroupItem
-                value="dark"
-                id="theme-dark"
-                className="sr-only"
-              />
-              <div className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground items-center rounded-md border-2 p-1">
-                <div className="space-y-2 rounded-sm bg-slate-950 p-2">
-                  <div className="space-y-2 rounded-md bg-slate-800 p-2 shadow-xs">
-                    <div className="h-2 w-[80px] rounded-lg bg-slate-400" />
-                    <div className="h-2 w-[100px] rounded-lg bg-slate-400" />
-                  </div>
-                  <div className="flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-xs">
-                    <div className="h-4 w-4 rounded-full bg-slate-400" />
-                    <div className="h-2 w-[100px] rounded-lg bg-slate-400" />
-                  </div>
-                  <div className="flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-xs">
-                    <div className="h-4 w-4 rounded-full bg-slate-400" />
-                    <div className="h-2 w-[100px] rounded-lg bg-slate-400" />
-                  </div>
-                </div>
-              </div>
-              <span className="block w-full p-2 text-center font-normal">
-                Oscuro
-              </span>
-            </Label>
-          </RadioGroup>
-        </div>
-
-        <div className="border-t" />
-
-        {/* Default View */}
-        <div className="space-y-3">
-          <Label>Vista por Defecto del Parking</Label>
-          <p className="text-muted-foreground text-sm">
-            Selecciona la vista que se mostrará al abrir la sección de parking
-          </p>
-          <RadioGroup
-            value={defaultView}
-            onValueChange={(value) =>
-              setValue("default_view", value as "map" | "list" | "calendar", {
-                shouldDirty: true,
-              })
-            }
-            className="grid gap-4"
+          <Label
+            htmlFor="view-list"
+            className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
           >
-            <Label
-              htmlFor="view-map"
-              className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
-            >
-              <RadioGroupItem value="map" id="view-map" />
-              <div className="flex-1">
-                <div className="font-medium">Mapa Interactivo</div>
-                <div className="text-muted-foreground text-sm">
-                  Visualiza las plazas en un mapa 2D del parking
-                </div>
+            <RadioGroupItem value="list" id="view-list" />
+            <div className="flex-1">
+              <div className="font-medium">Lista</div>
+              <div className="text-muted-foreground text-sm">
+                Muestra todas las plazas en formato de lista
               </div>
-            </Label>
+            </div>
+          </Label>
 
-            <Label
-              htmlFor="view-list"
-              className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
-            >
-              <RadioGroupItem value="list" id="view-list" />
-              <div className="flex-1">
-                <div className="font-medium">Lista</div>
-                <div className="text-muted-foreground text-sm">
-                  Muestra todas las plazas en formato de lista
-                </div>
+          <Label
+            htmlFor="view-calendar"
+            className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
+          >
+            <RadioGroupItem value="calendar" id="view-calendar" />
+            <div className="flex-1">
+              <div className="font-medium">Calendario</div>
+              <div className="text-muted-foreground text-sm">
+                Vista de calendario con disponibilidad por día
               </div>
-            </Label>
+            </div>
+          </Label>
+        </RadioGroup>
+      </div>
 
-            <Label
-              htmlFor="view-calendar"
-              className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
-            >
-              <RadioGroupItem value="calendar" id="view-calendar" />
-              <div className="flex-1">
-                <div className="font-medium">Calendario</div>
-                <div className="text-muted-foreground text-sm">
-                  Vista de calendario con disponibilidad por día
-                </div>
-              </div>
-            </Label>
-          </RadioGroup>
-        </div>
-
-        {/* Submit */}
-        <Button type="submit" disabled={!isDirty || isLoading}>
-          {isLoading ? "Guardando..." : "Actualizar preferencias"}
-        </Button>
-      </form>
-    </div>
+      {/* Submit */}
+      <Button type="submit" disabled={!isDirty || isLoading}>
+        {isLoading ? "Guardando..." : "Actualizar preferencias"}
+      </Button>
+    </form>
   );
 }

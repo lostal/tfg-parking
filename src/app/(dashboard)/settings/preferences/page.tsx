@@ -8,6 +8,7 @@ import { requireAuth } from "@/lib/supabase/auth";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
 import { PreferencesForm } from "../components/preferences-form";
+import { ContentSection } from "../components/content-section";
 
 export default async function SettingsPreferencesPage() {
   const user = await requireAuth();
@@ -21,5 +22,12 @@ export default async function SettingsPreferencesPage() {
 
   const { preferences } = data;
 
-  return <PreferencesForm preferences={preferences} />;
+  return (
+    <ContentSection
+      title="Preferencias"
+      desc="Personaliza la apariencia y comportamiento de la aplicación."
+    >
+      <PreferencesForm preferences={preferences} />
+    </ContentSection>
+  );
 }

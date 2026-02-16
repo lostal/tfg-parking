@@ -29,7 +29,7 @@ export default async function SettingsLayout({
     <>
       <Header fixed>
         <Search />
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ms-auto flex items-center space-x-4">
           <ThemeSwitch />
           <ProfileDropdown />
         </div>
@@ -56,9 +56,7 @@ export default async function SettingsLayout({
           </aside>
 
           {/* Main Content */}
-          <div className="flex w-full overflow-y-hidden p-1">
-            <div className="flex-1 lg:max-w-2xl">{children}</div>
-          </div>
+          <div className="flex w-full overflow-y-hidden p-1">{children}</div>
         </div>
       </Main>
     </>

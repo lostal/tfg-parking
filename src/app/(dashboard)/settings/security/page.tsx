@@ -8,6 +8,7 @@ import { requireAuth } from "@/lib/supabase/auth";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
 import { SecuritySection } from "../components/security-section";
+import { ContentSection } from "../components/content-section";
 
 export default async function SettingsSecurityPage() {
   const user = await requireAuth();
@@ -22,11 +23,16 @@ export default async function SettingsSecurityPage() {
   const { profile } = data;
 
   return (
-    <SecuritySection
-      user={{
-        email: profile.email,
-        created_at: profile.created_at,
-      }}
-    />
+    <ContentSection
+      title="Seguridad"
+      desc="Gestiona la seguridad de tu cuenta y visualiza información importante."
+    >
+      <SecuritySection
+        user={{
+          email: profile.email,
+          created_at: profile.created_at,
+        }}
+      />
+    </ContentSection>
   );
 }

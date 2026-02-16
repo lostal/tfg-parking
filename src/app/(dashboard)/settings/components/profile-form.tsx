@@ -52,91 +52,80 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Información Personal</h3>
-        <p className="text-muted-foreground text-sm">
-          Actualiza tu información de perfil
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      {/* Email (readonly) */}
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          value={profile.email}
+          disabled
+          className="bg-muted"
+        />
+        <p className="text-muted-foreground text-xs">
+          Tu email corporativo no se puede modificar
         </p>
       </div>
-      <div className="border-t" />
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Email (readonly) */}
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            value={profile.email}
-            disabled
-            className="bg-muted"
-          />
-          <p className="text-muted-foreground text-xs">
-            Tu email corporativo no se puede modificar
+
+      {/* Full Name */}
+      <div className="space-y-2">
+        <Label htmlFor="full_name">Nombre Completo</Label>
+        <Input
+          id="full_name"
+          type="text"
+          placeholder="Tu nombre completo"
+          {...register("full_name")}
+        />
+        {errors.full_name && (
+          <p className="text-destructive text-sm">{errors.full_name.message}</p>
+        )}
+      </div>
+
+      {/* Avatar URL */}
+      <div className="space-y-2">
+        <Label htmlFor="avatar_url">URL de Avatar (opcional)</Label>
+        <Input
+          id="avatar_url"
+          type="text"
+          placeholder="https://example.com/avatar.jpg"
+          {...register("avatar_url")}
+        />
+        {errors.avatar_url && (
+          <p className="text-destructive text-sm">
+            {errors.avatar_url.message}
           </p>
-        </div>
+        )}
+        <p className="text-muted-foreground text-xs">
+          Deja vacío para usar tu foto de Microsoft 365
+        </p>
+      </div>
 
-        {/* Full Name */}
-        <div className="space-y-2">
-          <Label htmlFor="full_name">Nombre Completo</Label>
-          <Input
-            id="full_name"
-            type="text"
-            placeholder="Tu nombre completo"
-            {...register("full_name")}
-          />
-          {errors.full_name && (
-            <p className="text-destructive text-sm">
-              {errors.full_name.message}
-            </p>
-          )}
-        </div>
+      {/* Role (readonly) */}
+      <div className="space-y-2">
+        <Label htmlFor="role">Rol</Label>
+        <Input
+          id="role"
+          type="text"
+          value={
+            profile.role === "admin"
+              ? "Administrador"
+              : profile.role === "management"
+                ? "Directivo"
+                : "Empleado"
+          }
+          disabled
+          className="bg-muted"
+        />
+        <p className="text-muted-foreground text-xs">
+          Solo un administrador puede cambiar tu rol
+        </p>
+      </div>
 
-        {/* Avatar URL */}
-        <div className="space-y-2">
-          <Label htmlFor="avatar_url">URL de Avatar (opcional)</Label>
-          <Input
-            id="avatar_url"
-            type="text"
-            placeholder="https://example.com/avatar.jpg"
-            {...register("avatar_url")}
-          />
-          {errors.avatar_url && (
-            <p className="text-destructive text-sm">
-              {errors.avatar_url.message}
-            </p>
-          )}
-          <p className="text-muted-foreground text-xs">
-            Deja vacío para usar tu foto de Microsoft 365
-          </p>
-        </div>
-
-        {/* Role (readonly) */}
-        <div className="space-y-2">
-          <Label htmlFor="role">Rol</Label>
-          <Input
-            id="role"
-            type="text"
-            value={
-              profile.role === "admin"
-                ? "Administrador"
-                : profile.role === "management"
-                  ? "Directivo"
-                  : "Empleado"
-            }
-            disabled
-            className="bg-muted"
-          />
-          <p className="text-muted-foreground text-xs">
-            Solo un administrador puede cambiar tu rol
-          </p>
-        </div>
-
-        {/* Submit */}
-        <Button type="submit" disabled={!isDirty || isLoading}>
-          {isLoading ? "Guardando..." : "Guardar Cambios"}
-        </Button>
-      </form>
-    </div>
+      {/* Submit */}
+      <Button type="submit" disabled={!isDirty || isLoading}>
+        {isLoading ? "Guardando..." : "Guardar Cambios"}
+      </Button>
+    </form>
   );
 }

@@ -94,7 +94,7 @@ export default async function DashboardPage() {
       {/* ===== Top Heading ===== */}
       <Header fixed>
         <DashboardTopNav />
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ms-auto flex items-center space-x-4">
           <Search />
           <ThemeSwitch />
           <ProfileDropdown />
@@ -103,7 +103,7 @@ export default async function DashboardPage() {
 
       {/* ===== Main ===== */}
       <Main>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-between space-y-2">
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground text-sm">
             {formatDateLong(today)}

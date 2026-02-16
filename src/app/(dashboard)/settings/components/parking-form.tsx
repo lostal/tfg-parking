@@ -49,76 +49,67 @@ export function ParkingForm({ preferences }: ParkingFormProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Preferencias de Visualización</h3>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      {/* Default View */}
+      <div className="space-y-3">
+        <Label>Vista por Defecto</Label>
         <p className="text-muted-foreground text-sm">
-          Configura cómo prefieres ver la información del parking
+          Selecciona la vista que se mostrará al abrir la sección de parking
         </p>
-      </div>
-      <div className="border-t" />
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Default View */}
-        <div className="space-y-3">
-          <Label>Vista por Defecto</Label>
-          <p className="text-muted-foreground text-sm">
-            Selecciona la vista que se mostrará al abrir la sección de parking
-          </p>
-          <RadioGroup
-            value={defaultView}
-            onValueChange={(value) =>
-              setValue("default_view", value as "map" | "list" | "calendar", {
-                shouldDirty: true,
-              })
-            }
-            className="grid gap-4"
+        <RadioGroup
+          value={defaultView}
+          onValueChange={(value) =>
+            setValue("default_view", value as "map" | "list" | "calendar", {
+              shouldDirty: true,
+            })
+          }
+          className="grid gap-4"
+        >
+          <Label
+            htmlFor="view-map"
+            className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
           >
-            <Label
-              htmlFor="view-map"
-              className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
-            >
-              <RadioGroupItem value="map" id="view-map" />
-              <div className="flex-1">
-                <div className="font-medium">Mapa Interactivo</div>
-                <div className="text-muted-foreground text-sm">
-                  Visualiza las plazas en un mapa 2D del parking
-                </div>
+            <RadioGroupItem value="map" id="view-map" />
+            <div className="flex-1">
+              <div className="font-medium">Mapa Interactivo</div>
+              <div className="text-muted-foreground text-sm">
+                Visualiza las plazas en un mapa 2D del parking
               </div>
-            </Label>
+            </div>
+          </Label>
 
-            <Label
-              htmlFor="view-list"
-              className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
-            >
-              <RadioGroupItem value="list" id="view-list" />
-              <div className="flex-1">
-                <div className="font-medium">Lista</div>
-                <div className="text-muted-foreground text-sm">
-                  Muestra todas las plazas en formato de lista
-                </div>
+          <Label
+            htmlFor="view-list"
+            className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
+          >
+            <RadioGroupItem value="list" id="view-list" />
+            <div className="flex-1">
+              <div className="font-medium">Lista</div>
+              <div className="text-muted-foreground text-sm">
+                Muestra todas las plazas en formato de lista
               </div>
-            </Label>
+            </div>
+          </Label>
 
-            <Label
-              htmlFor="view-calendar"
-              className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
-            >
-              <RadioGroupItem value="calendar" id="view-calendar" />
-              <div className="flex-1">
-                <div className="font-medium">Calendario</div>
-                <div className="text-muted-foreground text-sm">
-                  Vista de calendario con disponibilidad por día
-                </div>
+          <Label
+            htmlFor="view-calendar"
+            className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
+          >
+            <RadioGroupItem value="calendar" id="view-calendar" />
+            <div className="flex-1">
+              <div className="font-medium">Calendario</div>
+              <div className="text-muted-foreground text-sm">
+                Vista de calendario con disponibilidad por día
               </div>
-            </Label>
-          </RadioGroup>
-        </div>
+            </div>
+          </Label>
+        </RadioGroup>
+      </div>
 
-        {/* Submit */}
-        <Button type="submit" disabled={!isDirty || isLoading}>
-          {isLoading ? "Guardando..." : "Actualizar preferencias"}
-        </Button>
-      </form>
-    </div>
+      {/* Submit */}
+      <Button type="submit" disabled={!isDirty || isLoading}>
+        {isLoading ? "Guardando..." : "Actualizar preferencias"}
+      </Button>
+    </form>
   );
 }
