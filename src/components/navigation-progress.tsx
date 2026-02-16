@@ -7,11 +7,11 @@
 
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import LoadingBar, { type LoadingBarRef } from "react-top-loading-bar";
 
-export function NavigationProgress() {
+function NavigationProgressImpl() {
   const ref = useRef<LoadingBarRef>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -50,5 +50,13 @@ export function NavigationProgress() {
       shadow={true}
       height={2}
     />
+  );
+}
+
+export function NavigationProgress() {
+  return (
+    <Suspense fallback={null}>
+      <NavigationProgressImpl />
+    </Suspense>
   );
 }
