@@ -8,7 +8,6 @@
 import {
   LayoutDashboard,
   Car,
-  Calendar,
   Users,
   Shield,
   Settings,
@@ -33,11 +32,6 @@ export const sidebarData: SidebarData = {
           title: "Parking",
           url: ROUTES.PARKING,
           icon: Car,
-        },
-        {
-          title: "Calendario",
-          url: ROUTES.CALENDAR,
-          icon: Calendar,
         },
         {
           title: "Visitantes",

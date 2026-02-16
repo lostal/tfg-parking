@@ -61,7 +61,7 @@ export function ProfileDropdown() {
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
             <DropdownMenuItem asChild>
-              <Link href={ROUTES.CALENDAR}>
+              <Link href={ROUTES.PARKING}>
                 Mis Reservas
                 <DropdownMenuShortcut>⌘R</DropdownMenuShortcut>
               </Link>

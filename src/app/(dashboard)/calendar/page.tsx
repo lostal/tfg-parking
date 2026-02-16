@@ -1,31 +1,13 @@
 /**
- * Calendar Page
+ * Calendar Page (Deprecated)
  *
- * Weekly/monthly view of parking availability.
- * Employees can browse and reserve from here.
+ * Redirige a /parking donde ahora se encuentra el calendario
+ * como una de las vistas en tabs.
  */
 
-"use client";
-
-import { Header, Main } from "@/components/layout";
-import { Search } from "@/components/search";
-import { ThemeSwitch } from "@/components/layout/theme-switch";
-import { ProfileDropdown } from "@/components/profile-dropdown";
-import { ComingSoon } from "@/components/coming-soon";
+import { redirect } from "next/navigation";
+import { ROUTES } from "@/lib/constants";
 
 export default function CalendarPage() {
-  return (
-    <>
-      <Header fixed>
-        <Search />
-        <div className="ms-auto flex items-center space-x-4">
-          <ThemeSwitch />
-          <ProfileDropdown />
-        </div>
-      </Header>
-      <Main>
-        <ComingSoon />
-      </Main>
-    </>
-  );
+  redirect(ROUTES.PARKING);
 }

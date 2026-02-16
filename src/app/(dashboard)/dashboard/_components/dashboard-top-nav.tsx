@@ -14,7 +14,6 @@ import { TopNav } from "@/components/layout";
 const links = [
   { title: "Dashboard", href: ROUTES.DASHBOARD },
   { title: "Parking", href: ROUTES.PARKING },
-  { title: "Calendario", href: ROUTES.CALENDAR },
   { title: "Visitantes", href: ROUTES.VISITORS },
 ];
 

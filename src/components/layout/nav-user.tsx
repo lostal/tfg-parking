@@ -91,7 +91,7 @@ export function NavUser() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={ROUTES.CALENDAR}>
+                <Link href={ROUTES.PARKING}>
                   <Bell />
                   Mis Reservas
                 </Link>
