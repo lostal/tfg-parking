@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout";
 import { SearchProvider } from "@/context/search-context";
+import { SkipToMain } from "@/components/skip-to-main";
 
 export default async function DashboardLayout({
   children,
@@ -28,6 +29,7 @@ export default async function DashboardLayout({
   return (
     <SearchProvider>
       <SidebarProvider>
+        <SkipToMain />
         <AppSidebar />
         <SidebarInset
           className={cn(

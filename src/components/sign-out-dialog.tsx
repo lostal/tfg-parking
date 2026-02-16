@@ -7,19 +7,22 @@
 
 "use client";
 
+import { useUser } from "@/hooks/use-user";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface SignOutDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  handleSignOut: () => void;
 }
 
-export function SignOutDialog({
-  open,
-  onOpenChange,
-  handleSignOut,
-}: SignOutDialogProps) {
+export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
+  const { signOut } = useUser();
+
+  const handleSignOut = async () => {
+    await signOut();
+    onOpenChange(false);
+  };
+
   return (
     <ConfirmDialog
       open={open}

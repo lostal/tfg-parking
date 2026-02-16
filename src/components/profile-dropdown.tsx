@@ -8,9 +8,9 @@
 
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useUser } from "@/hooks/use-user";
+import useDialogState from "@/hooks/use-dialog-state";
 import { ROUTES } from "@/lib/constants";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,8 @@ import {
 import { SignOutDialog } from "@/components/sign-out-dialog";
 
 export function ProfileDropdown() {
-  const { profile, signOut } = useUser();
-  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const { profile } = useUser();
+  const [open, setOpen] = useDialogState();
 
   const displayName = profile?.full_name || "Usuario";
   const displayEmail = profile?.email || "";
@@ -74,10 +74,7 @@ export function ProfileDropdown() {
             </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => setShowSignOutDialog(true)}
-          >
+          <DropdownMenuItem variant="destructive" onClick={() => setOpen(true)}>
             Cerrar sesión
             <DropdownMenuShortcut className="text-current">
               ⇧⌘Q
@@ -86,11 +83,7 @@ export function ProfileDropdown() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <SignOutDialog
-        open={showSignOutDialog}
-        onOpenChange={setShowSignOutDialog}
-        handleSignOut={signOut}
-      />
+      <SignOutDialog open={!!open} onOpenChange={setOpen} />
     </>
   );
 }
