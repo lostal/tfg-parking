@@ -19,6 +19,8 @@ export const ROUTES = {
   CALLBACK: "/auth/callback",
   DASHBOARD: "/dashboard",
   PARKING: "/parking",
+  PARKING_CESSATIONS: "/parking/cessations",
+  PARKING_MAP: "/parking/map",
   CALENDAR: "/calendar",
   VISITORS: "/visitors",
   ADMIN: "/admin",

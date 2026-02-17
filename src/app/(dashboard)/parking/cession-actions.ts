@@ -7,10 +7,14 @@
  * parking spots on specific dates.
  */
 
-import { actionClient } from "@/lib/actions";
+import { actionClient, success, error, type ActionResult } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import { createCessionSchema, cancelCessionSchema } from "@/lib/validations";
+import {
+  getUserCessions as queryUserCessions,
+  type CessionWithDetails,
+} from "@/lib/queries/cessions";
 
 /**
  * Create cessions for multiple dates.
@@ -118,3 +122,24 @@ export const cancelCession = actionClient
 
     return { cancelled: true };
   });
+
+/**
+ * Get the current user's active cessions.
+ * Wrapper action for client components to call.
+ */
+export async function getMyCessions(): Promise<
+  ActionResult<CessionWithDetails[]>
+> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return error("No autenticado");
+
+    const cessions = await queryUserCessions(user.id);
+    return success(cessions);
+  } catch (err) {
+    console.error("getMyCessions error:", err);
+    return error(
+      err instanceof Error ? err.message : "Error al obtener cesiones"
+    );
+  }
+}

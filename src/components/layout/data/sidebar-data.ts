@@ -14,6 +14,8 @@ import {
   User,
   Bell,
   Cloud,
+  MapPin,
+  CalendarClock,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { type SidebarData } from "../types";
@@ -29,9 +31,22 @@ export const sidebarData: SidebarData = {
           icon: LayoutDashboard,
         },
         {
-          title: "Parking",
+          title: "Reservas",
           url: ROUTES.PARKING,
           icon: Car,
+          roles: ["employee"],
+        },
+        {
+          title: "Mapa",
+          url: ROUTES.PARKING_MAP,
+          icon: MapPin,
+          roles: ["employee"],
+        },
+        {
+          title: "Mis Cesiones",
+          url: ROUTES.PARKING_CESSATIONS,
+          icon: CalendarClock,
+          roles: ["management", "admin"],
         },
         {
           title: "Visitantes",

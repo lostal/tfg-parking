@@ -54,6 +54,7 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "playwright-report/**",
     "src/lib/supabase/database.types.ts", // auto-generated
+    "shadcn-admin/**", // plantilla de referencia
   ]),
 ]);
 
