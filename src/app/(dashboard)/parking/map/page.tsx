@@ -17,9 +17,9 @@ import { ComingSoon } from "@/components/coming-soon";
 export default async function ParkingMapPage() {
   const user = await requireAuth();
 
-  // Redirect management/admin to cessations view (they have assigned spots)
+  // El mapa es exclusivo para empleados
   if (user.profile?.role === "management" || user.profile?.role === "admin") {
-    redirect(ROUTES.PARKING_CESSATIONS);
+    redirect(ROUTES.PARKING);
   }
 
   return (

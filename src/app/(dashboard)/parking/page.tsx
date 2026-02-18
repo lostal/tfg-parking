@@ -1,26 +1,36 @@
 /**
- * Parking Reservations Page (Employee)
+ * Parking Page – Vista unificada de calendario
  *
- * Mobile-first view for employees to quickly reserve parking spots.
- * Management/Admin users are redirected to /parking/cessations.
+ * Sirve a todos los roles desde una única ruta (/parking).
+ * Empleado: reservar plazas por día.
+ * Directivo/Admin: ceder su plaza asignada.
  */
 
-import { redirect } from "next/navigation";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { requireAuth } from "@/lib/supabase/auth";
-import { ROUTES } from "@/lib/constants";
-import { ReservationsView } from "./_components/reservations-view";
+import { getSpots } from "@/lib/queries/spots";
+import { ParkingCalendarView } from "./_components/parking-calendar-view";
 
-export default async function ParkingReservationsPage() {
+export default async function ParkingPage() {
   const user = await requireAuth();
 
-  // Redirect management/admin to cessations view
-  if (user.profile?.role === "management" || user.profile?.role === "admin") {
-    redirect(ROUTES.PARKING_CESSATIONS);
+  const role = user.profile?.role ?? "employee";
+  const isManagement = role === "management" || role === "admin";
+
+  // Solo el directivo necesita su plaza asignada
+  let assignedSpot = null;
+  if (isManagement) {
+    const spots = await getSpots();
+    assignedSpot = spots.find((s) => s.assigned_to === user.id) ?? null;
   }
+
+  const title = isManagement ? "Mis Cesiones" : "Parking";
+  const description = isManagement
+    ? `Cede tu plaza asignada${assignedSpot ? ` (${assignedSpot.label})` : ""} los días que no la uses`
+    : "Consulta la disponibilidad y reserva tu plaza";
 
   return (
     <>
@@ -32,16 +42,17 @@ export default async function ParkingReservationsPage() {
         </div>
       </Header>
       <Main>
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Reservas</h2>
-            <p className="text-muted-foreground">
-              Reserva tu plaza de parking de forma rápida
-            </p>
-          </div>
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+          <p className="text-muted-foreground">{description}</p>
         </div>
 
-        <ReservationsView />
+        <div className="mx-auto max-w-lg">
+          <ParkingCalendarView
+            role={isManagement ? "management" : "employee"}
+            assignedSpot={assignedSpot}
+          />
+        </div>
       </Main>
     </>
   );
