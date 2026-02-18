@@ -53,15 +53,19 @@ export type CreateAlertInput = z.infer<typeof createAlertSchema>;
 
 export const createSpotSchema = z.object({
   label: z.string().min(1, "Etiqueta requerida").max(20),
-  type: z.enum(["standard", "management", "visitor", "disabled"]),
+  type: z.enum(["management", "visitor"]),
   assigned_to: z.string().uuid().optional(),
 });
 
 export type CreateSpotInput = z.infer<typeof createSpotSchema>;
 
-export const updateSpotSchema = createSpotSchema.partial().extend({
-  id: z.string().uuid(),
-});
+export const updateSpotSchema = createSpotSchema
+  .omit({ assigned_to: true })
+  .partial()
+  .extend({
+    id: z.string().uuid(),
+    is_active: z.boolean().optional(),
+  });
 
 export type UpdateSpotInput = z.infer<typeof updateSpotSchema>;
 
@@ -103,6 +107,23 @@ export const updateUserRoleSchema = z.object({
 });
 
 export type UpdateUserRoleInput = z.infer<typeof updateUserRoleSchema>;
+
+// ─── Admin: Delete user account ────────────────────────────
+
+export const deleteUserSchema = z.object({
+  user_id: z.string().uuid(),
+});
+export type DeleteUserInput = z.infer<typeof deleteUserSchema>;
+
+// ─── Admin: Assign spot to management user ───────────────────
+
+export const assignSpotToUserSchema = z.object({
+  user_id: z.string().uuid(),
+  /** UUID of the spot to assign, or null to unassign */
+  spot_id: z.string().uuid().nullable(),
+});
+
+export type AssignSpotToUserInput = z.infer<typeof assignSpotToUserSchema>;
 
 // ─── Settings: Profile ───────────────────────────────────────
 

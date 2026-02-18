@@ -5,6 +5,7 @@
  * Based on shadcn-admin's "Recent Sales" pattern.
  */
 
+import { ParkingCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { ReservationWithDetails } from "@/lib/queries/reservations";
 
@@ -25,8 +26,8 @@ export function RecentReservations({ reservations }: RecentReservationsProps) {
     <div className="space-y-6">
       {reservations.slice(0, 5).map((reservation) => (
         <div key={reservation.id} className="flex items-center">
-          <div className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold">
-            {reservation.spot_label}
+          <div className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+            <ParkingCircle className="size-5" />
           </div>
           <div className="ml-4 space-y-1">
             <p className="text-sm leading-none font-medium">

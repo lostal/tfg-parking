@@ -3,6 +3,11 @@
  *
  * Defines the navigation structure for the app sidebar.
  * Items are grouped by section and support icons, badges, and sub-items.
+ *
+ * Role visibility:
+ *   employee   → usuario general
+ *   management → usuario de dirección (puede ceder su plaza)
+ *   admin      → administrador (no puede reservar para sí mismo)
  */
 
 import {
@@ -16,6 +21,7 @@ import {
   Cloud,
   MapPin,
   CalendarClock,
+  ParkingSquare,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { type SidebarData } from "../types";
@@ -34,34 +40,43 @@ export const sidebarData: SidebarData = {
           title: "Reservas",
           url: ROUTES.PARKING,
           icon: Car,
-          roles: ["employee"],
+          // Employees and management can reserve (management only ceded spots)
+          roles: ["employee", "management"],
         },
         {
           title: "Mapa",
           url: ROUTES.PARKING_MAP,
           icon: MapPin,
-          roles: ["employee"],
+          roles: ["employee", "management"],
         },
         {
           title: "Mis Cesiones",
           url: ROUTES.PARKING_CESSATIONS,
           icon: CalendarClock,
-          roles: ["management", "admin"],
+          // Only management users (with an assigned spot) can cede
+          roles: ["management"],
         },
         {
           title: "Visitantes",
           url: ROUTES.VISITORS,
           icon: Users,
+          // All roles can see visitors; admin is the primary one to manage them
         },
       ],
     },
     {
-      title: "Gestión",
+      title: "Administración",
       items: [
         {
-          title: "Administración",
+          title: "Plazas",
           url: ROUTES.ADMIN,
-          icon: Shield,
+          icon: ParkingSquare,
+          roles: ["admin"],
+        },
+        {
+          title: "Usuarios",
+          url: ROUTES.ADMIN_USERS,
+          icon: Users,
           roles: ["admin"],
         },
         {

@@ -12,6 +12,7 @@ import { ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout";
+import type { UserRole } from "@/lib/supabase/types";
 import { SearchProvider } from "@/context/search-context";
 import { SkipToMain } from "@/components/skip-to-main";
 
@@ -30,7 +31,7 @@ export default async function DashboardLayout({
     <SearchProvider>
       <SidebarProvider>
         <SkipToMain />
-        <AppSidebar />
+        <AppSidebar role={(user.profile?.role ?? "employee") as UserRole} />
         <SidebarInset
           className={cn(
             "@container/content",

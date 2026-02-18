@@ -1,66 +1,63 @@
 -- ============================================================
--- GRUPOSIETE Parking — Seed Data
+-- GRUPOSIETE Parking — Seed Data (Datos Reales)
 -- ============================================================
--- Run AFTER the initial migrations (00001 + 00002).
+-- Run AFTER the migrations (00001 → 00004).
 -- Supabase Dashboard → SQL Editor → paste & run.
 --
--- NOTE: Profiles are auto-created via trigger when a user
--- signs up through Supabase Auth (Microsoft OAuth).
--- To promote a user to admin after first login, run:
+-- Plazas reales del aparcamiento (según correo recibido):
 --
---   UPDATE public.profiles
---   SET role = 'admin'
---   WHERE email = 'your-email@gruposiete.com';
+--   Subterráneo  → 15 (Juan Carlos), 16 (Pedro Luis), 17 (Álvaro),
+--                   18 (Cristina), 19 (José)
+--   Exterior     → 13 (Yolanda), 14 (Pablo), 49 (Raúl)
+--   Visitas      → 50
 --
+-- Tras ejecutar la seed:
+--   1. Regístrate o inicia sesión con tu cuenta
+--   2. Asciéndete a admin:
+--        UPDATE public.profiles SET role = 'admin'
+--        WHERE email = 'tu@gruposiete.com';
+--   3. Desde la sección "Usuarios" del panel admin,
+--      asigna cada plaza de dirección al usuario correspondiente
+--      una vez que se hayan registrado.
 -- ============================================================
 
--- ─── Parking Spots ───────────────────────────────────────────
--- Realistic layout for a corporate office (~30 spots).
--- Positions (position_x, position_y) are percentages on the
--- SVG map (0-100 range). Will be fine-tuned in P2 (map).
+-- ─── Limpiar datos previos (idempotente) ─────────────────────
+-- Elimina reservas/cesiones y plazas anteriores para poder
+-- re-ejecutar la seed sin conflictos.
+-- ¡CUIDADO: esto borra TODOS los datos de reservas!
 
--- Standard spots (employees, first-come-first-served)
-insert into public.spots (label, type, position_x, position_y) values
-  ('A-01', 'standard',  5,  10),
-  ('A-02', 'standard',  5,  20),
-  ('A-03', 'standard',  5,  30),
-  ('A-04', 'standard',  5,  40),
-  ('A-05', 'standard',  5,  50),
-  ('A-06', 'standard',  5,  60),
-  ('A-07', 'standard',  5,  70),
-  ('A-08', 'standard',  5,  80),
-  ('B-01', 'standard', 25,  10),
-  ('B-02', 'standard', 25,  20),
-  ('B-03', 'standard', 25,  30),
-  ('B-04', 'standard', 25,  40),
-  ('B-05', 'standard', 25,  50),
-  ('B-06', 'standard', 25,  60),
-  ('B-07', 'standard', 25,  70),
-  ('B-08', 'standard', 25,  80);
+truncate table public.cession_rules cascade;
+truncate table public.cessions cascade;
+truncate table public.reservations cascade;
+truncate table public.visitor_reservations cascade;
+truncate table public.alerts cascade;
+truncate table public.spots cascade;
 
--- Management spots (assigned to directors — assigned_to set later)
-insert into public.spots (label, type, position_x, position_y) values
-  ('D-01', 'management', 55, 10),
-  ('D-02', 'management', 55, 20),
-  ('D-03', 'management', 55, 30),
-  ('D-04', 'management', 55, 40),
-  ('D-05', 'management', 55, 50),
-  ('D-06', 'management', 55, 60);
+-- ─── Plazas subterráneas (dirección) ────────────────────────
+-- Plazas fijas asignadas a usuarios de dirección.
+-- assigned_to se asignará desde el panel admin una vez
+-- que cada usuario de dirección se haya registrado.
 
--- Visitor spots (near entrance)
-insert into public.spots (label, type, position_x, position_y) values
-  ('V-01', 'visitor', 80, 10),
-  ('V-02', 'visitor', 80, 20),
-  ('V-03', 'visitor', 80, 30),
-  ('V-04', 'visitor', 80, 40);
+insert into public.spots (label, type, is_active) values
+  ('15', 'management', true),  -- Juan Carlos
+  ('16', 'management', true),  -- Pedro Luis
+  ('17', 'management', true),  -- Álvaro
+  ('18', 'management', true),  -- Cristina
+  ('19', 'management', true);  -- José
 
--- Disabled/accessible spot
-insert into public.spots (label, type, position_x, position_y) values
-  ('PMR-01', 'disabled', 80, 80);
+-- ─── Plazas exteriores (dirección) ──────────────────────────
 
--- ─── System Config Defaults ─────────────────────────────────
--- Already inserted by the migration, but ensure they exist.
--- Uses ON CONFLICT to be idempotent.
+insert into public.spots (label, type, is_active) values
+  ('13', 'management', true),  -- Yolanda
+  ('14', 'management', true),  -- Pablo
+  ('49', 'management', true);  -- Raúl
+
+-- ─── Plaza de visitas ────────────────────────────────────────
+
+insert into public.spots (label, type, is_active) values
+  ('50', 'visitor', true);     -- Visitas
+
+-- ─── Configuración del sistema ───────────────────────────────
 
 insert into public.system_config (key, value) values
   ('max_advance_days', '14'),
@@ -68,16 +65,14 @@ insert into public.system_config (key, value) values
   ('visitor_booking_enabled', 'true')
 on conflict (key) do nothing;
 
--- ─── Summary ─────────────────────────────────────────────────
--- After running this seed you should have:
---   16 standard spots   (A-01..A-08, B-01..B-08)
---    6 management spots  (D-01..D-06)
---    4 visitor spots     (V-01..V-04)
---    1 disabled spot     (PMR-01)
---  ---
---   27 total spots
+-- ─── Resumen ─────────────────────────────────────────────────
+-- Tras ejecutar este seed tendrás:
+--   5 plazas de dirección subterráneas  (15-19)
+--   3 plazas de dirección exteriores    (13, 14, 49)
+--   1 plaza de visitas                  (50)
+--  ────────────────────────────────────────────────────────────
+--   9 plazas en total
 --
--- Next steps:
---   1. Sign in with Microsoft to create your profile
---   2. Promote yourself to admin (SQL above)
---   3. Assign management spots to directors via the admin panel
+-- Nota: No existen plazas "standard" (employee) en este parking.
+-- Los empleados generales (rol 'employee') pueden reservar
+-- cualquier plaza de dirección que haya sido cedida para ese día.

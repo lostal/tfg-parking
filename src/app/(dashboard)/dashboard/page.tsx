@@ -93,7 +93,7 @@ export default async function DashboardPage() {
     <>
       {/* ===== Top Heading ===== */}
       <Header fixed>
-        <DashboardTopNav />
+        <DashboardTopNav role={role} />
         <div className="ms-auto flex items-center space-x-4">
           <Search />
           <ThemeSwitch />

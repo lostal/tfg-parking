@@ -24,6 +24,7 @@ export const ROUTES = {
   CALENDAR: "/calendar",
   VISITORS: "/visitors",
   ADMIN: "/admin",
+  ADMIN_USERS: "/admin/users",
   SETTINGS: "/settings",
   SETTINGS_PROFILE: "/settings",
   SETTINGS_NOTIFICATIONS: "/settings/notifications",

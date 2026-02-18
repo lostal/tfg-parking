@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, Building2, Users } from "lucide-react";
+
+type UserType = "employee" | "management";
 
 /**
  * Login Page - Development Mode
@@ -19,6 +21,8 @@ import { Loader2 } from "lucide-react";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [userType, setUserType] = useState<UserType>("employee");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -38,6 +42,10 @@ export default function LoginPage() {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}${ROUTES.CALLBACK}`,
+            data: {
+              full_name: fullName,
+              user_type: userType,
+            },
           },
         });
         if (error) throw error;
@@ -98,6 +106,21 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleAuth} className="grid gap-4">
+            {mode === "signup" && (
+              <div className="grid gap-2">
+                <Label htmlFor="fullName">Nombre completo</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Juan García López"
+                  required
+                  disabled={loading}
+                />
+              </div>
+            )}
+
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -124,6 +147,52 @@ export default function LoginPage() {
                 disabled={loading}
               />
             </div>
+
+            {mode === "signup" && (
+              <div className="grid gap-2">
+                <Label>Tipo de usuario</Label>
+                <p className="text-muted-foreground text-xs">
+                  Si perteneces a dirección, el administrador te asignará tu
+                  plaza antes de que puedas cederla.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setUserType("employee")}
+                    disabled={loading}
+                    className={cn(
+                      "flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-sm transition-colors",
+                      userType === "employee"
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/50"
+                    )}
+                  >
+                    <Users className="h-6 w-6" />
+                    <span className="font-medium">General</span>
+                    <span className="text-center text-xs opacity-70">
+                      Acceso completo desde el inicio
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUserType("management")}
+                    disabled={loading}
+                    className={cn(
+                      "flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-sm transition-colors",
+                      userType === "management"
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/50"
+                    )}
+                  >
+                    <Building2 className="h-6 w-6" />
+                    <span className="font-medium">Dirección</span>
+                    <span className="text-center text-xs opacity-70">
+                      Requiere plaza asignada por admin
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {error && (
               <div

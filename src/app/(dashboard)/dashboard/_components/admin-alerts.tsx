@@ -65,7 +65,7 @@ function OccupancyIndicator({ percent }: { percent: number }) {
         </span>
         <span className="font-medium">{percent}%</span>
       </div>
-      <div className="bg-secondary h-2 w-full rounded-full">
+      <div className="bg-muted h-2 w-full rounded-full">
         <div
           className="bg-primary h-full rounded-full transition-all"
           style={{ width: `${Math.min(percent, 100)}%` }}

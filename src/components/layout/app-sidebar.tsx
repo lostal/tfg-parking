@@ -20,12 +20,13 @@ import { sidebarData } from "./data/sidebar-data";
 import { AppTitle } from "./app-title";
 import { NavGroup } from "./nav-group";
 import { NavUser } from "./nav-user";
-import { useUser } from "@/hooks/use-user";
+import type { UserRole } from "@/lib/supabase/types";
 
-export function AppSidebar() {
-  const { profile } = useUser();
-  const role = profile?.role ?? "employee";
+interface AppSidebarProps {
+  role: UserRole;
+}
 
+export function AppSidebar({ role }: AppSidebarProps) {
   const filteredNavGroups = useMemo(() => {
     return sidebarData.navGroups
       .map((group) => ({
