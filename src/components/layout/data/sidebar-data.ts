@@ -20,8 +20,9 @@ import {
   Bell,
   Cloud,
   MapPin,
-  CalendarClock,
   ParkingSquare,
+  CalendarCheck,
+  Repeat2,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { type SidebarData } from "../types";
@@ -32,9 +33,10 @@ export const sidebarData: SidebarData = {
       title: "General",
       items: [
         {
-          title: "Dashboard",
+          title: "Panel",
           url: ROUTES.DASHBOARD,
           icon: LayoutDashboard,
+          roles: ["admin"],
         },
         {
           title: "Reservas",
@@ -44,17 +46,22 @@ export const sidebarData: SidebarData = {
           roles: ["employee", "management"],
         },
         {
-          title: "Mapa",
-          url: ROUTES.PARKING_MAP,
-          icon: MapPin,
-          roles: ["employee", "management"],
+          title: "Mis Reservas",
+          url: ROUTES.MIS_RESERVAS,
+          icon: CalendarCheck,
+          roles: ["employee"],
         },
         {
           title: "Mis Cesiones",
-          url: ROUTES.PARKING_CESSATIONS,
-          icon: CalendarClock,
-          // Only management users (with an assigned spot) can cede
+          url: ROUTES.MIS_RESERVAS,
+          icon: Repeat2,
           roles: ["management"],
+        },
+        {
+          title: "Mapa",
+          url: ROUTES.PARKING_MAP,
+          icon: MapPin,
+          roles: ["employee"],
         },
         {
           title: "Visitantes",

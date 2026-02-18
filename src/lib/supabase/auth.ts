@@ -76,7 +76,7 @@ export async function requireAdmin(): Promise<AuthUser> {
   const user = await requireAuth();
 
   if (user.profile?.role !== "admin") {
-    redirect(ROUTES.DASHBOARD);
+    redirect(ROUTES.PARKING);
   }
 
   return user;
@@ -93,7 +93,7 @@ export async function requireManagement(): Promise<AuthUser> {
   const allowedRoles: UserRole[] = ["admin", "management"];
 
   if (!user.profile?.role || !allowedRoles.includes(user.profile.role)) {
-    redirect(ROUTES.DASHBOARD);
+    redirect(ROUTES.PARKING);
   }
 
   return user;

@@ -10,5 +10,5 @@ import { ROUTES } from "@/lib/constants";
 export default function HomePage() {
   // TODO: Check auth state and redirect accordingly
   // For now, redirect to dashboard
-  redirect(ROUTES.DASHBOARD);
+  redirect(ROUTES.PARKING);
 }

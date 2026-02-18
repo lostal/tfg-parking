@@ -58,7 +58,7 @@ export default function LoginPage() {
           password,
         });
         if (error) throw error;
-        router.push(ROUTES.DASHBOARD);
+        router.push(ROUTES.PARKING);
         router.refresh();
       }
     } catch (err) {
@@ -71,7 +71,7 @@ export default function LoginPage() {
     <div className="relative container grid h-svh flex-col items-center justify-center lg:max-w-none lg:grid-cols-2 lg:px-0">
       {/* Left Column - Login Form */}
       <div className="lg:p-8">
-        <div className="mx-auto flex w-full flex-col justify-center space-y-2 py-8 sm:w-[480px] sm:p-8">
+        <div className="mx-auto flex w-full flex-col justify-center space-y-2 py-8 sm:w-120 sm:p-8">
           <div className="mb-4 flex items-center justify-center">
             <div className="bg-primary flex h-10 w-10 items-center justify-center rounded-lg">
               <svg
@@ -242,7 +242,7 @@ export default function LoginPage() {
           "dark:border-l"
         )}
       >
-        <div className="from-primary/90 to-primary absolute inset-0 bg-gradient-to-br" />
+        <div className="from-primary/90 to-primary absolute inset-0 bg-linear-to-br" />
         <div className="relative z-20 flex items-center text-lg font-medium">
           <svg
             xmlns="http://www.w3.org/2000/svg"
