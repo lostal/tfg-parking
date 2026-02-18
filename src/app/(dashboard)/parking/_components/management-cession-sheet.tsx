@@ -122,7 +122,7 @@ export function ManagementCessionSheet({
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="bottom"
-        className="max-h-[85dvh] rounded-t-2xl px-0 sm:mx-auto sm:max-w-lg sm:rounded-2xl"
+        className="max-h-[85dvh] rounded-t-2xl px-0 sm:mx-auto sm:max-w-lg"
       >
         <SheetHeader className="px-6 pb-4">
           <div className="flex items-center gap-3">
