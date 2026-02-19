@@ -446,6 +446,26 @@ create policy "reservations_all_admin"
   on public.reservations for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
+-- Management can cancel a reservation on their own assigned spot
+-- (needed when they cancel a cession that an employee already reserved)
+create policy "reservations_cancel_by_spot_owner"
+  on public.reservations for update to authenticated
+  using (
+    exists (
+      select 1 from public.spots
+      where spots.id = reservations.spot_id
+        and spots.assigned_to = auth.uid()
+    )
+  )
+  with check (
+    status = 'cancelled'
+    and exists (
+      select 1 from public.spots
+      where spots.id = reservations.spot_id
+        and spots.assigned_to = auth.uid()
+    )
+  );
+
 -- ── Cessions ─────────────────────────────────────────────────
 
 create policy "cessions_select_authenticated"
