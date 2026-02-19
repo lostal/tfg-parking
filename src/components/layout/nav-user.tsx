@@ -9,8 +9,16 @@
 "use client";
 
 import Link from "next/link";
-import { BadgeCheck, Bell, ChevronsUpDown, LogOut } from "lucide-react";
+import { useTransition } from "react";
+import {
+  BadgeCheck,
+  Bell,
+  ChevronsUpDown,
+  LogOut,
+  Loader2,
+} from "lucide-react";
 import { useUser } from "@/hooks/use-user";
+import { signOutAction } from "@/lib/supabase/sign-out";
 import { ROUTES } from "@/lib/constants";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -30,8 +38,15 @@ import {
 } from "@/components/ui/sidebar";
 
 export function NavUser() {
-  const { profile, signOut } = useUser();
+  const { profile } = useUser();
   const { isMobile } = useSidebar();
+  const [isPending, startTransition] = useTransition();
+
+  const handleSignOut = () => {
+    startTransition(async () => {
+      await signOutAction();
+    });
+  };
 
   const displayName = profile?.full_name || "Usuario";
   const displayEmail = profile?.email || "";
@@ -45,7 +60,7 @@ export function NavUser() {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
@@ -98,8 +113,16 @@ export function NavUser() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={signOut}>
-              <LogOut />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={handleSignOut}
+              disabled={isPending}
+            >
+              {isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <LogOut />
+              )}
               Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>

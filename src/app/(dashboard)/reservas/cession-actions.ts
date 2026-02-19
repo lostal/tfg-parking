@@ -93,7 +93,7 @@ export const cancelCession = actionClient
     // Fetch the cession to check status
     const { data: cession, error: fetchError } = await supabase
       .from("cessions")
-      .select("id, status, user_id")
+      .select("id, status, user_id, spot_id, date")
       .eq("id", parsedInput.id)
       .single();
 
@@ -105,22 +105,58 @@ export const cancelCession = actionClient
       throw new Error("No puedes cancelar esta cesión");
     }
 
-    if (cession.status === "reserved") {
+    // Buscar si hay una reserva activa sobre esta plaza+fecha (puede existir
+    // si el admin cancela una cesión ya reservada, o en edge cases de RLS).
+    const { data: activeReservation } = await supabase
+      .from("reservations")
+      .select("id")
+      .eq("spot_id", cession.spot_id)
+      .eq("date", cession.date)
+      .eq("status", "confirmed")
+      .maybeSingle();
+
+    if (
+      cession.status === "reserved" &&
+      activeReservation &&
+      user.profile?.role !== "admin"
+    ) {
       throw new Error(
         "No se puede cancelar: alguien ya ha reservado esta plaza"
       );
     }
 
-    const { error } = await supabase
+    // Cancelar la cesión con el cliente normal: el directivo es el propietario
+    // (user_id = auth.uid()) → la política RLS cessions_update_own lo permite.
+    // El adminClient no es necesario aquí y falla si SUPABASE_SERVICE_ROLE_KEY
+    // no está configurada.
+    const { error: cancelError } = await supabase
       .from("cessions")
       .update({ status: "cancelled" })
       .eq("id", parsedInput.id);
 
-    if (error) {
-      throw new Error(`Error al cancelar cesión: ${error.message}`);
+    if (cancelError) {
+      throw new Error(`Error al cancelar cesión: ${cancelError.message}`);
     }
 
-    return { cancelled: true };
+    // Si había una reserva activa del empleado, cancelarla también.
+    // El directivo tiene permiso RLS (policy reservations_cancel_by_spot_owner)
+    // para cancelar reservas sobre su propia plaza asignada.
+    if (activeReservation) {
+      const { error: reservationError } = await supabase
+        .from("reservations")
+        .update({ status: "cancelled" })
+        .eq("id", activeReservation.id);
+
+      if (reservationError) {
+        // La cesión ya quedó cancelada, pero la reserva del empleado no.
+        // Lanzar error para que el usuario sepa que debe revisar manualmente.
+        throw new Error(
+          `Cesión cancelada, pero no se pudo anular la reserva del empleado: ${reservationError.message}`
+        );
+      }
+    }
+
+    return { cancelled: true, reservationAlsoCancelled: !!activeReservation };
   });
 
 /**

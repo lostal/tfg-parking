@@ -138,7 +138,11 @@ export function CessionsView({ spot, initialCessions }: CessionsViewProps) {
       const result = await cancelCession({ id: cessionId });
 
       if (result.success) {
-        toast.success("Cesión cancelada");
+        if (result.data.reservationAlsoCancelled) {
+          toast.success("Cesión cancelada y reserva del empleado anulada");
+        } else {
+          toast.success("Cesión cancelada");
+        }
         await refreshCessions();
       } else {
         toast.error(result.error);

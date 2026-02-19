@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useTransition } from "react";
 import {
   Card,
   CardContent,
@@ -10,9 +10,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import { signOutAction, signOutAllAction } from "@/lib/supabase/sign-out";
 
 interface SecuritySectionProps {
   user: {
@@ -22,42 +21,19 @@ interface SecuritySectionProps {
 }
 
 export function SecuritySection({ user }: SecuritySectionProps) {
-  const router = useRouter();
-  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
-  const handleSignOut = async () => {
-    try {
-      setIsSigningOut(true);
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      router.push("/login");
-      router.refresh();
-    } catch (error) {
-      toast.error("Error al cerrar sesión");
-      console.error(error);
-      setIsSigningOut(false);
-    }
+  const handleSignOut = () => {
+    startTransition(async () => {
+      await signOutAction();
+    });
   };
 
-  const handleSignOutAll = async () => {
-    if (!confirm("¿Cerrar sesión en todos los dispositivos?")) {
-      return;
-    }
-
-    try {
-      setIsSigningOut(true);
-      const supabase = createClient();
-
-      // Sign out from all sessions
-      await supabase.auth.signOut({ scope: "global" });
-
-      router.push("/login");
-      router.refresh();
-    } catch (error) {
-      toast.error("Error al cerrar todas las sesiones");
-      console.error(error);
-      setIsSigningOut(false);
-    }
+  const handleSignOutAll = () => {
+    if (!confirm("¿Cerrar sesión en todos los dispositivos?")) return;
+    startTransition(async () => {
+      await signOutAllAction();
+    });
   };
 
   return (
@@ -132,14 +108,21 @@ export function SecuritySection({ user }: SecuritySectionProps) {
             <Button
               variant="outline"
               onClick={handleSignOut}
-              disabled={isSigningOut}
+              disabled={isPending}
             >
-              {isSigningOut ? "Cerrando..." : "Cerrar Sesión"}
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Cerrando...
+                </>
+              ) : (
+                "Cerrar Sesión"
+              )}
             </Button>
             <Button
               variant="destructive"
               onClick={handleSignOutAll}
-              disabled={isSigningOut}
+              disabled={isPending}
             >
               Cerrar Todas las Sesiones
             </Button>

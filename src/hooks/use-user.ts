@@ -5,17 +5,18 @@
  * Listens to auth changes and provides user data + profile.
  *
  * Usage:
- *   const { user, profile, loading, signOut } = useUser();
+ *   const { user, profile, loading } = useUser();
+ *
+ * Para cerrar sesión usar signOutAction() de @/lib/supabase/sign-out
  *
  * @see AuthUser type from lib/supabase/auth.ts
  */
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/supabase/types";
-import { ROUTES } from "@/lib/constants";
 
 interface UseUserReturn {
   user: {
@@ -24,14 +25,16 @@ interface UseUserReturn {
   } | null;
   profile: Profile | null;
   loading: boolean;
-  signOut: () => Promise<void>;
 }
 
 export function useUser(): UseUserReturn {
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  // Ref estable: createBrowserClient ya es singleton pero evitamos
+  // que un cambio de referencia re-dispare el useEffect.
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
 
   useEffect(() => {
     let mounted = true;
@@ -116,20 +119,12 @@ export function useUser(): UseUserReturn {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase]);
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
-    // Navegación dura para limpiar el cache del router y las cookies SSR
-    window.location.href = ROUTES.LOGIN;
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // supabase es estable (useRef), no necesita estar en deps
 
   return {
     user,
     profile,
     loading,
-    signOut,
   };
 }

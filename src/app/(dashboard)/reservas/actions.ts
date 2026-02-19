@@ -9,6 +9,7 @@
 
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import {
   createReservationSchema,
@@ -223,15 +224,25 @@ export const createReservation = actionClient
       throw new Error(`Error al crear reserva: ${error.message}`);
     }
 
-    // If it's a management spot, mark the cession as reserved so the
-    // owner (directivo) sees the day correctly blocked in their calendar
+    // Si es plaza de dirección, marcar la cesión como reservada.
+    // Usamos el cliente admin para omitir RLS: la política solo permite
+    // al propietario actualizar su propia cesión, pero esta actualización
+    // la dispara el empleado que reserva.
     if (spotData?.type === "management") {
-      await supabase
+      const adminClient = createAdminClient();
+      const { error: cessionError } = await adminClient
         .from("cessions")
         .update({ status: "reserved" })
         .eq("spot_id", parsedInput.spot_id)
         .eq("date", parsedInput.date)
         .eq("status", "available");
+
+      if (cessionError) {
+        console.error("Error syncing cession status to reserved:", {
+          message: cessionError.message,
+          code: cessionError.code,
+        });
+      }
     }
 
     return { id: data.id };
@@ -269,18 +280,26 @@ export const cancelReservation = actionClient
       throw new Error(`Error al cancelar reserva: ${error.message}`);
     }
 
-    // If the spot is a management spot, revert the cession to available
-    // so the directivo can see the day as free again
+    // Si es plaza de dirección, revertir la cesión a disponible.
+    // Usamos el cliente admin para omitir RLS (mismo motivo que createReservation).
     if (reservation) {
       const spotType = (reservation.spots as unknown as { type: string } | null)
         ?.type;
       if (spotType === "management") {
-        await supabase
+        const adminClient = createAdminClient();
+        const { error: cessionError } = await adminClient
           .from("cessions")
           .update({ status: "available" })
           .eq("spot_id", reservation.spot_id)
           .eq("date", reservation.date)
           .eq("status", "reserved");
+
+        if (cessionError) {
+          console.error("Error reverting cession status to available:", {
+            message: cessionError.message,
+            code: cessionError.code,
+          });
+        }
       }
     }
 
