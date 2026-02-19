@@ -13,7 +13,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/supabase/types";
 import { ROUTES } from "@/lib/constants";
@@ -32,7 +31,6 @@ export function useUser(): UseUserReturn {
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
@@ -124,8 +122,8 @@ export function useUser(): UseUserReturn {
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
-    router.push(ROUTES.LOGIN);
-    router.refresh();
+    // Navegación dura para limpiar el cache del router y las cookies SSR
+    window.location.href = ROUTES.LOGIN;
   };
 
   return {

@@ -36,6 +36,23 @@ export const ROUTES = {
   SETTINGS_SECURITY: "/ajustes/seguridad",
 } as const;
 
+/**
+ * Returns the first page a user should land on after login,
+ * mirroring the order of items in the sidebar (first visible item per role).
+ */
+export function getHomeRouteForRole(
+  role: "admin" | "management" | "employee" | string | undefined | null
+): string {
+  switch (role) {
+    case "admin":
+      return ROUTES.DASHBOARD; // Panel → primera entrada visible para admin
+    case "management":
+      return ROUTES.PARKING; // Reservas → primera entrada visible para management
+    default:
+      return ROUTES.PARKING; // Reservas → primera entrada visible para employee
+  }
+}
+
 /** External links */
 export const EXTERNAL = {
   SEDE_ADDRESS: "Sede GRUPOSIETE, Madrid",

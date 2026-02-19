@@ -256,7 +256,7 @@ function MyReservationsSection({
   if (reservations.length === 0) return null;
 
   return (
-    <Card className="border-primary/30 from-primary/5 to-primary/10 bg-gradient-to-br">
+    <Card className="border-primary/30 from-primary/5 to-primary/10 bg-linear-to-br">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <div>
           <CardTitle className="flex items-center gap-2 text-base font-semibold">

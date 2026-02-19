@@ -58,7 +58,8 @@ export default function LoginPage() {
           password,
         });
         if (error) throw error;
-        router.push(ROUTES.PARKING);
+        // Redirigir a / para que la página raíz resuelva la ruta según el rol
+        router.push("/");
         router.refresh();
       }
     } catch (err) {

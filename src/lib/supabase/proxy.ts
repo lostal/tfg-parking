@@ -57,10 +57,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from login
+  // Redirect authenticated users away from login — let the root page
+  // resolve the correct home route based on their role.
   if (user && request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = "/panel";
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 

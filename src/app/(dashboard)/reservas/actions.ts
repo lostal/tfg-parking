@@ -196,6 +196,13 @@ export const createReservation = actionClient
       throw new Error("Ya tienes una reserva para este día");
     }
 
+    // Check if this spot is a management spot (needs cession sync)
+    const { data: spotData } = await supabase
+      .from("spots")
+      .select("type")
+      .eq("id", parsedInput.spot_id)
+      .single();
+
     // Insert reservation
     const { data, error } = await supabase
       .from("reservations")
@@ -216,6 +223,17 @@ export const createReservation = actionClient
       throw new Error(`Error al crear reserva: ${error.message}`);
     }
 
+    // If it's a management spot, mark the cession as reserved so the
+    // owner (directivo) sees the day correctly blocked in their calendar
+    if (spotData?.type === "management") {
+      await supabase
+        .from("cessions")
+        .update({ status: "reserved" })
+        .eq("spot_id", parsedInput.spot_id)
+        .eq("date", parsedInput.date)
+        .eq("status", "available");
+    }
+
     return { id: data.id };
   });
 
@@ -233,6 +251,14 @@ export const cancelReservation = actionClient
 
     const supabase = await createClient();
 
+    // Fetch the reservation to get spot_id and date (for cession sync)
+    const { data: reservation } = await supabase
+      .from("reservations")
+      .select("id, spot_id, date, spots!reservations_spot_id_fkey(type)")
+      .eq("id", parsedInput.id)
+      .eq("user_id", user.id)
+      .single();
+
     const { error } = await supabase
       .from("reservations")
       .update({ status: "cancelled" })
@@ -241,6 +267,21 @@ export const cancelReservation = actionClient
 
     if (error) {
       throw new Error(`Error al cancelar reserva: ${error.message}`);
+    }
+
+    // If the spot is a management spot, revert the cession to available
+    // so the directivo can see the day as free again
+    if (reservation) {
+      const spotType = (reservation.spots as unknown as { type: string } | null)
+        ?.type;
+      if (spotType === "management") {
+        await supabase
+          .from("cessions")
+          .update({ status: "available" })
+          .eq("spot_id", reservation.spot_id)
+          .eq("date", reservation.date)
+          .eq("status", "reserved");
+      }
     }
 
     return { cancelled: true };

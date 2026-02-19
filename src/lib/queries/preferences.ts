@@ -164,7 +164,12 @@ export async function getUserProfileWithPreferences(userId: string) {
     .single();
 
   if (profileError) {
-    console.error("Error fetching profile:", profileError);
+    console.error("Error fetching profile:", {
+      message: profileError.message,
+      code: profileError.code,
+      details: profileError.details,
+      hint: profileError.hint,
+    });
     return null;
   }
 
