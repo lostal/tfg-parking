@@ -67,7 +67,7 @@ export function ProfileDropdown() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href={ROUTES.SETTINGS_PROFILE}>
+              <Link href={ROUTES.SETTINGS}>
                 Ajustes
                 <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
               </Link>

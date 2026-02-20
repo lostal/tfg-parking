@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { User, Bell, Cloud, Shield, Settings } from "lucide-react";
 
 const settingsSections = [
-  { id: "profile", label: "Perfil", icon: User, href: ROUTES.SETTINGS_PROFILE },
+  { id: "profile", label: "Perfil", icon: User, href: ROUTES.SETTINGS },
   {
     id: "notifications",
     label: "Notificaciones",

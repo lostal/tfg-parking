@@ -163,6 +163,14 @@ export const updatePreferencesSchema = z.object({
 
 export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;
 
+// ─── Settings: Theme only ─────────────────────────────────────
+
+export const updateThemeSchema = z.object({
+  theme: z.enum(["light", "dark"]),
+});
+
+export type UpdateThemeInput = z.infer<typeof updateThemeSchema>;
+
 // Legacy schemas for backwards compatibility (deprecated)
 export const updateParkingPreferencesSchema = updatePreferencesSchema.pick({
   default_view: true,

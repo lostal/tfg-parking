@@ -16,7 +16,10 @@ import {
   cancelReservationSchema,
 } from "@/lib/validations";
 import type { SpotWithStatus } from "@/types";
-import type { ReservationWithDetails } from "@/lib/queries/reservations";
+import {
+  getUserReservations,
+  type ReservationWithDetails,
+} from "@/lib/queries/reservations";
 
 // ─── Query Functions ─────────────────────────────────────────
 
@@ -130,34 +133,7 @@ export async function getMyReservations(): Promise<
     const user = await getCurrentUser();
     if (!user) return error("No autenticado");
 
-    const supabase = await createClient();
-    const today = new Date().toISOString().split("T")[0];
-
-    const { data, error: dbError } = await supabase
-      .from("reservations")
-      .select(
-        "*, spots!reservations_spot_id_fkey(label), profiles!reservations_user_id_fkey(full_name)"
-      )
-      .eq("user_id", user.id)
-      .eq("status", "confirmed")
-      .gte("date", today)
-      .order("date");
-
-    if (dbError) return error(`Error al obtener reservas: ${dbError.message}`);
-
-    const reservations: ReservationWithDetails[] = (data ?? []).map((r) => {
-      const spot = r.spots as unknown as { label: string } | null;
-      const profile = r.profiles as unknown as { full_name: string } | null;
-
-      return {
-        ...r,
-        spots: undefined,
-        profiles: undefined,
-        spot_label: spot?.label ?? "",
-        user_name: profile?.full_name ?? "",
-      } as ReservationWithDetails;
-    });
-
+    const reservations = await getUserReservations(user.id);
     return success(reservations);
   } catch (err) {
     console.error("getMyReservations error:", err);

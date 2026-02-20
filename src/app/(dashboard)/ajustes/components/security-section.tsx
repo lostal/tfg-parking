@@ -1,6 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -11,7 +12,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { signOutAction, signOutAllAction } from "@/lib/supabase/sign-out";
+import { deleteSelfAccount } from "../actions";
+import { ROUTES } from "@/lib/constants";
+import { toast } from "sonner";
 
 interface SecuritySectionProps {
   user: {
@@ -21,7 +36,9 @@ interface SecuritySectionProps {
 }
 
 export function SecuritySection({ user }: SecuritySectionProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSignOut = () => {
     startTransition(async () => {
@@ -34,6 +51,21 @@ export function SecuritySection({ user }: SecuritySectionProps) {
     startTransition(async () => {
       await signOutAllAction();
     });
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeleting(true);
+      await deleteSelfAccount();
+      router.push(ROUTES.LOGIN);
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      toast.error(
+        error instanceof Error ? error.message : "No se pudo eliminar la cuenta"
+      );
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -145,14 +177,39 @@ export function SecuritySection({ user }: SecuritySectionProps) {
             </p>
           </div>
 
-          <Button
-            variant="destructive"
-            onClick={() =>
-              alert("Función de eliminación de cuenta (pendiente implementar)")
-            }
-          >
-            Eliminar Mi Cuenta
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={isDeleting}>
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  "Eliminar Mi Cuenta"
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Eliminar tu cuenta?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Se eliminarán permanentemente tu cuenta y todos tus datos
+                  asociados: reservas, cesiones y alertas. Esta acción{" "}
+                  <strong>no se puede deshacer</strong>.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteAccount}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Sí, eliminar mi cuenta
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
     </div>

@@ -39,7 +39,7 @@ export const sidebarData: SidebarData = {
           roles: ["admin"],
         },
         {
-          title: "Reservas",
+          title: "Parking",
           url: ROUTES.PARKING,
           icon: Car,
           // Employees and management can reserve (management only ceded spots)
@@ -92,7 +92,7 @@ export const sidebarData: SidebarData = {
           items: [
             {
               title: "Perfil",
-              url: ROUTES.SETTINGS_PROFILE,
+              url: ROUTES.SETTINGS,
               icon: User,
             },
             {

@@ -7,7 +7,8 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAuth, requireManagement } from "@/lib/supabase/auth";
 import { revalidatePath } from "next/cache";
 import {
   updateProfileSchema,
@@ -17,6 +18,7 @@ import {
   updateCessionRulesSchema,
   updateAppearanceSchema,
   updatePreferencesSchema,
+  updateThemeSchema,
   type UpdateProfileInput,
   type UpdateNotificationPreferencesInput,
   type UpdateParkingPreferencesInput,
@@ -24,6 +26,7 @@ import {
   type UpdateCessionRulesInput,
   type UpdateAppearanceInput,
   type UpdatePreferencesInput,
+  type UpdateThemeInput,
 } from "@/lib/validations";
 
 // ─── Update Profile ──────────────────────────────────────────
@@ -146,22 +149,11 @@ export async function updateOutlookPreferences(
 // ─── Update Auto-Cession Rules (Management Only) ─────────────
 
 export async function updateCessionRules(data: UpdateCessionRulesInput) {
-  const user = await requireAuth();
-
-  // Verify user is management or admin
-  const supabase = await createClient();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "management" && profile.role !== "admin")) {
-    throw new Error("Solo directivos pueden configurar reglas de cesión");
-  }
+  const user = await requireManagement();
 
   const validated = updateCessionRulesSchema.parse(data);
 
+  const supabase = await createClient();
   const { error } = await supabase
     .from("user_preferences")
     .update({
@@ -286,4 +278,40 @@ export async function forceCalendarSync() {
     success: true,
     message: "Función de sincronización (pendiente implementar Outlook API)",
   };
+}
+
+// ─── Update Theme ─────────────────────────────────────────────
+
+export async function updateTheme(data: UpdateThemeInput) {
+  const user = await requireAuth();
+  const validated = updateThemeSchema.parse(data);
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("user_preferences")
+    .update({ theme: validated.theme, updated_at: new Date().toISOString() })
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Error updating theme:", error);
+    throw new Error("No se pudo actualizar el tema");
+  }
+
+  return { success: true };
+}
+
+// ─── Delete Own Account ───────────────────────────────────────
+
+export async function deleteSelfAccount() {
+  const user = await requireAuth();
+  const adminClient = createAdminClient();
+
+  const { error } = await adminClient.auth.admin.deleteUser(user.id);
+
+  if (error) {
+    throw new Error(`Error al eliminar la cuenta: ${error.message}`);
+  }
+
+  return { deleted: true };
 }

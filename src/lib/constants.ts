@@ -20,16 +20,15 @@ export const ROUTES = {
   DASHBOARD: "/panel",
   /** Home page for non-admin roles (management & employee) */
   INICIO: "/inicio",
-  PARKING: "/reservas",
+  PARKING: "/parking",
   MIS_RESERVAS: "/mis-reservas",
-  PARKING_CESSATIONS: "/reservas/cesiones",
-  PARKING_MAP: "/reservas/mapa",
+  PARKING_CESSATIONS: "/parking/cesiones",
+  PARKING_MAP: "/parking/mapa",
   CALENDAR: "/calendario",
   VISITORS: "/visitantes",
   ADMIN: "/administracion",
   ADMIN_USERS: "/administracion/usuarios",
   SETTINGS: "/ajustes",
-  SETTINGS_PROFILE: "/ajustes",
   SETTINGS_NOTIFICATIONS: "/ajustes/notificaciones",
   SETTINGS_PREFERENCES: "/ajustes/preferencias",
   SETTINGS_MICROSOFT: "/ajustes/microsoft",
@@ -47,9 +46,9 @@ export function getHomeRouteForRole(
     case "admin":
       return ROUTES.DASHBOARD; // Panel → primera entrada visible para admin
     case "management":
-      return ROUTES.PARKING; // Reservas → primera entrada visible para management
+      return ROUTES.PARKING; // Parking → primera entrada visible para management
     default:
-      return ROUTES.PARKING; // Reservas → primera entrada visible para employee
+      return ROUTES.PARKING; // Parking → primera entrada visible para employee
   }
 }
 

@@ -12,10 +12,11 @@ import Link from "next/link";
 import { useTransition } from "react";
 import {
   BadgeCheck,
-  Bell,
+  CalendarCheck,
   ChevronsUpDown,
   LogOut,
   Loader2,
+  Repeat2,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { signOutAction } from "@/lib/supabase/sign-out";
@@ -56,6 +57,22 @@ export function NavUser() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  const role = profile?.role;
+
+  // Second menu item depends on role:
+  // - employee/management: quick link to their reservations/cessions
+  // - admin: no personal reservation link
+  const reservationLink =
+    role === "management"
+      ? { href: ROUTES.MIS_RESERVAS, label: "Mis Cesiones", icon: Repeat2 }
+      : role === "employee"
+        ? {
+            href: ROUTES.MIS_RESERVAS,
+            label: "Mis Reservas",
+            icon: CalendarCheck,
+          }
+        : null;
 
   return (
     <SidebarMenu>
@@ -105,12 +122,14 @@ export function NavUser() {
                   Mi Cuenta
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={ROUTES.PARKING}>
-                  <Bell />
-                  Mis Reservas
-                </Link>
-              </DropdownMenuItem>
+              {reservationLink && (
+                <DropdownMenuItem asChild>
+                  <Link href={reservationLink.href}>
+                    <reservationLink.icon />
+                    {reservationLink.label}
+                  </Link>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem

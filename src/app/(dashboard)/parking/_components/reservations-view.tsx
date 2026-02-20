@@ -39,6 +39,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -135,9 +136,9 @@ function QuickDateActions({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Selecciona una fecha</DialogTitle>
-            <CardDescription>
+            <DialogDescription>
               Elige el día para el que necesitas reservar plaza
-            </CardDescription>
+            </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center">
             <Calendar
@@ -174,12 +175,6 @@ function SpotCard({
           label: "Plaza de dirección",
           description: "Cedida temporalmente",
           variant: "secondary" as const,
-        };
-      case "disabled":
-        return {
-          label: "Plaza PMR",
-          description: "Movilidad reducida",
-          variant: "outline" as const,
         };
       case "visitor":
         return {

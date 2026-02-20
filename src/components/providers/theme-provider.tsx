@@ -12,7 +12,7 @@ export function ThemeProvider({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
+    <NextThemesProvider attribute="class" defaultTheme="light">
       {children}
     </NextThemesProvider>
   );

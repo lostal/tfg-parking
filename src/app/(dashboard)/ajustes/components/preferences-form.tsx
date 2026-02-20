@@ -1,59 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { updatePreferences } from "../actions";
+import { updateTheme } from "../actions";
 import type { ValidatedUserPreferences } from "@/lib/supabase/helpers";
-import {
-  updatePreferencesSchema,
-  type UpdatePreferencesInput,
-} from "@/lib/validations";
+import { updateThemeSchema, type UpdateThemeInput } from "@/lib/validations";
 
 interface PreferencesFormProps {
-  preferences: Pick<ValidatedUserPreferences, "theme" | "default_view">;
+  preferences: Pick<ValidatedUserPreferences, "theme">;
 }
 
 export function PreferencesForm({ preferences }: PreferencesFormProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const { setTheme } = useTheme();
+  const { theme: currentTheme, setTheme } = useTheme();
 
   const {
     handleSubmit,
-    watch,
+    control,
     setValue,
-    formState: { isDirty },
-  } = useForm<UpdatePreferencesInput>({
-    resolver: zodResolver(updatePreferencesSchema),
+    reset,
+    formState: { isDirty, isSubmitting },
+  } = useForm<UpdateThemeInput>({
+    resolver: zodResolver(updateThemeSchema),
     defaultValues: {
       theme: preferences.theme === "system" ? "light" : preferences.theme,
-      default_view: preferences.default_view,
     },
   });
 
-  const themeValue = watch("theme");
-  const defaultView = watch("default_view");
+  // Sync form with the actual active theme once next-themes has hydrated.
+  // This ensures the form reflects what the user sees if they changed theme
+  // via the navbar toggle since the last time they saved preferences.
+  useEffect(() => {
+    if (currentTheme === "light" || currentTheme === "dark") {
+      reset({ theme: currentTheme }, { keepDirty: false });
+    }
+  }, [currentTheme, reset]);
 
-  const onSubmit = async (data: UpdatePreferencesInput) => {
+  const themeValue = useWatch({ control, name: "theme" });
+
+  const onSubmit = async (data: UpdateThemeInput) => {
     try {
-      setIsLoading(true);
-
-      // Apply theme immediately
       setTheme(data.theme);
-
-      // Save to database
-      await updatePreferences(data);
+      await updateTheme(data);
       toast.success("Preferencias actualizadas correctamente");
     } catch (error) {
       toast.error("Error al actualizar las preferencias");
       console.error(error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -134,67 +131,8 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
         </RadioGroup>
       </div>
 
-      <div className="border-t" />
-
-      {/* Default View */}
-      <div className="space-y-3">
-        <Label>Vista por Defecto del Parking</Label>
-        <p className="text-muted-foreground text-sm">
-          Selecciona la vista que se mostrará al abrir la sección de parking
-        </p>
-        <RadioGroup
-          value={defaultView}
-          onValueChange={(value) =>
-            setValue("default_view", value as "map" | "list" | "calendar", {
-              shouldDirty: true,
-            })
-          }
-          className="grid gap-4"
-        >
-          <Label
-            htmlFor="view-map"
-            className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
-          >
-            <RadioGroupItem value="map" id="view-map" />
-            <div className="flex-1">
-              <div className="font-medium">Mapa Interactivo</div>
-              <div className="text-muted-foreground text-sm">
-                Visualiza las plazas en un mapa 2D del parking
-              </div>
-            </div>
-          </Label>
-
-          <Label
-            htmlFor="view-list"
-            className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
-          >
-            <RadioGroupItem value="list" id="view-list" />
-            <div className="flex-1">
-              <div className="font-medium">Lista</div>
-              <div className="text-muted-foreground text-sm">
-                Muestra todas las plazas en formato de lista
-              </div>
-            </div>
-          </Label>
-
-          <Label
-            htmlFor="view-calendar"
-            className="border-muted hover:border-accent [&:has([data-state=checked])]:border-primary flex cursor-pointer items-center gap-3 rounded-lg border-2 p-4"
-          >
-            <RadioGroupItem value="calendar" id="view-calendar" />
-            <div className="flex-1">
-              <div className="font-medium">Calendario</div>
-              <div className="text-muted-foreground text-sm">
-                Vista de calendario con disponibilidad por día
-              </div>
-            </div>
-          </Label>
-        </RadioGroup>
-      </div>
-
-      {/* Submit */}
-      <Button type="submit" disabled={!isDirty || isLoading}>
-        {isLoading ? "Guardando..." : "Actualizar preferencias"}
+      <Button type="submit" disabled={!isDirty || isSubmitting}>
+        {isSubmitting ? "Guardando..." : "Actualizar preferencias"}
       </Button>
     </form>
   );

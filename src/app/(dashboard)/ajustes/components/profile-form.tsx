@@ -118,7 +118,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           className="bg-muted"
         />
         <p className="text-muted-foreground text-xs">
-          Solo un administrador puede cambiar tu rol
+          Tu rol en la organización
         </p>
       </div>
 
