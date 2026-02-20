@@ -1,9 +1,9 @@
 "use server";
 
 /**
- * Settings Server Actions
+ * Server Actions de Ajustes
  *
- * Actions for updating user profile, preferences, and Microsoft integration settings
+ * Acciones para actualizar el perfil, preferencias e integración con Microsoft
  */
 
 import { createClient } from "@/lib/supabase/server";
@@ -47,7 +47,7 @@ export async function updateProfile(data: UpdateProfileInput) {
     .eq("id", user.id);
 
   if (error) {
-    console.error("Error updating profile:", error);
+    console.error("Error al actualizar el perfil:", error);
     throw new Error("No se pudo actualizar el perfil");
   }
 
@@ -81,7 +81,10 @@ export async function updateNotificationPreferences(
     .eq("user_id", user.id);
 
   if (error) {
-    console.error("Error updating notification preferences:", error);
+    console.error(
+      "Error al actualizar las preferencias de notificación:",
+      error
+    );
     throw new Error("No se pudieron actualizar las preferencias");
   }
 
@@ -108,7 +111,10 @@ export async function updateParkingPreferences(
     .eq("user_id", user.id);
 
   if (error) {
-    console.error("Error updating parking preferences:", error);
+    console.error(
+      "Error al actualizar las preferencias de aparcamiento:",
+      error
+    );
     throw new Error("No se pudieron actualizar las preferencias");
   }
 
@@ -138,7 +144,7 @@ export async function updateOutlookPreferences(
     .eq("user_id", user.id);
 
   if (error) {
-    console.error("Error updating Outlook preferences:", error);
+    console.error("Error al actualizar las preferencias de Outlook:", error);
     throw new Error("No se pudieron actualizar las preferencias de Outlook");
   }
 
@@ -165,7 +171,7 @@ export async function updateCessionRules(data: UpdateCessionRulesInput) {
     .eq("user_id", user.id);
 
   if (error) {
-    console.error("Error updating cession rules:", error);
+    console.error("Error al actualizar las reglas de cesión:", error);
     throw new Error("No se pudieron actualizar las reglas de cesión");
   }
 
@@ -190,7 +196,7 @@ export async function updateAppearance(data: UpdateAppearanceInput) {
     .eq("user_id", user.id);
 
   if (error) {
-    console.error("Error updating appearance:", error);
+    console.error("Error al actualizar la apariencia:", error);
     throw new Error("No se pudieron actualizar las preferencias de apariencia");
   }
 
@@ -216,7 +222,7 @@ export async function updatePreferences(data: UpdatePreferencesInput) {
     .eq("user_id", user.id);
 
   if (error) {
-    console.error("Error updating preferences:", error);
+    console.error("Error al actualizar las preferencias:", error);
     throw new Error("No se pudieron actualizar las preferencias");
   }
 
@@ -236,7 +242,7 @@ export async function disconnectMicrosoftAccount() {
     .eq("user_id", user.id);
 
   if (error) {
-    console.error("Error disconnecting Microsoft account:", error);
+    console.error("Error al desvincular la cuenta de Microsoft:", error);
     throw new Error("No se pudo desvincular la cuenta de Microsoft");
   }
 
@@ -249,11 +255,11 @@ export async function disconnectMicrosoftAccount() {
 export async function testTeamsNotification() {
   const user = await requireAuth();
 
-  // TODO: Implement when Teams bot is ready
-  // For now, just return success
+  // TODO: Implementar cuando el bot de Teams esté listo
+  // Por ahora, devolver éxito
 
   console.warn(
-    `[STUB] Would send test notification to user ${user.email} via Teams bot`
+    `[STUB] Enviaría notificación de prueba al usuario ${user.email} via bot de Teams`
   );
 
   return {
@@ -267,11 +273,11 @@ export async function testTeamsNotification() {
 export async function forceCalendarSync() {
   const user = await requireAuth();
 
-  // TODO: Implement when Outlook sync is ready
-  // For now, just return success
+  // TODO: Implementar cuando la sincronización con Outlook esté lista
+  // Por ahora, devolver éxito
 
   console.warn(
-    `[STUB] Would force calendar sync for user ${user.email} with Outlook`
+    `[STUB] Forzaría sincronización de calendario para el usuario ${user.email} con Outlook`
   );
 
   return {
@@ -294,10 +300,11 @@ export async function updateTheme(data: UpdateThemeInput) {
     .eq("user_id", user.id);
 
   if (error) {
-    console.error("Error updating theme:", error);
+    console.error("Error al actualizar el tema:", error);
     throw new Error("No se pudo actualizar el tema");
   }
 
+  revalidatePath("/ajustes");
   return { success: true };
 }
 

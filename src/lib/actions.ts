@@ -1,12 +1,12 @@
 /**
- * Server Action Utilities
+ * Utilidades para Server Actions
  *
- * Typed wrapper for all Server Actions providing:
- * - Consistent return type (ActionResult<T>)
- * - Automatic Zod validation
- * - Centralized error handling
+ * Wrapper tipado para todas las Server Actions que proporciona:
+ * - Tipo de retorno consistente (ActionResult<T>)
+ * - Validación automática con Zod
+ * - Gestión centralizada de errores
  *
- * Usage:
+ * Uso:
  *   "use server";
  *   import { actionClient } from "@/lib/actions";
  *   import { createReservationSchema } from "@/lib/validations";
@@ -14,14 +14,14 @@
  *   export const createReservation = actionClient
  *     .schema(createReservationSchema)
  *     .action(async ({ parsedInput }) => {
- *       // ... your logic
+ *       // ... tu lógica
  *       return { id: "123" };
  *     });
  */
 
 import { type ZodType } from "zod/v4";
 
-// ─── Result Types ────────────────────────────────────────────
+// ─── Tipos de resultado ───────────────────────────────────────
 
 export type ActionSuccess<T> = {
   success: true;
@@ -36,7 +36,7 @@ export type ActionError = {
 
 export type ActionResult<T> = ActionSuccess<T> | ActionError;
 
-// ─── Helper Constructors ────────────────────────────────────
+// ─── Constructores auxiliares ────────────────────────────────
 
 export function success<T>(data: T): ActionSuccess<T> {
   return { success: true, data };
@@ -49,7 +49,7 @@ export function error(
   return { success: false, error: message, fieldErrors };
 }
 
-// ─── Action Builder ──────────────────────────────────────────
+// ─── Constructor de acciones ─────────────────────────────────
 
 type ActionHandler<TInput, TOutput> = (ctx: {
   parsedInput: TInput;
@@ -64,11 +64,11 @@ interface ActionBuilder {
 }
 
 /**
- * Creates a type-safe Server Action with Zod validation and error handling.
+ * Crea una Server Action con tipado seguro, validación Zod y gestión de errores.
  *
- * All actions return `ActionResult<T>` — never throw.
- * Validation errors are returned as `fieldErrors`.
- * Unexpected errors are caught and returned as a generic message.
+ * Todas las acciones devuelven `ActionResult<T>` — nunca lanzan excepciones.
+ * Los errores de validación se devuelven como `fieldErrors`.
+ * Los errores inesperados se capturan y se devuelven como mensaje genérico.
  */
 export const actionClient: ActionBuilder = {
   schema<TInput>(schema: ZodType<TInput>) {
@@ -76,7 +76,7 @@ export const actionClient: ActionBuilder = {
       action<TOutput>(handler: ActionHandler<TInput, TOutput>) {
         return async (input: TInput): Promise<ActionResult<TOutput>> => {
           try {
-            // Validate input
+            // Validar entrada
             const result = schema.safeParse(input);
 
             if (!result.success) {
@@ -89,11 +89,11 @@ export const actionClient: ActionBuilder = {
               return error("Datos inválidos", fieldErrors);
             }
 
-            // Execute handler
+            // Ejecutar handler
             const data = await handler({ parsedInput: result.data });
             return success(data);
           } catch (err) {
-            console.error("Action error:", err);
+            console.error("Error en la acción:", err);
             return error(
               err instanceof Error
                 ? err.message

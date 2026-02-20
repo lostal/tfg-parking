@@ -1,20 +1,27 @@
 /**
- * Reservation Queries
+ * Queries de Reservas
  *
- * Server-side functions for reading reservation data.
+ * Funciones de servidor para leer datos de reservas.
  */
 
 import { createClient } from "@/lib/supabase/server";
 import type { Reservation } from "@/lib/supabase/types";
 
-/** Reservation row with joined spot label and user name */
+/** Tipo interno para la query con joins de plaza y perfil */
+type ReservationJoin = Reservation & {
+  spots: { label: string } | null;
+  profiles: { full_name: string } | null;
+};
+
+/** Fila de reserva con etiqueta de plaza y nombre de usuario */
 export interface ReservationWithDetails extends Reservation {
   spot_label: string;
   user_name: string;
 }
 
 /**
- * Get all confirmed reservations for a specific date, with spot and user details.
+ * Obtiene todas las reservas confirmadas para una fecha específica,
+ * con detalles de plaza y usuario.
  */
 export async function getReservationsByDate(
   date: string
@@ -28,27 +35,23 @@ export async function getReservationsByDate(
     )
     .eq("date", date)
     .eq("status", "confirmed")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .returns<ReservationJoin[]>();
 
-  if (error) throw new Error(`Error fetching reservations: ${error.message}`);
+  if (error) throw new Error(`Error al obtener reservas: ${error.message}`);
 
-  return data.map((r) => {
-    const spot = r.spots as unknown as { label: string } | null;
-    const profile = r.profiles as unknown as { full_name: string } | null;
-
-    return {
-      ...r,
-      spots: undefined,
-      profiles: undefined,
-      spot_label: spot?.label ?? "",
-      user_name: profile?.full_name ?? "",
-    } as ReservationWithDetails;
-  });
+  return data.map((r) => ({
+    ...r,
+    spots: undefined,
+    profiles: undefined,
+    spot_label: r.spots?.label ?? "",
+    user_name: r.profiles?.full_name ?? "",
+  })) as ReservationWithDetails[];
 }
 
 /**
- * Get upcoming confirmed reservations for a specific user.
- * Returns reservations from today onwards, ordered by date.
+ * Obtiene las reservas confirmadas futuras de un usuario.
+ * Devuelve reservas desde hoy en adelante, ordenadas por fecha.
  */
 export async function getUserReservations(
   userId: string
@@ -64,28 +67,24 @@ export async function getUserReservations(
     .eq("user_id", userId)
     .eq("status", "confirmed")
     .gte("date", today)
-    .order("date");
+    .order("date")
+    .returns<ReservationJoin[]>();
 
   if (error)
-    throw new Error(`Error fetching user reservations: ${error.message}`);
+    throw new Error(`Error al obtener reservas del usuario: ${error.message}`);
 
-  return data.map((r) => {
-    const spot = r.spots as unknown as { label: string } | null;
-    const profile = r.profiles as unknown as { full_name: string } | null;
-
-    return {
-      ...r,
-      spots: undefined,
-      profiles: undefined,
-      spot_label: spot?.label ?? "",
-      user_name: profile?.full_name ?? "",
-    } as ReservationWithDetails;
-  });
+  return data.map((r) => ({
+    ...r,
+    spots: undefined,
+    profiles: undefined,
+    spot_label: r.spots?.label ?? "",
+    user_name: r.profiles?.full_name ?? "",
+  })) as ReservationWithDetails[];
 }
 
 /**
- * Check if a user already has a confirmed reservation on a given date.
- * Returns the reservation if found, null otherwise.
+ * Comprueba si un usuario ya tiene una reserva confirmada en una fecha dada.
+ * Devuelve la reserva si existe, null en caso contrario.
  */
 export async function getUserReservationForDate(
   userId: string,
@@ -101,7 +100,7 @@ export async function getUserReservationForDate(
     .eq("status", "confirmed")
     .maybeSingle();
 
-  if (error) throw new Error(`Error checking reservation: ${error.message}`);
+  if (error) throw new Error(`Error al comprobar reserva: ${error.message}`);
 
   return data;
 }

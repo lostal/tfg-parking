@@ -1,10 +1,10 @@
 /**
- * Email Service — Resend + React Email
+ * Servicio de Email — Resend + React Email
  *
- * Transactional email sending for:
- * - Visitor notifications (parking confirmation, directions)
- * - Alert notifications (spot freed)
- * - System notifications
+ * Envío de emails transaccionales para:
+ * - Notificaciones a visitantes (confirmación de reserva, instrucciones)
+ * - Notificaciones de alertas (plaza liberada)
+ * - Notificaciones del sistema
  */
 
 export {};

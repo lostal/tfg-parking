@@ -1,7 +1,7 @@
 /**
- * Preferences Queries
+ * Queries de Preferencias
  *
- * Server-side queries for user preferences and Microsoft integration status
+ * Consultas de servidor para preferencias de usuario y estado de la integración con Microsoft
  */
 
 import { createClient } from "@/lib/supabase/server";
@@ -10,7 +10,7 @@ import {
   type ValidatedUserPreferences,
 } from "@/lib/supabase/helpers";
 
-// ─── Get User Preferences ────────────────────────────────────
+// ─── Obtener preferencias de usuario ─────────────────────────
 
 export async function getUserPreferences(
   userId: string
@@ -24,14 +24,14 @@ export async function getUserPreferences(
     .single();
 
   if (error) {
-    console.error("Error fetching user preferences:", error);
+    console.error("Error al obtener las preferencias del usuario:", error);
     return null;
   }
 
   return validateUserPreferences(data);
 }
 
-// ─── Get Microsoft Connection Status ─────────────────────────
+// ─── Obtener estado de conexión con Microsoft ─────────────────
 
 export async function getMicrosoftConnectionStatus(userId: string): Promise<{
   connected: boolean;
@@ -51,7 +51,7 @@ export async function getMicrosoftConnectionStatus(userId: string): Promise<{
     .single();
 
   if (error) {
-    // No tokens found = not connected
+    // Sin tokens = no conectado
     return {
       connected: false,
       scopes: [],
@@ -63,7 +63,7 @@ export async function getMicrosoftConnectionStatus(userId: string): Promise<{
     };
   }
 
-  // Check if token is expired
+  // Comprobar si el token ha expirado
   const isExpired = new Date(data.token_expires_at) < new Date();
 
   return {
@@ -77,7 +77,7 @@ export async function getMicrosoftConnectionStatus(userId: string): Promise<{
   };
 }
 
-// ─── Get Management Spot Info (for Management Users) ─────────
+// ─── Obtener info de plaza de dirección (para usuarios directivos) ──
 
 export async function getManagementSpotInfo(userId: string): Promise<{
   spot: {
@@ -94,7 +94,7 @@ export async function getManagementSpotInfo(userId: string): Promise<{
 } | null> {
   const supabase = await createClient();
 
-  // Get the spot assigned to this management user
+  // Obtener la plaza asignada al directivo
   const { data: spot, error: spotError } = await supabase
     .from("spots")
     .select("id, label, type")
@@ -110,10 +110,10 @@ export async function getManagementSpotInfo(userId: string): Promise<{
     };
   }
 
-  // Get today's date
+  // Obtener la fecha de hoy
   const today: string = new Date().toISOString().split("T")[0]!;
 
-  // Check if there's a cession for today
+  // Comprobar si hay cesión para hoy
   const { data: todayCession } = await supabase
     .from("cessions")
     .select("id, status")
@@ -122,14 +122,14 @@ export async function getManagementSpotInfo(userId: string): Promise<{
     .neq("status", "cancelled")
     .single();
 
-  // Determine status
+  // Determinar el estado
   let statusToday: "occupied" | "ceded" | "reserved" | "unknown" = "occupied";
 
   if (todayCession) {
     statusToday = todayCession.status === "reserved" ? "reserved" : "ceded";
   }
 
-  // Get next upcoming cession
+  // Obtener la próxima cesión futura
   const { data: nextCession } = await supabase
     .from("cessions")
     .select("id, date, status")
@@ -151,12 +151,12 @@ export async function getManagementSpotInfo(userId: string): Promise<{
   };
 }
 
-// ─── Get User Profile with Preferences (Combined) ────────────
+// ─── Obtener perfil con preferencias (combinado) ──────────────
 
 export async function getUserProfileWithPreferences(userId: string) {
   const supabase = await createClient();
 
-  // Fetch profile
+  // Obtener perfil
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("*")
@@ -164,7 +164,7 @@ export async function getUserProfileWithPreferences(userId: string) {
     .single();
 
   if (profileError) {
-    console.error("Error fetching profile:", {
+    console.error("Error al obtener el perfil:", {
       message: profileError.message,
       code: profileError.code,
       details: profileError.details,
@@ -173,13 +173,13 @@ export async function getUserProfileWithPreferences(userId: string) {
     return null;
   }
 
-  // Fetch preferences (will be created by trigger if doesn't exist)
+  // Obtener preferencias (el trigger las crea si no existen)
   const preferences = await getUserPreferences(userId);
 
-  // Fetch Microsoft connection status
+  // Obtener estado de conexión con Microsoft
   const microsoftStatus = await getMicrosoftConnectionStatus(userId);
 
-  // If management, fetch spot info
+  // Si es directivo, obtener info de la plaza
   let managementSpot = null;
   if (profile.role === "management" || profile.role === "admin") {
     managementSpot = await getManagementSpotInfo(userId);

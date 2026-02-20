@@ -1,20 +1,27 @@
 /**
- * Cession Queries
+ * Queries de Cesiones
  *
- * Server-side functions for reading cession data.
+ * Funciones de servidor para leer datos de cesiones.
  */
 
 import { createClient } from "@/lib/supabase/server";
 import type { Cession } from "@/lib/supabase/types";
 
-/** Cession row with joined spot label and user name */
+/** Tipo interno para la query con joins de plaza y perfil */
+type CessionJoin = Cession & {
+  spots: { label: string } | null;
+  profiles: { full_name: string } | null;
+};
+
+/** Fila de cesión con etiqueta de plaza y nombre de usuario */
 export interface CessionWithDetails extends Cession {
   spot_label: string;
   user_name: string;
 }
 
 /**
- * Get all non-cancelled cessions for a specific date, with spot and user details.
+ * Obtiene todas las cesiones no canceladas para una fecha específica,
+ * con detalles de plaza y usuario.
  */
 export async function getCessionsByDate(
   date: string
@@ -28,27 +35,23 @@ export async function getCessionsByDate(
     )
     .eq("date", date)
     .neq("status", "cancelled")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .returns<CessionJoin[]>();
 
-  if (error) throw new Error(`Error fetching cessions: ${error.message}`);
+  if (error) throw new Error(`Error al obtener cesiones: ${error.message}`);
 
-  return data.map((c) => {
-    const spot = c.spots as unknown as { label: string } | null;
-    const profile = c.profiles as unknown as { full_name: string } | null;
-
-    return {
-      ...c,
-      spots: undefined,
-      profiles: undefined,
-      spot_label: spot?.label ?? "",
-      user_name: profile?.full_name ?? "",
-    } as CessionWithDetails;
-  });
+  return data.map((c) => ({
+    ...c,
+    spots: undefined,
+    profiles: undefined,
+    spot_label: c.spots?.label ?? "",
+    user_name: c.profiles?.full_name ?? "",
+  })) as CessionWithDetails[];
 }
 
 /**
- * Get upcoming non-cancelled cessions for a specific user.
- * Returns cessions from today onwards, ordered by date.
+ * Obtiene las cesiones no canceladas futuras de un usuario.
+ * Devuelve cesiones desde hoy en adelante, ordenadas por fecha.
  */
 export async function getUserCessions(
   userId: string
@@ -64,20 +67,17 @@ export async function getUserCessions(
     .eq("user_id", userId)
     .neq("status", "cancelled")
     .gte("date", today)
-    .order("date");
+    .order("date")
+    .returns<CessionJoin[]>();
 
-  if (error) throw new Error(`Error fetching user cessions: ${error.message}`);
+  if (error)
+    throw new Error(`Error al obtener cesiones del usuario: ${error.message}`);
 
-  return data.map((c) => {
-    const spot = c.spots as unknown as { label: string } | null;
-    const profile = c.profiles as unknown as { full_name: string } | null;
-
-    return {
-      ...c,
-      spots: undefined,
-      profiles: undefined,
-      spot_label: spot?.label ?? "",
-      user_name: profile?.full_name ?? "",
-    } as CessionWithDetails;
-  });
+  return data.map((c) => ({
+    ...c,
+    spots: undefined,
+    profiles: undefined,
+    spot_label: c.spots?.label ?? "",
+    user_name: c.profiles?.full_name ?? "",
+  })) as CessionWithDetails[];
 }

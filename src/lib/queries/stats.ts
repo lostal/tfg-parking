@@ -1,16 +1,16 @@
 /**
- * Stats Queries
+ * Queries de Estadísticas
  *
- * Server-side functions for admin dashboard analytics.
- * All functions require admin role — call only from admin pages.
+ * Funciones de servidor para analíticas del panel de administración.
+ * Todas las funciones requieren rol admin — llamar solo desde páginas admin.
  */
 
 import { createClient } from "@/lib/supabase/server";
 
 export interface DailyCount {
-  /** ISO date string e.g. "2025-01-15" */
+  /** Fecha ISO p.ej. "2025-01-15" */
   date: string;
-  /** Short label e.g. "15 ene" */
+  /** Etiqueta corta p.ej. "15 ene" */
   label: string;
   reservations: number;
   visitors: number;
@@ -27,8 +27,8 @@ export interface MovementDistribution {
 }
 
 /**
- * Returns per-day reservation + visitor counts for the last N days.
- * Used by the admin bar chart.
+ * Devuelve los conteos diarios de reservas + visitantes para los últimos N días.
+ * Usada por el gráfico de barras del panel admin.
  */
 export async function getDailyCountsLast30Days(
   days = 30
@@ -57,13 +57,13 @@ export async function getDailyCountsLast30Days(
       .lte("date", endStr),
   ]);
 
-  // Build a map of date → counts
+  // Construir mapa de fechas → conteos
   const countsByDate = new Map<
     string,
     { reservations: number; visitors: number }
   >();
 
-  // Initialize all days to 0
+  // Inicializar todos los días a 0
   for (let i = 0; i < days; i++) {
     const d = new Date(startDate);
     d.setDate(d.getDate() + i);
@@ -91,8 +91,15 @@ export async function getDailyCountsLast30Days(
   });
 }
 
+/** Tipo interno para la query de reservas con etiqueta de plaza */
+type ReservaConPlaza = {
+  id: string;
+  date: string;
+  spots: { label: string } | null;
+};
+
 /**
- * Returns the top N spots by confirmed reservation count this month.
+ * Devuelve las N plazas con más reservas confirmadas en el mes actual.
  */
 export async function getTopSpots(limit = 6): Promise<SpotUsage[]> {
   const supabase = await createClient();
@@ -107,18 +114,18 @@ export async function getTopSpots(limit = 6): Promise<SpotUsage[]> {
 
   const { data, error } = await supabase
     .from("reservations")
-    .select("*, spots!reservations_spot_id_fkey(label)")
+    .select("id, date, spots!reservations_spot_id_fkey(label)")
     .eq("status", "confirmed")
     .gte("date", firstOfMonth)
-    .lte("date", lastOfMonth);
+    .lte("date", lastOfMonth)
+    .returns<ReservaConPlaza[]>();
 
   if (error) return [];
 
-  // Aggregate by spot
+  // Agrupar por plaza
   const countBySpot = new Map<string, number>();
   for (const r of data) {
-    const spot = r.spots as unknown as { label: string } | null;
-    const label = spot?.label ?? "—";
+    const label = r.spots?.label ?? "—";
     countBySpot.set(label, (countBySpot.get(label) ?? 0) + 1);
   }
 
@@ -129,7 +136,7 @@ export async function getTopSpots(limit = 6): Promise<SpotUsage[]> {
 }
 
 /**
- * Returns the distribution of movement types for the current month.
+ * Devuelve la distribución de tipos de movimiento para el mes actual.
  */
 export async function getMovementDistribution(): Promise<
   MovementDistribution[]
@@ -173,7 +180,7 @@ export async function getMovementDistribution(): Promise<
 }
 
 /**
- * Returns total confirmed reservations for the current month.
+ * Devuelve el total de reservas confirmadas para el mes actual.
  */
 export async function getMonthlyReservationCount(): Promise<number> {
   const supabase = await createClient();
@@ -205,9 +212,28 @@ export interface RecentActivity {
   visitor_name?: string;
 }
 
+/** Tipo interno para reservas en la actividad reciente */
+type ReservaActividad = {
+  id: string;
+  date: string;
+  created_at: string;
+  spots: { label: string } | null;
+  profiles: { full_name: string } | null;
+};
+
+/** Tipo interno para visitantes en la actividad reciente */
+type VisitanteActividad = {
+  id: string;
+  date: string;
+  created_at: string;
+  visitor_name: string | null;
+  spots: { label: string } | null;
+};
+
 /**
- * Returns the last N confirmed reservations + visitor reservations (combined, sorted by created_at).
- * Used by the admin "Actividad reciente" panel.
+ * Devuelve las últimas N reservas confirmadas + reservas de visitantes
+ * combinadas y ordenadas por created_at.
+ * Usada por el panel "Actividad reciente" del admin.
  */
 export async function getRecentActivity(limit = 8): Promise<RecentActivity[]> {
   const supabase = await createClient();
@@ -220,7 +246,8 @@ export async function getRecentActivity(limit = 8): Promise<RecentActivity[]> {
       )
       .eq("status", "confirmed")
       .order("created_at", { ascending: false })
-      .limit(limit),
+      .limit(limit)
+      .returns<ReservaActividad[]>(),
     supabase
       .from("visitor_reservations")
       .select(
@@ -228,36 +255,30 @@ export async function getRecentActivity(limit = 8): Promise<RecentActivity[]> {
       )
       .eq("status", "confirmed")
       .order("created_at", { ascending: false })
-      .limit(limit),
+      .limit(limit)
+      .returns<VisitanteActividad[]>(),
   ]);
 
   type ActivityWithTime = RecentActivity & { created_at: string };
 
-  const reservations: ActivityWithTime[] = (resResult.data ?? []).map((r) => {
-    const spot = r.spots as unknown as { label: string } | null;
-    const profile = r.profiles as unknown as { full_name: string } | null;
-    return {
-      id: r.id,
-      user_name: profile?.full_name ?? "Usuario",
-      spot_label: spot?.label ?? "—",
-      date: r.date,
-      type: "reservation" as const,
-      created_at: r.created_at,
-    };
-  });
+  const reservations: ActivityWithTime[] = (resResult.data ?? []).map((r) => ({
+    id: r.id,
+    user_name: r.profiles?.full_name ?? "Usuario",
+    spot_label: r.spots?.label ?? "—",
+    date: r.date,
+    type: "reservation" as const,
+    created_at: r.created_at,
+  }));
 
-  const visitors: ActivityWithTime[] = (visResult.data ?? []).map((v) => {
-    const spot = v.spots as unknown as { label: string } | null;
-    return {
-      id: v.id,
-      user_name: v.visitor_name ?? "Visitante",
-      spot_label: spot?.label ?? "—",
-      date: v.date,
-      type: "visitor" as const,
-      visitor_name: v.visitor_name ?? undefined,
-      created_at: v.created_at,
-    };
-  });
+  const visitors: ActivityWithTime[] = (visResult.data ?? []).map((v) => ({
+    id: v.id,
+    user_name: v.visitor_name ?? "Visitante",
+    spot_label: v.spots?.label ?? "—",
+    date: v.date,
+    type: "visitor" as const,
+    visitor_name: v.visitor_name ?? undefined,
+    created_at: v.created_at,
+  }));
 
   return [...reservations, ...visitors]
     .sort(

@@ -1,10 +1,10 @@
 "use server";
 
 /**
- * Parking Reservation Actions
+ * Server Actions de Reservas de Aparcamiento
  *
- * Server Actions for creating and cancelling employee parking reservations,
- * plus query helpers for the parking list view.
+ * Server Actions para crear y cancelar reservas de aparcamiento de empleados,
+ * y funciones de consulta para la vista de lista del parking.
  */
 
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
@@ -24,14 +24,14 @@ import {
 // ─── Query Functions ─────────────────────────────────────────
 
 /**
- * Get available spots for a given date.
+ * Obtiene las plazas disponibles para una fecha dada.
  *
- * A spot is "available" if:
- * - It has no confirmed reservation for that date
- * - If type='management', a cession with status='available' must exist
- * - It is active
+ * Una plaza está "disponible" si:
+ * - No tiene una reserva confirmada para esa fecha
+ * - Si type='management', debe existir una cesión con status='available'
+ * - Está activa
  *
- * Returns spots that the current user can book.
+ * Devuelve las plazas que el usuario actual puede reservar.
  */
 export async function getAvailableSpotsForDate(
   date: string
@@ -42,7 +42,7 @@ export async function getAvailableSpotsForDate(
 
     const supabase = await createClient();
 
-    // Fetch all data in parallel
+    // Obtener todos los datos en paralelo
     const [spotsResult, reservationsResult, cessionsResult, visitorResult] =
       await Promise.all([
         supabase.from("spots").select("*").eq("is_active", true).order("label"),
@@ -80,14 +80,14 @@ export async function getAvailableSpotsForDate(
     const available: SpotWithStatus[] = [];
 
     for (const spot of spots) {
-      // Skip spots with confirmed reservations
+      // Omitir plazas con reservas confirmadas
       if (reservedSpotIds.has(spot.id)) continue;
 
-      // Skip spots with visitor reservations
+      // Omitir plazas con reservas de visitantes
       if (visitorSpotIds.has(spot.id)) continue;
 
       if (spot.type === "management") {
-        // Management spots: only available if there's an active cession
+        // Plazas de dirección: solo disponibles si existe una cesión activa
         const cession = cessionBySpot.get(spot.id);
         if (!cession || cession.status !== "available") continue;
 
@@ -115,7 +115,7 @@ export async function getAvailableSpotsForDate(
 
     return success(available);
   } catch (err) {
-    console.error("getAvailableSpotsForDate error:", err);
+    console.error("Error en getAvailableSpotsForDate:", err);
     return error(
       err instanceof Error ? err.message : "Error al obtener plazas disponibles"
     );
@@ -123,8 +123,8 @@ export async function getAvailableSpotsForDate(
 }
 
 /**
- * Get the current user's upcoming confirmed reservations.
- * Returns reservations from today onwards, with spot details.
+ * Obtiene las reservas confirmadas futuras del usuario actual.
+ * Devuelve reservas desde hoy en adelante, con detalles de plaza.
  */
 export async function getMyReservations(): Promise<
   ActionResult<ReservationWithDetails[]>
@@ -136,7 +136,7 @@ export async function getMyReservations(): Promise<
     const reservations = await getUserReservations(user.id);
     return success(reservations);
   } catch (err) {
-    console.error("getMyReservations error:", err);
+    console.error("Error en getMyReservations:", err);
     return error(
       err instanceof Error ? err.message : "Error al obtener tus reservas"
     );
@@ -144,13 +144,13 @@ export async function getMyReservations(): Promise<
 }
 
 /**
- * Create a new parking reservation.
+ * Crea una nueva reserva de aparcamiento.
  *
- * Business rules:
- * - User must be authenticated
- * - One reservation per user per day (enforced by DB unique index)
- * - One reservation per spot per day (enforced by DB unique index)
- * - Spot must be free or ceded for that date
+ * Reglas de negocio:
+ * - El usuario debe estar autenticado
+ * - Una reserva por usuario por día (garantizado por índice único de la BD)
+ * - Una reserva por plaza por día (garantizado por índice único de la BD)
+ * - La plaza debe estar libre o cedida para esa fecha
  */
 export const createReservation = actionClient
   .schema(createReservationSchema)
@@ -214,7 +214,7 @@ export const createReservation = actionClient
         .eq("status", "available");
 
       if (cessionError) {
-        console.error("Error syncing cession status to reserved:", {
+        console.error("Error al sincronizar estado de cesión a reservado:", {
           message: cessionError.message,
           code: cessionError.code,
         });
@@ -225,10 +225,10 @@ export const createReservation = actionClient
   });
 
 /**
- * Cancel an existing reservation.
+ * Cancela una reserva existente.
  *
- * Business rules:
- * - User must own the reservation (or be admin — enforced by RLS)
+ * Reglas de negocio:
+ * - El usuario debe ser el propietario de la reserva (o admin — garantizado por RLS)
  */
 export const cancelReservation = actionClient
   .schema(cancelReservationSchema)
@@ -238,13 +238,20 @@ export const cancelReservation = actionClient
 
     const supabase = await createClient();
 
-    // Fetch the reservation to get spot_id and date (for cession sync)
-    const { data: reservation } = await supabase
+    // Obtener la reserva para extraer spot_id y date (para sincronizar la cesión)
+    type ReservaCancelacion = {
+      id: string;
+      spot_id: string;
+      date: string;
+      spots: { type: string } | null;
+    };
+    const { data: reservationRaw } = await supabase
       .from("reservations")
       .select("id, spot_id, date, spots!reservations_spot_id_fkey(type)")
       .eq("id", parsedInput.id)
       .eq("user_id", user.id)
       .single();
+    const reservation = reservationRaw as ReservaCancelacion | null;
 
     const { error } = await supabase
       .from("reservations")
@@ -259,8 +266,7 @@ export const cancelReservation = actionClient
     // Si es plaza de dirección, revertir la cesión a disponible.
     // Usamos el cliente admin para omitir RLS (mismo motivo que createReservation).
     if (reservation) {
-      const spotType = (reservation.spots as unknown as { type: string } | null)
-        ?.type;
+      const spotType = reservation.spots?.type;
       if (spotType === "management") {
         const adminClient = createAdminClient();
         const { error: cessionError } = await adminClient
@@ -271,7 +277,7 @@ export const cancelReservation = actionClient
           .eq("status", "reserved");
 
         if (cessionError) {
-          console.error("Error reverting cession status to available:", {
+          console.error("Error al revertir estado de cesión a disponible:", {
             message: cessionError.message,
             code: cessionError.code,
           });

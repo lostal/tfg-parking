@@ -1,17 +1,25 @@
 /**
- * Spot Queries
+ * Queries de Plazas
  *
- * Server-side functions for reading parking spot data.
- * Used by Server Components — do NOT use in client components.
+ * Funciones de servidor para leer datos de plazas de aparcamiento.
+ * Solo para Server Components — NO usar en componentes cliente.
  */
 
 import { createClient } from "@/lib/supabase/server";
 import type { Spot } from "@/lib/supabase/types";
 import type { SpotWithStatus, SpotStatus } from "@/types";
 
+/** Tipo interno para la query de reservas con perfil del usuario */
+type ReservationConPerfil = {
+  id: string;
+  spot_id: string;
+  user_id: string;
+  profiles: { full_name: string } | null;
+};
+
 /**
- * Get all active spots (no date-specific status).
- * Used by admin panel for CRUD management.
+ * Obtiene todas las plazas activas (sin estado por fecha).
+ * Usada por el panel admin para la gestión CRUD.
  */
 export async function getSpots(): Promise<Spot[]> {
   const supabase = await createClient();
@@ -22,25 +30,25 @@ export async function getSpots(): Promise<Spot[]> {
     .eq("is_active", true)
     .order("label");
 
-  if (error) throw new Error(`Error fetching spots: ${error.message}`);
+  if (error) throw new Error(`Error al obtener plazas: ${error.message}`);
   return data;
 }
 
 /**
- * Get all active spots with computed status for a specific date.
+ * Obtiene todas las plazas activas con estado calculado para una fecha específica.
  *
- * Status logic:
- * - management spot without cession on that date → "occupied" (assigned)
- * - management spot with cession (available) → "ceded" (free to book)
- * - management spot with cession (reserved) → "reserved"
- * - standard spot with confirmed reservation → "reserved"
- * - spot with confirmed visitor reservation → "visitor-blocked"
- * - otherwise → "free"
+ * Lógica de estado:
+ * - Plaza de dirección sin cesión en esa fecha → "occupied" (asignada)
+ * - Plaza de dirección con cesión (available) → "ceded" (libre para reservar)
+ * - Plaza de dirección con cesión (reserved) → "reserved"
+ * - Plaza estándar con reserva confirmada → "reserved"
+ * - Plaza con reserva de visitante confirmada → "visitor-blocked"
+ * - En cualquier otro caso → "free"
  */
 export async function getSpotsByDate(date: string): Promise<SpotWithStatus[]> {
   const supabase = await createClient();
 
-  // Fetch all data in parallel
+  // Obtener todos los datos en paralelo
   const [spotsResult, reservationsResult, cessionsResult, visitorResult] =
     await Promise.all([
       supabase.from("spots").select("*").eq("is_active", true).order("label"),
@@ -50,7 +58,8 @@ export async function getSpotsByDate(date: string): Promise<SpotWithStatus[]> {
           "id, spot_id, user_id, profiles!reservations_user_id_fkey(full_name)"
         )
         .eq("date", date)
-        .eq("status", "confirmed"),
+        .eq("status", "confirmed")
+        .returns<ReservationConPerfil[]>(),
       supabase
         .from("cessions")
         .select("id, spot_id, status")
@@ -64,14 +73,14 @@ export async function getSpotsByDate(date: string): Promise<SpotWithStatus[]> {
     ]);
 
   if (spotsResult.error)
-    throw new Error(`Error fetching spots: ${spotsResult.error.message}`);
+    throw new Error(`Error al obtener plazas: ${spotsResult.error.message}`);
 
   const spots = spotsResult.data;
   const reservations = reservationsResult.data ?? [];
   const cessions = cessionsResult.data ?? [];
   const visitorReservations = visitorResult.data ?? [];
 
-  // Build lookup maps
+  // Construir mapas de búsqueda O(1)
   const reservationBySpot = new Map(reservations.map((r) => [r.spot_id, r]));
   const cessionBySpot = new Map(cessions.map((c) => [c.spot_id, c]));
   const visitorBySpot = new Map(visitorReservations.map((v) => [v.spot_id, v]));
@@ -86,25 +95,21 @@ export async function getSpotsByDate(date: string): Promise<SpotWithStatus[]> {
     const visitor = visitorBySpot.get(spot.id);
 
     if (visitor) {
-      // Visitor reservation takes precedence
+      // La reserva de visitante tiene prioridad
       status = "visitor-blocked";
       reservation_id = visitor.id;
       reserved_by_name = visitor.visitor_name;
     } else if (reservation) {
       status = "reserved";
       reservation_id = reservation.id;
-      // Profile join returns an object (single relation via !fkey)
-      const profile = reservation.profiles as unknown as {
-        full_name: string;
-      } | null;
-      reserved_by_name = profile?.full_name ?? undefined;
+      reserved_by_name = reservation.profiles?.full_name ?? undefined;
     } else if (spot.type === "management") {
       if (cession) {
-        // Management spot has been ceded
+        // La plaza de dirección ha sido cedida
         status = cession.status === "reserved" ? "reserved" : "ceded";
         reservation_id = cession.id;
       } else {
-        // Management spot not ceded → occupied by assignee
+        // Plaza de dirección no cedida → ocupada por el asignado
         status = "occupied";
       }
     }

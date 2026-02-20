@@ -1,10 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Output standalone for Docker/Vercel optimized builds
+  // Salida standalone para builds optimizados con Docker/Vercel
   // output: "standalone",
 
-  // Image optimization
+  // Optimización de imágenes
   images: {
     remotePatterns: [
       {
@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Security headers
+  // Cabeceras de seguridad
   async headers() {
     return [
       {
@@ -31,6 +31,18 @@ const nextConfig: NextConfig = {
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=()",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+          {
+            key: "X-DNS-Prefetch-Control",
+            value: "on",
           },
         ],
       },

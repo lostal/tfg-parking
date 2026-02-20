@@ -1,10 +1,10 @@
 "use server";
 
 /**
- * Visitor Reservation Actions
+ * Server Actions de Reservas de Visitantes
  *
- * Server Actions for creating and cancelling reservations
- * made by employees for external visitors.
+ * Server Actions para crear y cancelar reservas
+ * realizadas por empleados para visitantes externos.
  */
 
 import { actionClient } from "@/lib/actions";
@@ -16,11 +16,11 @@ import {
 } from "@/lib/validations";
 
 /**
- * Create a visitor reservation.
+ * Crea una reserva de visitante.
  *
- * Business rules:
- * - Any authenticated employee can reserve for a visitor
- * - One reservation per spot per day (enforced by DB unique index)
+ * Reglas de negocio:
+ * - Cualquier empleado autenticado puede reservar para un visitante
+ * - Una reserva por plaza por día (garantizado por índice único de la BD)
  */
 export const createVisitorReservation = actionClient
   .schema(createVisitorReservationSchema)
@@ -53,16 +53,16 @@ export const createVisitorReservation = actionClient
       throw new Error(`Error al crear reserva de visitante: ${error.message}`);
     }
 
-    // TODO (P1): Send notification email to visitor via Resend
+    // TODO (P1): Enviar email de confirmación al visitante via Resend
 
     return { id: data.id };
   });
 
 /**
- * Cancel a visitor reservation.
+ * Cancela una reserva de visitante.
  *
- * Business rules:
- * - Only the employee who made it (or admin) can cancel
+ * Reglas de negocio:
+ * - Solo el empleado que la creó (o un admin) puede cancelarla
  */
 export const cancelVisitorReservation = actionClient
   .schema(cancelVisitorReservationSchema)

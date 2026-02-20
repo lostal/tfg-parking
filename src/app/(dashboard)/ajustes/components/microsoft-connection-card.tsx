@@ -28,7 +28,7 @@ export function MicrosoftConnectionCard({
 }: MicrosoftConnectionCardProps) {
   const connected = status?.connected || false;
 
-  // TODO: Implement OAuth flow when ready
+  // TODO: Implementar el flujo OAuth cuando esté listo
   const handleConnect = () => {
     alert("OAuth de Microsoft aún no implementado (Coming Soon)");
   };
@@ -39,7 +39,7 @@ export function MicrosoftConnectionCard({
         "¿Estás seguro de que quieres desvincular tu cuenta de Microsoft? Se desactivarán las notificaciones de Teams y la sincronización con Outlook."
       )
     ) {
-      // TODO: Call disconnectMicrosoftAccount action
+      // TODO: Llamar a la acción disconnectMicrosoftAccount
       alert("Función de desvinculación (Coming Soon)");
     }
   };

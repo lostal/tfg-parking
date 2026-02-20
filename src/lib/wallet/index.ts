@@ -1,8 +1,8 @@
 /**
- * Wallet Pass Generation
+ * Generación de Pases Digitales
  *
- * Will handle Apple PassKit (.pkpass) and Google Wallet API
- * for visitor digital passes.
+ * Gestionará Apple PassKit (.pkpass) y la API de Google Wallet
+ * para pases digitales de visitantes.
  */
 
 export {};

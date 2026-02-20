@@ -1,8 +1,8 @@
 /**
- * Microsoft Graph API — Client & Helpers
+ * Microsoft Graph API — Cliente y Helpers
  *
- * Will handle: Calendar sync, profile data, event CRUD.
- * Uses @microsoft/microsoft-graph-client.
+ * Gestionará: sincronización de calendario, datos de perfil, CRUD de eventos.
+ * Usa @microsoft/microsoft-graph-client.
  */
 
 export {};
