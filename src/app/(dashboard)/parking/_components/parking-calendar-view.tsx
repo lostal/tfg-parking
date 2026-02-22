@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import type { Spot } from "@/types";
 import {
   type CalendarDayData,
-  getCalendarMonthDataSimple,
+  getCalendarMonthData,
 } from "../calendar-actions";
 import { ParkingCalendar, type CalendarRole } from "./parking-calendar";
 import { EmployeeDaySheet } from "./employee-day-sheet";
@@ -61,7 +61,7 @@ export function ParkingCalendarView({
     setIsLoading(true);
     try {
       const monthStart = format(month, "yyyy-MM-dd");
-      const result = await getCalendarMonthDataSimple(monthStart);
+      const result = await getCalendarMonthData({ monthStart });
       if (result.success) {
         const map = new Map<string, CalendarDayData>(
           result.data.map((d) => [d.date, d])

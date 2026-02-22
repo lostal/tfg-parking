@@ -627,3 +627,49 @@ alter publication supabase_realtime add table public.reservations;
 alter publication supabase_realtime add table public.cessions;
 alter publication supabase_realtime add table public.visitor_reservations;
 alter publication supabase_realtime add table public.spots;
+
+-- ═══════════════════════════════════════════════════════════════
+-- TRIGGERS
+-- ═══════════════════════════════════════════════════════════════
+
+-- ─── Sincronización automática reservations → cessions ───────
+--
+-- Garantiza que cessions.status siempre refleja el estado real
+-- de las reservas confirmadas, dentro de la misma transacción.
+-- Esto hace imposible el estado inconsistente donde una cesión
+-- aparece "available" mientras su plaza ya está reservada.
+--
+--   · INSERT/UPDATE status = 'confirmed' → cession pasa a 'reserved'
+--   · INSERT/UPDATE status = 'cancelled' → cession vuelve a 'available'
+
+create or replace function public.sync_cession_status()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.status = 'confirmed' then
+    update cessions
+    set    status = 'reserved'
+    where  spot_id = new.spot_id
+      and  date    = new.date
+      and  status  = 'available';
+
+  elsif new.status = 'cancelled' then
+    update cessions
+    set    status = 'available'
+    where  spot_id = new.spot_id
+      and  date    = new.date
+      and  status  = 'reserved';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger trg_sync_cession_status
+  after insert or update of status
+  on public.reservations
+  for each row
+  execute function public.sync_cession_status();

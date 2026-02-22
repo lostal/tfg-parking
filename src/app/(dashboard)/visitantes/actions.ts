@@ -112,11 +112,9 @@ async function sendConfirmationEmail(params: {
     notes: params.notes,
   };
 
-  const [icsBuffer, googleCalendarUrl, outlookUrl] = await Promise.all([
-    Promise.resolve(generateICSBuffer(calendarData)),
-    Promise.resolve(generateGoogleCalendarUrl(calendarData)),
-    Promise.resolve(generateOutlookUrl(calendarData)),
-  ]);
+  const icsBuffer = generateICSBuffer(calendarData);
+  const googleCalendarUrl = generateGoogleCalendarUrl(calendarData);
+  const outlookUrl = generateOutlookUrl(calendarData);
 
   await sendVisitorReservationEmail({
     to: params.visitorEmail,

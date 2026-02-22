@@ -71,22 +71,16 @@ export type UpdateSpotInput = z.infer<typeof updateSpotSchema>;
 
 // ─── Cancel Operations ───────────────────────────────────────
 
-export const cancelReservationSchema = z.object({
-  id: z.string().uuid(),
-});
+/** Schema base reutilizado por todas las operaciones de cancelación por id. */
+const cancelByIdSchema = z.object({ id: z.string().uuid() });
 
+export const cancelReservationSchema = cancelByIdSchema;
 export type CancelReservationInput = z.infer<typeof cancelReservationSchema>;
 
-export const cancelCessionSchema = z.object({
-  id: z.string().uuid(),
-});
-
+export const cancelCessionSchema = cancelByIdSchema;
 export type CancelCessionInput = z.infer<typeof cancelCessionSchema>;
 
-export const cancelVisitorReservationSchema = z.object({
-  id: z.string().uuid(),
-});
-
+export const cancelVisitorReservationSchema = cancelByIdSchema;
 export type CancelVisitorReservationInput = z.infer<
   typeof cancelVisitorReservationSchema
 >;

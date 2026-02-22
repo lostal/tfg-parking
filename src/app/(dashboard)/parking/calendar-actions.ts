@@ -7,9 +7,10 @@
  * Devuelven el estado de cada día del mes para pintarlo con colores según rol.
  */
 
-import { actionClient, success, error, type ActionResult } from "@/lib/actions";
+import { actionClient } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/auth";
+import type { CessionStatus } from "@/types";
 import { z } from "zod/v4";
 import { parseISO } from "date-fns";
 
@@ -44,7 +45,7 @@ export interface CalendarDayData {
   /** ID de cesión del directivo ese día */
   myCessionId?: string;
   /** Estado de la cesión si existe */
-  cessionStatus?: string;
+  cessionStatus?: CessionStatus;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -90,6 +91,9 @@ export const getCalendarMonthData = actionClient
 
     if (role === "management" || role === "admin") {
       // ── Directivo: necesita su plaza asignada y sus cesiones ──
+      // El trigger trg_sync_cession_status garantiza que cession.status
+      // siempre es coherente con las reservas reales, por lo que podemos
+      // usarlo directamente como fuente de verdad.
       const [spotResult, cessionsResult] = await Promise.all([
         supabase
           .from("spots")
@@ -191,6 +195,9 @@ export const getCalendarMonthData = actionClient
         (s) => s.type !== "management"
       ).length;
 
+      // Mapa id→type para lookups O(1) dentro del bucle de días
+      const spotTypeById = new Map(allSpots.map((s) => [s.id, s.type]));
+
       // Agrupa reservas por fecha
       const reservedByDate = new Map<string, Set<string>>();
       for (const r of reservationsData.data ?? []) {
@@ -233,10 +240,9 @@ export const getCalendarMonthData = actionClient
         const cededAvail = cededAvailableByDate.get(dateStr) ?? 0;
 
         // Plazas no-dirección ocupadas por reservas de empleados
-        const employeeReserved = [...reserved].filter((id) => {
-          const spot = allSpots.find((s) => s.id === id);
-          return spot?.type !== "management";
-        }).length;
+        const employeeReserved = [...reserved].filter(
+          (id) => spotTypeById.get(id) !== "management"
+        ).length;
 
         // Plazas visitor ocupadas por reservas de visitantes
         const visitorReserved = visitorReservedByDate.get(dateStr)?.size ?? 0;
@@ -275,25 +281,3 @@ export const getCalendarMonthData = actionClient
       return days;
     }
   });
-
-/**
- * Acción simplificada para obtener los datos del mes actual
- * sin necesidad de construir el input manualmente.
- */
-export async function getCalendarMonthDataSimple(
-  monthStart: string
-): Promise<ActionResult<CalendarDayData[]>> {
-  try {
-    const result = await getCalendarMonthData({ monthStart });
-    if (!result.success) {
-      return error(result.error);
-    }
-    return success(result.data);
-  } catch (err) {
-    return error(
-      err instanceof Error
-        ? err.message
-        : "Error al obtener datos del calendario"
-    );
-  }
-}

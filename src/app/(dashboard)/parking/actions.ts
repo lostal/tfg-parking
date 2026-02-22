@@ -9,7 +9,6 @@
 
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import {
   createReservationSchema,
@@ -173,14 +172,10 @@ export const createReservation = actionClient
       throw new Error("Ya tienes una reserva para este día");
     }
 
-    // Check if this spot is a management spot (needs cession sync)
-    const { data: spotData } = await supabase
-      .from("spots")
-      .select("type")
-      .eq("id", parsedInput.spot_id)
-      .single();
-
-    // Insert reservation
+    // Insert reservation.
+    // El trigger trg_sync_cession_status en la BD sincroniza automáticamente
+    // cession.status → "reserved" dentro de la misma transacción, por lo que
+    // no es necesario ningún sync manual aquí.
     const { data, error } = await supabase
       .from("reservations")
       .insert({
@@ -200,27 +195,6 @@ export const createReservation = actionClient
       throw new Error(`Error al crear reserva: ${error.message}`);
     }
 
-    // Si es plaza de dirección, marcar la cesión como reservada.
-    // Usamos el cliente admin para omitir RLS: la política solo permite
-    // al propietario actualizar su propia cesión, pero esta actualización
-    // la dispara el empleado que reserva.
-    if (spotData?.type === "management") {
-      const adminClient = createAdminClient();
-      const { error: cessionError } = await adminClient
-        .from("cessions")
-        .update({ status: "reserved" })
-        .eq("spot_id", parsedInput.spot_id)
-        .eq("date", parsedInput.date)
-        .eq("status", "available");
-
-      if (cessionError) {
-        console.error("Error al sincronizar estado de cesión a reservado:", {
-          message: cessionError.message,
-          code: cessionError.code,
-        });
-      }
-    }
-
     return { id: data.id };
   });
 
@@ -229,6 +203,8 @@ export const createReservation = actionClient
  *
  * Reglas de negocio:
  * - El usuario debe ser el propietario de la reserva (o admin — garantizado por RLS)
+ * - El trigger trg_sync_cession_status revierte cession.status → "available"
+ *   automáticamente si era una plaza de dirección cedida.
  */
 export const cancelReservation = actionClient
   .schema(cancelReservationSchema)
@@ -238,21 +214,6 @@ export const cancelReservation = actionClient
 
     const supabase = await createClient();
 
-    // Obtener la reserva para extraer spot_id y date (para sincronizar la cesión)
-    type ReservaCancelacion = {
-      id: string;
-      spot_id: string;
-      date: string;
-      spots: { type: string } | null;
-    };
-    const { data: reservationRaw } = await supabase
-      .from("reservations")
-      .select("id, spot_id, date, spots!reservations_spot_id_fkey(type)")
-      .eq("id", parsedInput.id)
-      .eq("user_id", user.id)
-      .single();
-    const reservation = reservationRaw as ReservaCancelacion | null;
-
     const { error } = await supabase
       .from("reservations")
       .update({ status: "cancelled" })
@@ -261,28 +222,6 @@ export const cancelReservation = actionClient
 
     if (error) {
       throw new Error(`Error al cancelar reserva: ${error.message}`);
-    }
-
-    // Si es plaza de dirección, revertir la cesión a disponible.
-    // Usamos el cliente admin para omitir RLS (mismo motivo que createReservation).
-    if (reservation) {
-      const spotType = reservation.spots?.type;
-      if (spotType === "management") {
-        const adminClient = createAdminClient();
-        const { error: cessionError } = await adminClient
-          .from("cessions")
-          .update({ status: "available" })
-          .eq("spot_id", reservation.spot_id)
-          .eq("date", reservation.date)
-          .eq("status", "reserved");
-
-        if (cessionError) {
-          console.error("Error al revertir estado de cesión a disponible:", {
-            message: cessionError.message,
-            code: cessionError.code,
-          });
-        }
-      }
     }
 
     return { cancelled: true };

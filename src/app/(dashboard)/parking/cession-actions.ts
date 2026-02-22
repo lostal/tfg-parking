@@ -105,8 +105,12 @@ export const cancelCession = actionClient
       throw new Error("No puedes cancelar esta cesión");
     }
 
-    // Buscar si hay una reserva activa sobre esta plaza+fecha (puede existir
-    // si el admin cancela una cesión ya reservada, o en edge cases de RLS).
+    // Buscar si hay una reserva activa sobre esta plaza+fecha.
+    // IMPORTANTE: comprobamos la reserva real en BD, NO nos fiamos del campo
+    // cession.status, que puede quedar dessincronizado si la actualización a
+    // "reserved" falló silenciosamente en createReservation. Usar solo
+    // activeReservation como fuente de verdad evita que un directivo pueda
+    // cancelar una cesión que ya tiene un empleado reservado.
     const { data: activeReservation } = await supabase
       .from("reservations")
       .select("id")
@@ -115,11 +119,7 @@ export const cancelCession = actionClient
       .eq("status", "confirmed")
       .maybeSingle();
 
-    if (
-      cession.status === "reserved" &&
-      activeReservation &&
-      user.profile?.role !== "admin"
-    ) {
+    if (activeReservation && user.profile?.role !== "admin") {
       throw new Error(
         "No se puede cancelar: alguien ya ha reservado esta plaza"
       );
