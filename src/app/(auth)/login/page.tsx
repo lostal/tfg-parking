@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Building2, Users } from "lucide-react";
+import Image from "next/image";
 
 type UserType = "employee" | "management";
 
@@ -74,10 +75,13 @@ export default function LoginPage() {
       <div className="lg:p-8">
         <div className="mx-auto flex w-full flex-col justify-center space-y-2 py-8 sm:w-120 sm:p-8">
           <div className="mb-4 flex items-center justify-center">
-            <img
+            <Image
               src="/logo.png"
               alt="GRUPOSIETE Parking"
-              className="h-14 w-auto"
+              width={240}
+              height={80}
+              className="h-20 w-auto"
+              priority
             />
           </div>
         </div>
@@ -226,10 +230,12 @@ export default function LoginPage() {
 
       {/* Right Column - Mockup */}
       <div className="bg-muted relative hidden h-full overflow-hidden lg:block">
-        <img
+        <Image
           src="/mockup.png"
           alt="GRUPOSIETE Parking"
-          className="absolute inset-0 h-full w-full object-cover object-top select-none"
+          fill
+          className="object-cover object-top select-none"
+          priority
         />
       </div>
     </div>
