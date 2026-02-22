@@ -23,6 +23,19 @@ export function VisitantesDialogs() {
         onOpenChange={() => setOpen("create")}
       />
 
+      {/* Drawer de edición */}
+      {currentRow && (
+        <VisitorsMutateDrawer
+          key={`visitor-edit-${currentRow.id}`}
+          open={open === "edit"}
+          onOpenChange={() => {
+            setOpen("edit");
+            setTimeout(() => setCurrentRow(null), 500);
+          }}
+          currentRow={currentRow}
+        />
+      )}
+
       {/* Diálogo de cancelación */}
       {currentRow && (
         <VisitorsDeleteDialog

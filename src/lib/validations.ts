@@ -91,6 +91,15 @@ export type CancelVisitorReservationInput = z.infer<
   typeof cancelVisitorReservationSchema
 >;
 
+export const updateVisitorReservationSchema =
+  createVisitorReservationSchema.extend({
+    id: z.string().uuid(),
+  });
+
+export type UpdateVisitorReservationInput = z.infer<
+  typeof updateVisitorReservationSchema
+>;
+
 // ─── Admin: Spots Delete ─────────────────────────────────────
 
 export const deleteSpotSchema = z.object({

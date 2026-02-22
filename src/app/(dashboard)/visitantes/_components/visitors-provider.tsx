@@ -11,7 +11,7 @@ import * as React from "react";
 import useDialogState from "@/hooks/use-dialog-state";
 import type { VisitorReservationWithDetails } from "@/lib/queries/visitor-reservations";
 
-type VisitantesDialogType = "create" | "cancel";
+type VisitantesDialogType = "create" | "edit" | "cancel";
 
 interface VisitantesContextType {
   open: VisitantesDialogType | null;

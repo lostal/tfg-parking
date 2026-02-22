@@ -11,6 +11,10 @@ import {
   VisitorReservationEmail,
   type VisitorReservationEmailProps,
 } from "./templates/visitor-reservation";
+import {
+  VisitorCancellationEmail,
+  type VisitorCancellationEmailProps,
+} from "./templates/visitor-cancellation";
 
 /** Parámetros para enviar el email de confirmación de visitante */
 export interface SendVisitorEmailParams extends VisitorReservationEmailProps {
@@ -57,5 +61,54 @@ export async function sendVisitorReservationEmail(
 
   if (error) {
     throw new Error(`Error al enviar email al visitante: ${error.message}`);
+  }
+}
+
+/** Parámetros para enviar el email de cancelación */
+export interface SendVisitorCancellationEmailParams extends VisitorCancellationEmailProps {
+  to: string;
+  /** Archivo .ics con METHOD:CANCEL para eliminar el evento del calendario */
+  icsBuffer: Buffer;
+}
+
+/**
+ * Envía el email de cancelación de reserva al visitante.
+ * Adjunta el .ics de cancelación para que su app de calendario
+ * elimine el evento automáticamente.
+ */
+export async function sendVisitorCancellationEmail(
+  params: SendVisitorCancellationEmailParams
+): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    console.error(
+      "RESEND_API_KEY no configurada — email de cancelación no enviado"
+    );
+    return;
+  }
+
+  const resend = new Resend(apiKey);
+  const fromAddress = process.env.RESEND_FROM_EMAIL ?? "noreply@parking.local";
+
+  const { to, icsBuffer, ...emailProps } = params;
+
+  const { error } = await resend.emails.send({
+    from: `Gruposiete <${fromAddress}>`,
+    to,
+    subject: `Plaza ${params.spotLabel} cancelada — ${params.date}`,
+    react: createElement(VisitorCancellationEmail, emailProps),
+    attachments: [
+      {
+        filename: `cancelacion-plaza-${params.spotLabel.toLowerCase().replace(/\s+/g, "-")}.ics`,
+        content: icsBuffer,
+      },
+    ],
+  });
+
+  if (error) {
+    throw new Error(
+      `Error al enviar email de cancelación al visitante: ${error.message}`
+    );
   }
 }

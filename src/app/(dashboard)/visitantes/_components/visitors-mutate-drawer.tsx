@@ -1,8 +1,9 @@
 /**
  * Visitors Mutate Drawer
  *
- * Sheet lateral para crear una nueva reserva de visitante.
- * Carga dinámicamente las plazas disponibles al seleccionar la fecha.
+ * Sheet lateral para crear o editar una reserva de visitante.
+ * En modo edición se pre-rellena el formulario con los datos actuales
+ * y las plazas disponibles excluyen la plaza ya ocupada por esta reserva.
  */
 
 "use client";
@@ -53,9 +54,11 @@ import {
   createVisitorReservationSchema,
   type CreateVisitorReservationInput,
 } from "@/lib/validations";
+import type { VisitorReservationWithDetails } from "@/lib/queries/visitor-reservations";
 
 import {
   createVisitorReservation,
+  updateVisitorReservation,
   getAvailableVisitorSpotsAction,
 } from "../actions";
 import { useVisitantes } from "./visitors-provider";
@@ -63,13 +66,16 @@ import { useVisitantes } from "./visitors-provider";
 interface VisitorsMutateDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  currentRow?: VisitorReservationWithDetails;
 }
 
 export function VisitorsMutateDrawer({
   open,
   onOpenChange,
+  currentRow,
 }: VisitorsMutateDrawerProps) {
   const { onRefresh } = useVisitantes();
+  const isEdit = !!currentRow;
 
   const [availableSpots, setAvailableSpots] = React.useState<
     { id: string; label: string }[]
@@ -79,19 +85,29 @@ export function VisitorsMutateDrawer({
 
   const form = useForm<CreateVisitorReservationInput>({
     resolver: zodResolver(createVisitorReservationSchema),
-    defaultValues: {
-      spot_id: "",
-      date: "",
-      visitor_name: "",
-      visitor_company: "",
-      visitor_email: "",
-      notes: "",
-    },
+    defaultValues: isEdit
+      ? {
+          spot_id: currentRow.spot_id,
+          date: currentRow.date,
+          visitor_name: currentRow.visitor_name,
+          visitor_company: currentRow.visitor_company,
+          visitor_email: currentRow.visitor_email,
+          notes: currentRow.notes ?? "",
+        }
+      : {
+          spot_id: "",
+          date: "",
+          visitor_name: "",
+          visitor_company: "",
+          visitor_email: "",
+          notes: "",
+        },
   });
 
   const selectedDate = form.watch("date");
 
-  // Cargar plazas disponibles cuando cambia la fecha
+  // Cargar plazas disponibles cuando cambia la fecha.
+  // En modo edición excluye la reserva actual del cálculo de ocupación.
   React.useEffect(() => {
     if (!selectedDate) {
       setAvailableSpots([]);
@@ -102,9 +118,12 @@ export function VisitorsMutateDrawer({
 
     const fetchSpots = async () => {
       setLoadingSpots(true);
-      form.setValue("spot_id", "");
+      form.setValue("spot_id", isEdit ? currentRow.spot_id : "");
       try {
-        const result = await getAvailableVisitorSpotsAction(selectedDate);
+        const result = await getAvailableVisitorSpotsAction(
+          selectedDate,
+          isEdit ? currentRow.id : undefined
+        );
         if (!cancelled) {
           if (result.success) {
             setAvailableSpots(result.data);
@@ -129,10 +148,16 @@ export function VisitorsMutateDrawer({
   const onSubmit = async (data: CreateVisitorReservationInput) => {
     setIsSubmitting(true);
     try {
-      const result = await createVisitorReservation(data);
+      const result = isEdit
+        ? await updateVisitorReservation({ ...data, id: currentRow.id })
+        : await createVisitorReservation(data);
 
       if (result.success) {
-        toast.success("Reserva creada y email enviado al visitante");
+        toast.success(
+          isEdit
+            ? "Reserva actualizada y email reenviado al visitante"
+            : "Reserva creada y email enviado al visitante"
+        );
         onOpenChange(false);
         form.reset();
         onRefresh();
@@ -140,7 +165,9 @@ export function VisitorsMutateDrawer({
         toast.error(result.error);
       }
     } catch {
-      toast.error("Error al crear la reserva");
+      toast.error(
+        isEdit ? "Error al actualizar la reserva" : "Error al crear la reserva"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -155,10 +182,15 @@ export function VisitorsMutateDrawer({
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent className="flex flex-col sm:max-w-md">
         <SheetHeader className="text-start">
-          <SheetTitle>Nueva reserva de visitante</SheetTitle>
+          <SheetTitle>
+            {isEdit
+              ? "Editar reserva de visitante"
+              : "Nueva reserva de visitante"}
+          </SheetTitle>
           <SheetDescription>
-            Reserva una plaza para un visitante externo. Se le enviará un email
-            de confirmación con los pases digitales.
+            {isEdit
+              ? "Modifica los datos de la reserva. Se reenviará el email de confirmación al visitante."
+              : "Reserva una plaza para un visitante externo. Se le enviará un email de confirmación."}
           </SheetDescription>
         </SheetHeader>
 
@@ -346,8 +378,10 @@ export function VisitorsMutateDrawer({
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creando…
+                {isEdit ? "Guardando…" : "Creando…"}
               </>
+            ) : isEdit ? (
+              "Guardar cambios"
             ) : (
               "Crear reserva"
             )}

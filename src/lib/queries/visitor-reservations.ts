@@ -56,11 +56,23 @@ export async function getUpcomingVisitorReservations(): Promise<
 /**
  * Obtiene las plazas de tipo "visitor" activas disponibles para una fecha dada.
  * Excluye las que ya tienen una reserva confirmada ese día.
+ * @param excludeReservationId - ID de reserva a ignorar (útil al editar)
  */
 export async function getAvailableVisitorSpotsForDate(
-  date: string
+  date: string,
+  excludeReservationId?: string
 ): Promise<{ id: string; label: string }[]> {
   const supabase = await createClient();
+
+  let reservedQuery = supabase
+    .from("visitor_reservations")
+    .select("spot_id")
+    .eq("date", date)
+    .eq("status", "confirmed");
+
+  if (excludeReservationId) {
+    reservedQuery = reservedQuery.neq("id", excludeReservationId);
+  }
 
   const [spotsResult, reservedResult] = await Promise.all([
     supabase
@@ -69,11 +81,7 @@ export async function getAvailableVisitorSpotsForDate(
       .eq("type", "visitor")
       .eq("is_active", true)
       .order("label"),
-    supabase
-      .from("visitor_reservations")
-      .select("spot_id")
-      .eq("date", date)
-      .eq("status", "confirmed"),
+    reservedQuery,
   ]);
 
   if (spotsResult.error)

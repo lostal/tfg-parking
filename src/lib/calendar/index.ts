@@ -49,6 +49,41 @@ function nowICS(): string {
 }
 
 /**
+ * Genera un Buffer con el contenido de un archivo .ics de cancelación.
+ * Usa METHOD:CANCEL para que Apple Calendar, Outlook y Google Calendar
+ * eliminen el evento automáticamente al abrir el adjunto.
+ */
+export function generateCancellationICSBuffer(data: {
+  reservationId: string;
+  spotLabel: string;
+  date: string;
+}): Buffer {
+  const summary = icsEscape(
+    `Plaza ${data.spotLabel} — Aparcamiento Gruposiete`
+  );
+
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Gruposiete//Aparcamiento//ES",
+    "CALSCALE:GREGORIAN",
+    "METHOD:CANCEL",
+    "BEGIN:VEVENT",
+    `DTSTART;VALUE=DATE:${toICSDate(data.date)}`,
+    `DTEND;VALUE=DATE:${nextDayICS(data.date)}`,
+    `SUMMARY:${summary}`,
+    `UID:${data.reservationId}@gruposiete.parking`,
+    `DTSTAMP:${nowICS()}`,
+    "SEQUENCE:1",
+    "STATUS:CANCELLED",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+
+  return Buffer.from(ics, "utf-8");
+}
+
+/**
  * Genera un Buffer con el contenido de un archivo .ics para la reserva.
  * Cuando el visitante abre el adjunto, su app de calendario pregunta
  * si desea añadir el evento (Apple Calendar, Outlook, Google Calendar…).

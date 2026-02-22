@@ -3,9 +3,9 @@
 /**
  * Server Actions de Reservas de Visitantes
  *
- * Server Actions para crear y cancelar reservas realizadas
- * por empleados para visitantes externos, con envío de email
- * de confirmación y archivo .ics para añadir al calendario.
+ * Server Actions para crear, editar y cancelar reservas realizadas
+ * por empleados para visitantes externos, con envío de emails
+ * de confirmación y cancelación con archivo .ics adjunto.
  */
 
 import { revalidatePath } from "next/cache";
@@ -17,11 +17,16 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import {
   createVisitorReservationSchema,
+  updateVisitorReservationSchema,
   cancelVisitorReservationSchema,
 } from "@/lib/validations";
-import { sendVisitorReservationEmail } from "@/lib/email";
+import {
+  sendVisitorReservationEmail,
+  sendVisitorCancellationEmail,
+} from "@/lib/email";
 import {
   generateICSBuffer,
+  generateCancellationICSBuffer,
   generateGoogleCalendarUrl,
   generateOutlookUrl,
 } from "@/lib/calendar";
@@ -55,15 +60,20 @@ export async function getVisitorReservationsAction(): Promise<
 
 /**
  * Obtiene las plazas de visitantes disponibles para una fecha dada.
+ * @param excludeReservationId - Excluye esta reserva del cálculo (para edición)
  */
 export async function getAvailableVisitorSpotsAction(
-  date: string
+  date: string,
+  excludeReservationId?: string
 ): Promise<ActionResult<{ id: string; label: string }[]>> {
   try {
     const user = await getCurrentUser();
     if (!user) return error("No autenticado");
 
-    const spots = await getAvailableVisitorSpotsForDate(date);
+    const spots = await getAvailableVisitorSpotsForDate(
+      date,
+      excludeReservationId
+    );
     return success(spots);
   } catch (err) {
     console.error("Error al obtener plazas de visitantes:", err);
@@ -73,15 +83,61 @@ export async function getAvailableVisitorSpotsAction(
   }
 }
 
+// ─── Helpers internos ─────────────────────────────────────────
+
+/** Construye y envía el email de confirmación (usado en crear y editar) */
+async function sendConfirmationEmail(params: {
+  reservationId: string;
+  visitorEmail: string;
+  visitorName: string;
+  visitorCompany: string;
+  spotLabel: string;
+  date: string; // YYYY-MM-DD
+  reservedByName: string;
+  notes?: string | null;
+}) {
+  const formattedDate = format(
+    new Date(params.date + "T00:00:00"),
+    "EEEE, d 'de' MMMM 'de' yyyy",
+    { locale: es }
+  );
+
+  const calendarData = {
+    reservationId: params.reservationId,
+    spotLabel: params.spotLabel,
+    date: params.date,
+    visitorName: params.visitorName,
+    visitorCompany: params.visitorCompany,
+    reservedByName: params.reservedByName,
+    notes: params.notes,
+  };
+
+  const [icsBuffer, googleCalendarUrl, outlookUrl] = await Promise.all([
+    Promise.resolve(generateICSBuffer(calendarData)),
+    Promise.resolve(generateGoogleCalendarUrl(calendarData)),
+    Promise.resolve(generateOutlookUrl(calendarData)),
+  ]);
+
+  await sendVisitorReservationEmail({
+    to: params.visitorEmail,
+    visitorName: params.visitorName,
+    visitorCompany: params.visitorCompany,
+    spotLabel: params.spotLabel,
+    date: formattedDate,
+    reservedByName: params.reservedByName,
+    notes: params.notes,
+    googleCalendarUrl,
+    outlookUrl,
+    icsBuffer,
+  });
+
+  return { formattedDate };
+}
+
 // ─── Mutations ────────────────────────────────────────────────
 
 /**
- * Crea una reserva de visitante y envía el email de confirmación
- * con el archivo .ics adjunto para añadir al calendario.
- *
- * Reglas de negocio:
- * - Cualquier empleado autenticado puede reservar para un visitante
- * - Una reserva por plaza por día (garantizado por índice único de la BD)
+ * Crea una reserva de visitante y envía el email de confirmación.
  */
 export const createVisitorReservation = actionClient
   .schema(createVisitorReservationSchema)
@@ -100,7 +156,6 @@ export const createVisitorReservation = actionClient
     const spotLabel = spotData?.label ?? parsedInput.spot_id;
     const reservedByName = user.profile?.full_name ?? user.email;
 
-    // Insertar reserva en la BD
     const { data, error: insertError } = await supabase
       .from("visitor_reservations")
       .insert({
@@ -127,45 +182,19 @@ export const createVisitorReservation = actionClient
     }
 
     const reservationId = data.id;
-    const formattedDate = format(
-      new Date(parsedInput.date + "T00:00:00"),
-      "EEEE, d 'de' MMMM 'de' yyyy",
-      { locale: es }
-    );
 
-    const calendarData = {
-      reservationId,
-      spotLabel,
-      date: parsedInput.date,
-      visitorName: parsedInput.visitor_name,
-      visitorCompany: parsedInput.visitor_company,
-      reservedByName,
-      notes: parsedInput.notes,
-    };
-
-    // Enviar email con .ics adjunto de forma no bloqueante.
-    // Si falla el email, la reserva ya está creada igualmente.
     try {
-      const [icsBuffer, googleCalendarUrl, outlookUrl] = await Promise.all([
-        Promise.resolve(generateICSBuffer(calendarData)),
-        Promise.resolve(generateGoogleCalendarUrl(calendarData)),
-        Promise.resolve(generateOutlookUrl(calendarData)),
-      ]);
-
-      await sendVisitorReservationEmail({
-        to: parsedInput.visitor_email,
+      await sendConfirmationEmail({
+        reservationId,
+        visitorEmail: parsedInput.visitor_email,
         visitorName: parsedInput.visitor_name,
         visitorCompany: parsedInput.visitor_company,
         spotLabel,
-        date: formattedDate,
+        date: parsedInput.date,
         reservedByName,
         notes: parsedInput.notes,
-        googleCalendarUrl,
-        outlookUrl,
-        icsBuffer,
       });
 
-      // Marcar notificación como enviada
       await supabase
         .from("visitor_reservations")
         .update({ notification_sent: true })
@@ -182,10 +211,89 @@ export const createVisitorReservation = actionClient
   });
 
 /**
- * Cancela una reserva de visitante.
- *
- * Reglas de negocio:
- * - Solo el empleado que la creó (o un admin) puede cancelarla
+ * Edita una reserva de visitante existente y reenvía el email de confirmación.
+ * Solo puede editar el empleado que la creó o un administrador.
+ */
+export const updateVisitorReservation = actionClient
+  .schema(updateVisitorReservationSchema)
+  .action(async ({ parsedInput }) => {
+    const user = await getCurrentUser();
+    if (!user) throw new Error("No autenticado");
+
+    const supabase = await createClient();
+    const isAdmin = user.profile?.role === "admin";
+
+    // Obtener spot label de la nueva plaza
+    const { data: spotData } = await supabase
+      .from("spots")
+      .select("label")
+      .eq("id", parsedInput.spot_id)
+      .single();
+
+    const spotLabel = spotData?.label ?? parsedInput.spot_id;
+    const reservedByName = user.profile?.full_name ?? user.email;
+
+    // Actualizar la reserva (solo el creador o admin pueden hacerlo)
+    const baseQuery = supabase
+      .from("visitor_reservations")
+      .update({
+        spot_id: parsedInput.spot_id,
+        date: parsedInput.date,
+        visitor_name: parsedInput.visitor_name,
+        visitor_company: parsedInput.visitor_company,
+        visitor_email: parsedInput.visitor_email,
+        notes: parsedInput.notes ?? null,
+        notification_sent: false,
+      })
+      .eq("id", parsedInput.id)
+      .eq("status", "confirmed");
+
+    const { error: updateError } = await (isAdmin
+      ? baseQuery
+      : baseQuery.eq("reserved_by", user.id));
+
+    if (updateError) {
+      if (updateError.code === "23505") {
+        throw new Error(
+          "Esta plaza ya tiene una reserva de visitante para ese día"
+        );
+      }
+      throw new Error(
+        `Error al actualizar reserva de visitante: ${updateError.message}`
+      );
+    }
+
+    // Reenviar email de confirmación con los datos actualizados
+    try {
+      await sendConfirmationEmail({
+        reservationId: parsedInput.id,
+        visitorEmail: parsedInput.visitor_email,
+        visitorName: parsedInput.visitor_name,
+        visitorCompany: parsedInput.visitor_company,
+        spotLabel,
+        date: parsedInput.date,
+        reservedByName,
+        notes: parsedInput.notes,
+      });
+
+      await supabase
+        .from("visitor_reservations")
+        .update({ notification_sent: true })
+        .eq("id", parsedInput.id);
+    } catch (emailErr) {
+      console.error(
+        "Error al reenviar email al visitante (la reserva se actualizó correctamente):",
+        emailErr
+      );
+    }
+
+    revalidatePath("/visitantes");
+    return { id: parsedInput.id };
+  });
+
+/**
+ * Cancela una reserva de visitante y envía email de cancelación.
+ * Solo puede cancelar el empleado que la creó o un administrador.
  */
 export const cancelVisitorReservation = actionClient
   .schema(cancelVisitorReservationSchema)
@@ -194,16 +302,66 @@ export const cancelVisitorReservation = actionClient
     if (!user) throw new Error("No autenticado");
 
     const supabase = await createClient();
+    const isAdmin = user.profile?.role === "admin";
 
+    // Obtener los detalles antes de cancelar (para el email)
+    const fetchBase = supabase
+      .from("visitor_reservations")
+      .select(
+        "visitor_email, visitor_name, visitor_company, date, spots!visitor_reservations_spot_id_fkey(label)"
+      )
+      .eq("id", parsedInput.id)
+      .eq("status", "confirmed");
+
+    const { data: reservation } = await (
+      isAdmin ? fetchBase : fetchBase.eq("reserved_by", user.id)
+    ).single();
+
+    if (!reservation) {
+      throw new Error("Reserva no encontrada o sin permisos para cancelarla");
+    }
+
+    // Cancelar la reserva
     const { error: updateError } = await supabase
       .from("visitor_reservations")
       .update({ status: "cancelled" })
-      .eq("id", parsedInput.id)
-      .eq("reserved_by", user.id);
+      .eq("id", parsedInput.id);
 
     if (updateError) {
       throw new Error(
         `Error al cancelar reserva de visitante: ${updateError.message}`
+      );
+    }
+
+    // Enviar email de cancelación con ICS METHOD:CANCEL (no bloqueante)
+    try {
+      const spotLabel =
+        (reservation.spots as { label: string } | null)?.label ?? "";
+      const formattedDate = format(
+        new Date(reservation.date + "T00:00:00"),
+        "EEEE, d 'de' MMMM 'de' yyyy",
+        { locale: es }
+      );
+      const cancelledByName = user.profile?.full_name ?? user.email;
+
+      const cancellationICS = generateCancellationICSBuffer({
+        reservationId: parsedInput.id,
+        spotLabel,
+        date: reservation.date,
+      });
+
+      await sendVisitorCancellationEmail({
+        to: reservation.visitor_email,
+        visitorName: reservation.visitor_name,
+        spotLabel,
+        date: formattedDate,
+        cancelledByName,
+        icsBuffer: cancellationICS,
+      });
+    } catch (emailErr) {
+      console.error(
+        "Error al enviar email de cancelación (la reserva se canceló correctamente):",
+        emailErr
       );
     }
 
