@@ -23,18 +23,6 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.email().optional(),
 
-  // Apple Wallet (opcional — requiere Apple Developer Account)
-  APPLE_WALLET_TEAM_ID: z.string().min(1).optional(),
-  APPLE_WALLET_PASS_TYPE_ID: z.string().min(1).optional(),
-  APPLE_WALLET_WWDR: z.string().min(1).optional(),
-  APPLE_WALLET_CERT: z.string().min(1).optional(),
-  APPLE_WALLET_KEY: z.string().min(1).optional(),
-  APPLE_WALLET_KEY_PASSPHRASE: z.string().optional(),
-
-  // Google Wallet (opcional — requiere Google Cloud + Wallet API)
-  GOOGLE_WALLET_ISSUER_ID: z.string().min(1).optional(),
-  GOOGLE_WALLET_SERVICE_ACCOUNT: z.string().min(1).optional(),
-
   // App
   NEXT_PUBLIC_APP_URL: z.url().optional(),
 });

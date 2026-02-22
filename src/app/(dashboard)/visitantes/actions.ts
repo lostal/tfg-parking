@@ -5,7 +5,7 @@
  *
  * Server Actions para crear y cancelar reservas realizadas
  * por empleados para visitantes externos, con envío de email
- * y generación de pases digitales (Apple Wallet / Google Wallet).
+ * de confirmación y archivo .ics para añadir al calendario.
  */
 
 import { revalidatePath } from "next/cache";
@@ -20,7 +20,11 @@ import {
   cancelVisitorReservationSchema,
 } from "@/lib/validations";
 import { sendVisitorReservationEmail } from "@/lib/email";
-import { generateAppleWalletPass, generateGoogleWalletUrl } from "@/lib/wallet";
+import {
+  generateICSBuffer,
+  generateGoogleCalendarUrl,
+  generateOutlookUrl,
+} from "@/lib/calendar";
 import {
   getUpcomingVisitorReservations,
   getAvailableVisitorSpotsForDate,
@@ -73,7 +77,7 @@ export async function getAvailableVisitorSpotsAction(
 
 /**
  * Crea una reserva de visitante y envía el email de confirmación
- * con los pases digitales adjuntos/enlazados.
+ * con el archivo .ics adjunto para añadir al calendario.
  *
  * Reglas de negocio:
  * - Cualquier empleado autenticado puede reservar para un visitante
@@ -87,7 +91,6 @@ export const createVisitorReservation = actionClient
 
     const supabase = await createClient();
 
-    // Obtener etiqueta de la plaza en paralelo
     const { data: spotData } = await supabase
       .from("spots")
       .select("label")
@@ -130,22 +133,23 @@ export const createVisitorReservation = actionClient
       { locale: es }
     );
 
-    // Enviar email con pases digitales de forma no bloqueante.
+    const calendarData = {
+      reservationId,
+      spotLabel,
+      date: parsedInput.date,
+      visitorName: parsedInput.visitor_name,
+      visitorCompany: parsedInput.visitor_company,
+      reservedByName,
+      notes: parsedInput.notes,
+    };
+
+    // Enviar email con .ics adjunto de forma no bloqueante.
     // Si falla el email, la reserva ya está creada igualmente.
     try {
-      const passData = {
-        reservationId,
-        spotLabel,
-        date: parsedInput.date,
-        visitorName: parsedInput.visitor_name,
-        visitorCompany: parsedInput.visitor_company,
-        reservedByName,
-        notes: parsedInput.notes,
-      };
-
-      const [pkpassBuffer, googleWalletUrl] = await Promise.all([
-        generateAppleWalletPass(passData),
-        generateGoogleWalletUrl(passData),
+      const [icsBuffer, googleCalendarUrl, outlookUrl] = await Promise.all([
+        Promise.resolve(generateICSBuffer(calendarData)),
+        Promise.resolve(generateGoogleCalendarUrl(calendarData)),
+        Promise.resolve(generateOutlookUrl(calendarData)),
       ]);
 
       await sendVisitorReservationEmail({
@@ -156,8 +160,9 @@ export const createVisitorReservation = actionClient
         date: formattedDate,
         reservedByName,
         notes: parsedInput.notes,
-        googleWalletUrl,
-        pkpassBuffer,
+        googleCalendarUrl,
+        outlookUrl,
+        icsBuffer,
       });
 
       // Marcar notificación como enviada
@@ -167,7 +172,7 @@ export const createVisitorReservation = actionClient
         .eq("id", reservationId);
     } catch (emailErr) {
       console.error(
-        "Error al enviar email/pases al visitante (la reserva se creó correctamente):",
+        "Error al enviar email al visitante (la reserva se creó correctamente):",
         emailErr
       );
     }

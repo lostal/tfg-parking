@@ -2,6 +2,7 @@
  * Servicio de Email — Resend + React Email
  *
  * Envío de emails transaccionales para confirmaciones de reservas de visitantes.
+ * Adjunta el archivo .ics para añadir el evento al calendario del visitante.
  */
 
 import { createElement } from "react";
@@ -15,13 +16,13 @@ import {
 export interface SendVisitorEmailParams extends VisitorReservationEmailProps {
   /** Dirección de email del destinatario */
   to: string;
-  /** Adjunto .pkpass para Apple Wallet (opcional) */
-  pkpassBuffer?: Buffer | null;
+  /** Archivo .ics para añadir el evento al calendario */
+  icsBuffer: Buffer;
 }
 
 /**
  * Envía el email de confirmación de reserva al visitante.
- * Adjunta el .pkpass si se proporciona y añade el enlace de Google Wallet.
+ * Adjunta el .ics para que el visitante pueda añadir el evento a su calendario.
  * Si no hay API key configurada, registra un aviso y no hace nada.
  */
 export async function sendVisitorReservationEmail(
@@ -39,22 +40,19 @@ export async function sendVisitorReservationEmail(
   const resend = new Resend(apiKey);
   const fromAddress = process.env.RESEND_FROM_EMAIL ?? "noreply@parking.local";
 
-  const attachments: { filename: string; content: Buffer }[] = [];
-  if (params.pkpassBuffer) {
-    attachments.push({
-      filename: `plaza-${params.spotLabel.toLowerCase().replace(/\s+/g, "-")}.pkpass`,
-      content: params.pkpassBuffer,
-    });
-  }
-
-  const { to, pkpassBuffer: _, ...emailProps } = params;
+  const { to, icsBuffer, ...emailProps } = params;
 
   const { error } = await resend.emails.send({
-    from: `Parking <${fromAddress}>`,
+    from: `Gruposiete <${fromAddress}>`,
     to,
     subject: `Plaza ${params.spotLabel} reservada — ${params.date}`,
     react: createElement(VisitorReservationEmail, emailProps),
-    attachments,
+    attachments: [
+      {
+        filename: `reserva-plaza-${params.spotLabel.toLowerCase().replace(/\s+/g, "-")}.ics`,
+        content: icsBuffer,
+      },
+    ],
   });
 
   if (error) {
