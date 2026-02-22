@@ -137,8 +137,12 @@ export function UsersTable({ profiles, managementSpots }: UsersTableProps) {
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="group/row">
+              table.getRowModel().rows.map((row, index) => (
+                <TableRow
+                  key={row.id}
+                  className="group/row"
+                  style={{ "--row-index": index } as React.CSSProperties}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}

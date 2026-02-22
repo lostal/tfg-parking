@@ -26,7 +26,7 @@ export default async function ParkingPage() {
     assignedSpot = spots.find((s) => s.assigned_to === user.id) ?? null;
   }
 
-  const title = isManagement ? "Mis Cesiones" : "Parking";
+  const title = "Parking";
   const description = isManagement
     ? `Cede tu plaza asignada${assignedSpot ? ` (${assignedSpot.label})` : ""} los días que no la uses`
     : "Consulta la disponibilidad y reserva tu plaza";

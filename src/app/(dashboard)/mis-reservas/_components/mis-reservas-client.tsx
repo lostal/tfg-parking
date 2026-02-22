@@ -24,6 +24,7 @@ import {
   Trash2,
   ArrowRight,
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -348,13 +349,32 @@ export function MisReservasClient({
 
   return (
     <TooltipProvider>
-      <div className="space-y-6">
+      <motion.div
+        className="space-y-6"
+        initial="hidden"
+        animate="show"
+        variants={{
+          hidden: {},
+          show: { transition: { staggerChildren: 0.06 } },
+        }}
+      >
         {GROUP_ORDER.map((groupKey) => {
           const groupItems = grouped[groupKey];
           if (!groupItems || groupItems.length === 0) return null;
 
           return (
-            <div key={groupKey} className="space-y-2">
+            <motion.div
+              key={groupKey}
+              className="space-y-2"
+              variants={{
+                hidden: { opacity: 0, y: 10 },
+                show: {
+                  opacity: 1,
+                  y: 0,
+                  transition: { type: "spring", stiffness: 380, damping: 28 },
+                },
+              }}
+            >
               {/* Group header */}
               <div className="flex items-center gap-3">
                 <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
@@ -386,10 +406,10 @@ export function MisReservasClient({
                   )
                 )}
               </div>
-            </div>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
     </TooltipProvider>
   );
 }

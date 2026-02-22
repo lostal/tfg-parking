@@ -21,6 +21,7 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -41,12 +42,56 @@ export interface ParkingCalendarProps {
   /** Mes visible (primer día del mes) */
   currentMonth: Date;
   onMonthChange: (newMonth: Date) => void;
+  /** Dirección de la navegación: 1 → siguiente mes, -1 → mes anterior, 0 → inicial */
+  slideDirection?: number;
   /** Fechas seleccionadas por el directivo (multi-selección) */
   selectedDates?: Set<string>;
   /** Tap/click en un día */
   onDayClick: (date: string) => void;
-  isLoading?: boolean;
 }
+
+// ─── Variantes de animación del mes ──────────────────────────
+//
+// Se definen como funciones que reciben el valor `custom` de AnimatePresence.
+// Esto garantiza que las animaciones de salida (exit) usen siempre la dirección
+// actual, no la capturada en el momento de montar el componente.
+
+const EASE_OUT = [0.0, 0.0, 0.2, 1] as const;
+const EASE_IN = [0.4, 0.0, 1, 1] as const;
+
+const monthGridVariants = {
+  initial: (dir: number) => ({
+    x: dir >= 0 ? "22%" : "-22%",
+    opacity: 0,
+  }),
+  animate: {
+    x: "0%",
+    opacity: 1,
+    transition: { duration: 0.22, ease: EASE_OUT },
+  },
+  exit: (dir: number) => ({
+    x: dir >= 0 ? "-22%" : "22%",
+    opacity: 0,
+    transition: { duration: 0.16, ease: EASE_IN },
+  }),
+};
+
+const monthTitleVariants = {
+  initial: (dir: number) => ({
+    opacity: 0,
+    y: dir >= 0 ? 5 : -5,
+  }),
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.2, ease: EASE_OUT },
+  },
+  exit: (dir: number) => ({
+    opacity: 0,
+    y: dir >= 0 ? -5 : 5,
+    transition: { duration: 0.14, ease: EASE_IN },
+  }),
+};
 
 // ─── Colores por estado ──────────────────────────────────────
 
@@ -185,7 +230,7 @@ function DayCell({
       disabled={!canInteract}
       className={cn(
         "relative aspect-square min-h-11 w-full rounded-xl text-sm font-semibold select-none",
-        "focus-visible:ring-ring transition-all duration-100 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
+        "focus-visible:ring-ring transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
         "disabled:pointer-events-none disabled:opacity-60",
         colorClass,
         isTodayFlag && "ring-foreground/40 ring-2 ring-offset-1",
@@ -213,11 +258,13 @@ export function ParkingCalendar({
   role,
   dayData,
   currentMonth,
+  slideDirection = 0,
   onMonthChange,
   selectedDates = new Set(),
   onDayClick,
-  isLoading,
 }: ParkingCalendarProps) {
+  const monthKey = format(currentMonth, "yyyy-MM");
+
   // Construir las semanas del mes (siempre 6 semanas visuales para estabilidad)
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -250,9 +297,22 @@ export function ParkingCalendar({
           <ChevronLeft className="size-4" />
         </Button>
 
-        <h3 className="text-base font-semibold capitalize">
-          {format(currentMonth, "MMMM yyyy", { locale: es })}
-        </h3>
+        {/* Título del mes animado — sube/baja según la dirección */}
+        <div className="overflow-hidden">
+          <AnimatePresence mode="wait" custom={slideDirection}>
+            <motion.h3
+              key={monthKey + "-title"}
+              custom={slideDirection}
+              variants={monthTitleVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="text-base font-semibold capitalize"
+            >
+              {format(currentMonth, "MMMM yyyy", { locale: es })}
+            </motion.h3>
+          </AnimatePresence>
+        </div>
 
         <Button
           variant="ghost"
@@ -264,7 +324,7 @@ export function ParkingCalendar({
         </Button>
       </div>
 
-      {/* Días de la semana */}
+      {/* Días de la semana — estáticos, no cambian */}
       <div className="grid grid-cols-7 gap-1">
         {weekDays.map((wd) => (
           <div
@@ -276,45 +336,64 @@ export function ParkingCalendar({
         ))}
       </div>
 
-      {/* Grid del mes */}
-      <div
-        className={cn(
-          "grid grid-cols-7 gap-1",
-          isLoading && "pointer-events-none opacity-40"
-        )}
+      {/* Grid del mes — ambas animaciones ocurren en paralelo (popLayout).
+          Sin overflow-hidden: el ring del día actual no queda recortado en esquinas.
+          El overflow horizontal queda tapado por opacity:0 en los extremos y por
+          el html{overflow-x:hidden} global. */}
+      <AnimatePresence mode="popLayout" custom={slideDirection}>
+        <motion.div
+          key={monthKey}
+          custom={slideDirection}
+          variants={monthGridVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="grid grid-cols-7 gap-1"
+        >
+          {weeks.map((week) =>
+            week.map((date) => {
+              const dateStr = format(date, "yyyy-MM-dd");
+              const inCurrentMonth = isSameMonth(date, currentMonth);
+              const today = isToday(date);
+              const data = dayData.get(dateStr);
+              const isSelected = selectedDates.has(dateStr);
+
+              return (
+                <DayCell
+                  key={dateStr}
+                  dateStr={dateStr}
+                  dayNumber={date.getDate()}
+                  isCurrentMonth={inCurrentMonth}
+                  isToday={today}
+                  role={role}
+                  data={data}
+                  isSelected={isSelected}
+                  onClick={onDayClick}
+                />
+              );
+            })
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Leyenda — se desliza suavemente cuando el grid de arriba cambia de altura */}
+      <motion.div
+        layout
+        transition={{ layout: { type: "spring", stiffness: 350, damping: 30 } }}
       >
-        {weeks.map((week) =>
-          week.map((date) => {
-            const dateStr = format(date, "yyyy-MM-dd");
-            const inCurrentMonth = isSameMonth(date, currentMonth);
-            const today = isToday(date);
-            const data = dayData.get(dateStr);
-            const isSelected = selectedDates.has(dateStr);
-
-            return (
-              <DayCell
-                key={dateStr}
-                dateStr={dateStr}
-                dayNumber={date.getDate()}
-                isCurrentMonth={inCurrentMonth}
-                isToday={today}
-                role={role}
-                data={data}
-                isSelected={isSelected}
-                onClick={onDayClick}
-              />
-            );
-          })
-        )}
-      </div>
-
-      {/* Leyenda */}
-      <CalendarLegend role={role} />
+        <CalendarLegend role={role} />
+      </motion.div>
 
       {role === "management" && (
-        <p className="text-muted-foreground text-xs">
+        <motion.p
+          layout
+          transition={{
+            layout: { type: "spring", stiffness: 350, damping: 30 },
+          }}
+          className="text-muted-foreground text-xs"
+        >
           Toca varios días para seleccionarlos y ceder tu plaza.
-        </p>
+        </motion.p>
       )}
     </div>
   );

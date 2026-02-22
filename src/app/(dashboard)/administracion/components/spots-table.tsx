@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 import {
   type ColumnFiltersState,
   type SortingState,
@@ -112,8 +112,12 @@ export function SpotsTable({ spots, profiles }: SpotsTableProps) {
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="group/row">
+              table.getRowModel().rows.map((row, index) => (
+                <TableRow
+                  key={row.id}
+                  className="group/row"
+                  style={{ "--row-index": index } as CSSProperties}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}

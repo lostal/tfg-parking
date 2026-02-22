@@ -125,11 +125,12 @@ export function VisitantesTable({ data, isLoading }: VisitantesTableProps) {
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
+              table.getRowModel().rows.map((row, index) => (
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   className="group/row"
+                  style={{ "--row-index": index } as React.CSSProperties}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
