@@ -196,6 +196,7 @@ export function buildUsersColumns(
         );
       },
       enableSorting: false,
+      meta: { className: "hidden @xl/content:table-cell" },
     },
     {
       id: "actions",

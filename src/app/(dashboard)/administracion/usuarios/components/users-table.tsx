@@ -168,7 +168,7 @@ export function UsersTable({ profiles, managementSpots }: UsersTableProps) {
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      <DataTablePagination table={table} className="mt-auto" />
     </div>
   );
 }

@@ -85,6 +85,7 @@ export function buildSpotsColumns(profiles: Profile[]): ColumnDef<Spot>[] {
         );
       },
       enableSorting: false,
+      meta: { className: "hidden @lg/content:table-cell" },
     },
     {
       accessorKey: "is_active",

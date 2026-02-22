@@ -7,6 +7,7 @@ import { getProfiles } from "@/lib/queries/profiles";
 import { SpotsProvider } from "./components/spots-provider";
 import { SpotsTable } from "./components/spots-table";
 import { SpotsDialogs } from "./components/spots-dialogs";
+import { SpotsPrimaryButtons } from "./components/spots-primary-buttons";
 
 export default async function AdminPage() {
   const [spots, profiles] = await Promise.all([getSpots(), getProfiles()]);
@@ -28,6 +29,7 @@ export default async function AdminPage() {
               Gestiona las plazas de aparcamiento del parking.
             </p>
           </div>
+          <SpotsPrimaryButtons />
         </div>
         <SpotsTable spots={spots} profiles={profiles} />
       </Main>

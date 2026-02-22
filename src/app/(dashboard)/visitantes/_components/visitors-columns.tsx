@@ -65,6 +65,7 @@ export const visitantesColumns: ColumnDef<VisitorReservationWithDetails>[] = [
         {row.getValue("visitor_company")}
       </span>
     ),
+    meta: { className: "hidden @lg/content:table-cell" },
   },
   {
     accessorKey: "visitor_email",
@@ -76,6 +77,7 @@ export const visitantesColumns: ColumnDef<VisitorReservationWithDetails>[] = [
         {row.getValue("visitor_email")}
       </span>
     ),
+    meta: { className: "hidden @xl/content:table-cell" },
   },
   {
     accessorKey: "reserved_by_name",
@@ -87,6 +89,7 @@ export const visitantesColumns: ColumnDef<VisitorReservationWithDetails>[] = [
         {row.getValue("reserved_by_name")}
       </span>
     ),
+    meta: { className: "hidden @xl/content:table-cell" },
   },
   {
     accessorKey: "notification_sent",
@@ -108,6 +111,7 @@ export const visitantesColumns: ColumnDef<VisitorReservationWithDetails>[] = [
       );
     },
     enableSorting: false,
+    meta: { className: "hidden @lg/content:table-cell" },
   },
   {
     id: "actions",

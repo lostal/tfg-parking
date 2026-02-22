@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTablePagination, DataTableToolbar } from "@/components/data-table";
+import { cn } from "@/lib/utils";
 import type { VisitorReservationWithDetails } from "@/lib/queries/visitor-reservations";
 
 import { visitantesColumns } from "./visitors-columns";
@@ -85,7 +86,12 @@ export function VisitantesTable({ data, isLoading }: VisitantesTableProps) {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
+    <div
+      className={cn(
+        "max-sm:has-[div[role='toolbar']]:mb-16",
+        "flex flex-1 flex-col gap-4"
+      )}
+    >
       <DataTableToolbar
         table={table}
         searchPlaceholder="Buscar visitante o empresa..."
@@ -95,9 +101,17 @@ export function VisitantesTable({ data, isLoading }: VisitantesTableProps) {
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="group/row">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} colSpan={header.colSpan}>
+                  <TableHead
+                    key={header.id}
+                    colSpan={header.colSpan}
+                    className={cn(
+                      "bg-background group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted",
+                      header.column.columnDef.meta?.className,
+                      header.column.columnDef.meta?.thClassName
+                    )}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -112,9 +126,20 @@ export function VisitantesTable({ data, isLoading }: VisitantesTableProps) {
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className="group/row"
+                >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        "bg-background group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted",
+                        cell.column.columnDef.meta?.className,
+                        cell.column.columnDef.meta?.tdClassName
+                      )}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -136,7 +161,7 @@ export function VisitantesTable({ data, isLoading }: VisitantesTableProps) {
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      <DataTablePagination table={table} className="mt-auto" />
     </div>
   );
 }

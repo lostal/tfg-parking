@@ -14,9 +14,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -28,7 +26,6 @@ import {
 import { DataTablePagination, DataTableToolbar } from "@/components/data-table";
 import type { Profile, Spot } from "@/lib/supabase/types";
 import { buildSpotsColumns, spotTypeOptions } from "./spots-columns";
-import { useSpots } from "./spots-provider";
 
 interface SpotsTableProps {
   spots: Spot[];
@@ -36,8 +33,6 @@ interface SpotsTableProps {
 }
 
 export function SpotsTable({ spots, profiles }: SpotsTableProps) {
-  const { setOpen } = useSpots();
-
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -64,46 +59,45 @@ export function SpotsTable({ spots, profiles }: SpotsTableProps) {
   });
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <DataTableToolbar
-          table={table}
-          searchPlaceholder="Buscar por etiqueta..."
-          filters={[
-            {
-              columnId: "type",
-              title: "Tipo",
-              options: spotTypeOptions.map((o) => ({ ...o })),
-            },
-            {
-              columnId: "is_active",
-              title: "Estado",
-              options: [
-                { label: "Activa", value: "active" },
-                { label: "Inactiva", value: "inactive" },
-              ],
-            },
-          ]}
-        />
-        <Button
-          size="sm"
-          className="ml-4 h-8 gap-1.5"
-          onClick={() => setOpen("add")}
-        >
-          <Plus className="h-4 w-4" />
-          Nueva plaza
-        </Button>
-      </div>
+    <div
+      className={cn(
+        "max-sm:has-[div[role='toolbar']]:mb-16",
+        "flex flex-1 flex-col gap-4"
+      )}
+    >
+      <DataTableToolbar
+        table={table}
+        searchPlaceholder="Buscar por etiqueta..."
+        filters={[
+          {
+            columnId: "type",
+            title: "Tipo",
+            options: spotTypeOptions.map((o) => ({ ...o })),
+          },
+          {
+            columnId: "is_active",
+            title: "Estado",
+            options: [
+              { label: "Activa", value: "active" },
+              { label: "Inactiva", value: "inactive" },
+            ],
+          },
+        ]}
+      />
       <div className="overflow-hidden rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="group/row">
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
-                    className={cn(header.column.columnDef.meta?.className)}
+                    className={cn(
+                      "bg-background group-hover/row:bg-muted",
+                      header.column.columnDef.meta?.className,
+                      header.column.columnDef.meta?.thClassName
+                    )}
                   >
                     {header.isPlaceholder
                       ? null
@@ -125,7 +119,8 @@ export function SpotsTable({ spots, profiles }: SpotsTableProps) {
                       key={cell.id}
                       className={cn(
                         "bg-background group-hover/row:bg-muted",
-                        cell.column.columnDef.meta?.className
+                        cell.column.columnDef.meta?.className,
+                        cell.column.columnDef.meta?.tdClassName
                       )}
                     >
                       {flexRender(
@@ -149,7 +144,7 @@ export function SpotsTable({ spots, profiles }: SpotsTableProps) {
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      <DataTablePagination table={table} className="mt-auto" />
     </div>
   );
 }

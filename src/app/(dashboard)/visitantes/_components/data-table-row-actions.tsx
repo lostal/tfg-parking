@@ -85,7 +85,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           }}
         >
           Cancelar reserva
-          <Trash2 size={16} className="ml-auto" />
+          <Trash2 size={16} className="text-destructive ml-auto" />
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
