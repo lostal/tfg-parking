@@ -149,6 +149,11 @@ export function ParkingCalendarView({
               ? dayData.get(employeeSheetDate)?.myReservationId
               : undefined
           }
+          availableCount={
+            employeeSheetDate
+              ? dayData.get(employeeSheetDate)?.availableCount
+              : undefined
+          }
           onClose={() => setEmployeeSheetDate(null)}
           onActionSuccess={handleActionSuccess}
         />

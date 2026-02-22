@@ -149,33 +149,46 @@ export const getCalendarMonthData = actionClient
       return days;
     } else {
       // ── Empleado: necesita plazas disponibles + sus propias reservas ──
-      const [spotsData, reservationsData, cessionsData, myReservationsData] =
-        await Promise.all([
-          supabase.from("spots").select("id, type").eq("is_active", true),
-          supabase
-            .from("reservations")
-            .select("spot_id, date")
-            .gte("date", firstDay)
-            .lte("date", lastDay)
-            .eq("status", "confirmed"),
-          supabase
-            .from("cessions")
-            .select("spot_id, date, status")
-            .gte("date", firstDay)
-            .lte("date", lastDay)
-            .neq("status", "cancelled"),
-          supabase
-            .from("reservations")
-            .select("id, date")
-            .eq("user_id", user.id)
-            .gte("date", firstDay)
-            .lte("date", lastDay)
-            .eq("status", "confirmed"),
-        ]);
+      const [
+        spotsData,
+        reservationsData,
+        cessionsData,
+        myReservationsData,
+        visitorReservationsData,
+      ] = await Promise.all([
+        supabase.from("spots").select("id, type").eq("is_active", true),
+        supabase
+          .from("reservations")
+          .select("spot_id, date")
+          .gte("date", firstDay)
+          .lte("date", lastDay)
+          .eq("status", "confirmed"),
+        supabase
+          .from("cessions")
+          .select("spot_id, date, status")
+          .gte("date", firstDay)
+          .lte("date", lastDay)
+          .neq("status", "cancelled"),
+        supabase
+          .from("reservations")
+          .select("id, date")
+          .eq("user_id", user.id)
+          .gte("date", firstDay)
+          .lte("date", lastDay)
+          .eq("status", "confirmed"),
+        // Reservas de visitantes: bloquean las plazas de tipo visitor
+        supabase
+          .from("visitor_reservations")
+          .select("spot_id, date")
+          .gte("date", firstDay)
+          .lte("date", lastDay)
+          .eq("status", "confirmed"),
+      ]);
 
       const allSpots = spotsData.data ?? [];
+      // Plazas no-dirección: siempre disponibles como base (visitor, standard, disabled)
       const totalOriginalSpots = allSpots.filter(
-        (s) => s.type === "standard" || s.type === "disabled"
+        (s) => s.type !== "management"
       ).length;
 
       // Agrupa reservas por fecha
@@ -196,6 +209,14 @@ export const getCalendarMonthData = actionClient
         }
       }
 
+      // Agrupa reservas de visitantes por fecha → bloquean plazas visitor
+      const visitorReservedByDate = new Map<string, Set<string>>();
+      for (const vr of visitorReservationsData.data ?? []) {
+        if (!visitorReservedByDate.has(vr.date))
+          visitorReservedByDate.set(vr.date, new Set());
+        visitorReservedByDate.get(vr.date)!.add(vr.spot_id);
+      }
+
       // Mis reservas
       const myReservationByDate = new Map<string, { id: string }>();
       for (const r of myReservationsData.data ?? []) {
@@ -211,13 +232,17 @@ export const getCalendarMonthData = actionClient
         const reserved = reservedByDate.get(dateStr) ?? new Set();
         const cededAvail = cededAvailableByDate.get(dateStr) ?? 0;
 
-        // Plazas estándar disponibles ese día
+        // Plazas no-dirección ocupadas por reservas de empleados
+        const employeeReserved = [...reserved].filter((id) => {
+          const spot = allSpots.find((s) => s.id === id);
+          return spot?.type !== "management";
+        }).length;
+
+        // Plazas visitor ocupadas por reservas de visitantes
+        const visitorReserved = visitorReservedByDate.get(dateStr)?.size ?? 0;
+
         const standardAvailable =
-          totalOriginalSpots -
-          [...reserved].filter((id) => {
-            const spot = allSpots.find((s) => s.id === id);
-            return spot?.type === "standard" || spot?.type === "disabled";
-          }).length;
+          totalOriginalSpots - employeeReserved - visitorReserved;
 
         const totalAvailable = standardAvailable + cededAvail;
 
@@ -260,9 +285,6 @@ export async function getCalendarMonthDataSimple(
 ): Promise<ActionResult<CalendarDayData[]>> {
   try {
     const result = await getCalendarMonthData({ monthStart });
-    if (!result) {
-      return error("Error al obtener datos del calendario");
-    }
     if (!result.success) {
       return error(result.error);
     }

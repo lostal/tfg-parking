@@ -3,20 +3,77 @@
 /**
  * Server Actions de Reservas de Visitantes
  *
- * Server Actions para crear y cancelar reservas
- * realizadas por empleados para visitantes externos.
+ * Server Actions para crear y cancelar reservas realizadas
+ * por empleados para visitantes externos, con envío de email
+ * y generación de pases digitales (Apple Wallet / Google Wallet).
  */
 
-import { actionClient } from "@/lib/actions";
+import { revalidatePath } from "next/cache";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+
+import { actionClient, type ActionResult, success, error } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import {
   createVisitorReservationSchema,
   cancelVisitorReservationSchema,
 } from "@/lib/validations";
+import { sendVisitorReservationEmail } from "@/lib/email";
+import { generateAppleWalletPass, generateGoogleWalletUrl } from "@/lib/wallet";
+import {
+  getUpcomingVisitorReservations,
+  getAvailableVisitorSpotsForDate,
+  type VisitorReservationWithDetails,
+} from "@/lib/queries/visitor-reservations";
+
+// ─── Funciones de consulta ────────────────────────────────────
 
 /**
- * Crea una reserva de visitante.
+ * Obtiene las reservas de visitantes próximas confirmadas.
+ */
+export async function getVisitorReservationsAction(): Promise<
+  ActionResult<VisitorReservationWithDetails[]>
+> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return error("No autenticado");
+
+    const reservations = await getUpcomingVisitorReservations();
+    return success(reservations);
+  } catch (err) {
+    console.error("Error al obtener reservas de visitantes:", err);
+    return error(
+      err instanceof Error ? err.message : "Error al obtener las reservas"
+    );
+  }
+}
+
+/**
+ * Obtiene las plazas de visitantes disponibles para una fecha dada.
+ */
+export async function getAvailableVisitorSpotsAction(
+  date: string
+): Promise<ActionResult<{ id: string; label: string }[]>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return error("No autenticado");
+
+    const spots = await getAvailableVisitorSpotsForDate(date);
+    return success(spots);
+  } catch (err) {
+    console.error("Error al obtener plazas de visitantes:", err);
+    return error(
+      err instanceof Error ? err.message : "Error al obtener plazas disponibles"
+    );
+  }
+}
+
+// ─── Mutations ────────────────────────────────────────────────
+
+/**
+ * Crea una reserva de visitante y envía el email de confirmación
+ * con los pases digitales adjuntos/enlazados.
  *
  * Reglas de negocio:
  * - Cualquier empleado autenticado puede reservar para un visitante
@@ -30,7 +87,18 @@ export const createVisitorReservation = actionClient
 
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    // Obtener etiqueta de la plaza en paralelo
+    const { data: spotData } = await supabase
+      .from("spots")
+      .select("label")
+      .eq("id", parsedInput.spot_id)
+      .single();
+
+    const spotLabel = spotData?.label ?? parsedInput.spot_id;
+    const reservedByName = user.profile?.full_name ?? user.email;
+
+    // Insertar reserva en la BD
+    const { data, error: insertError } = await supabase
       .from("visitor_reservations")
       .insert({
         spot_id: parsedInput.spot_id,
@@ -44,18 +112,68 @@ export const createVisitorReservation = actionClient
       .select("id")
       .single();
 
-    if (error) {
-      if (error.code === "23505") {
+    if (insertError) {
+      if (insertError.code === "23505") {
         throw new Error(
           "Esta plaza ya tiene una reserva de visitante para este día"
         );
       }
-      throw new Error(`Error al crear reserva de visitante: ${error.message}`);
+      throw new Error(
+        `Error al crear reserva de visitante: ${insertError.message}`
+      );
     }
 
-    // TODO (P1): Enviar email de confirmación al visitante via Resend
+    const reservationId = data.id;
+    const formattedDate = format(
+      new Date(parsedInput.date + "T00:00:00"),
+      "EEEE, d 'de' MMMM 'de' yyyy",
+      { locale: es }
+    );
 
-    return { id: data.id };
+    // Enviar email con pases digitales de forma no bloqueante.
+    // Si falla el email, la reserva ya está creada igualmente.
+    try {
+      const passData = {
+        reservationId,
+        spotLabel,
+        date: parsedInput.date,
+        visitorName: parsedInput.visitor_name,
+        visitorCompany: parsedInput.visitor_company,
+        reservedByName,
+        notes: parsedInput.notes,
+      };
+
+      const [pkpassBuffer, googleWalletUrl] = await Promise.all([
+        generateAppleWalletPass(passData),
+        generateGoogleWalletUrl(passData),
+      ]);
+
+      await sendVisitorReservationEmail({
+        to: parsedInput.visitor_email,
+        visitorName: parsedInput.visitor_name,
+        visitorCompany: parsedInput.visitor_company,
+        spotLabel,
+        date: formattedDate,
+        reservedByName,
+        notes: parsedInput.notes,
+        googleWalletUrl,
+        pkpassBuffer,
+      });
+
+      // Marcar notificación como enviada
+      await supabase
+        .from("visitor_reservations")
+        .update({ notification_sent: true })
+        .eq("id", reservationId);
+    } catch (emailErr) {
+      console.error(
+        "Error al enviar email/pases al visitante (la reserva se creó correctamente):",
+        emailErr
+      );
+    }
+
+    revalidatePath("/visitantes");
+    return { id: reservationId };
   });
 
 /**
@@ -72,17 +190,18 @@ export const cancelVisitorReservation = actionClient
 
     const supabase = await createClient();
 
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from("visitor_reservations")
       .update({ status: "cancelled" })
       .eq("id", parsedInput.id)
       .eq("reserved_by", user.id);
 
-    if (error) {
+    if (updateError) {
       throw new Error(
-        `Error al cancelar reserva de visitante: ${error.message}`
+        `Error al cancelar reserva de visitante: ${updateError.message}`
       );
     }
 
+    revalidatePath("/visitantes");
     return { cancelled: true };
   });

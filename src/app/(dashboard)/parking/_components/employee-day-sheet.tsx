@@ -44,6 +44,8 @@ interface EmployeeDaySheetProps {
   date: string | null;
   /** ID de reserva existente del usuario para este día (si la hay) */
   myReservationId?: string;
+  /** Plazas disponibles conocidas desde el calendario (evita pop de altura en skeleton) */
+  availableCount?: number;
   onClose: () => void;
   /** Callback tras una acción exitosa para refrescar el calendario */
   onActionSuccess: () => void;
@@ -52,6 +54,7 @@ interface EmployeeDaySheetProps {
 export function EmployeeDaySheet({
   date,
   myReservationId,
+  availableCount,
   onClose,
   onActionSuccess,
 }: EmployeeDaySheetProps) {
@@ -62,12 +65,19 @@ export function EmployeeDaySheet({
 
   const isOpen = date !== null;
 
-  // Cargar plazas al abrir
+  // Congela los valores visibles mientras el sheet se cierra para evitar pop visual.
+  // Solo se actualizan cuando el sheet está abierto (isOpen=true).
+  const stableReservationId = React.useRef(myReservationId);
+  const stableSkeletonCount = React.useRef(availableCount ?? 3);
+  if (isOpen) {
+    stableReservationId.current = myReservationId;
+    if (availableCount !== undefined)
+      stableSkeletonCount.current = availableCount;
+  }
+
+  // Cargar plazas al abrir; al cerrar no borrar el contenido (animación suave)
   React.useEffect(() => {
-    if (!date) {
-      setSpots([]);
-      return;
-    }
+    if (!date) return;
     loadSpots(date);
   }, [date]);
 
@@ -140,7 +150,7 @@ export function EmployeeDaySheet({
         <SheetHeader className="px-6 pb-4">
           <SheetTitle className="capitalize">{dateLabel}</SheetTitle>
           <SheetDescription>
-            {myReservationId
+            {stableReservationId.current
               ? "Ya tienes una plaza reservada para este día"
               : loading
                 ? "Cargando plazas disponibles…"
@@ -153,7 +163,7 @@ export function EmployeeDaySheet({
         <ScrollArea className="min-h-0 flex-1">
           <div className="space-y-3 px-6 pb-6">
             {/* Reserva existente del usuario */}
-            {myReservationId && (
+            {stableReservationId.current && (
               <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
                 <div className="flex items-center gap-3">
                   <div className="rounded-lg bg-blue-100 p-2.5 dark:bg-blue-900/50">
@@ -186,12 +196,14 @@ export function EmployeeDaySheet({
             )}
 
             {/* Lista de plazas disponibles */}
-            {!myReservationId && (
+            {!stableReservationId.current && (
               <div className="space-y-3">
                 {loading ? (
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-18 w-full rounded-xl" />
-                  ))
+                  Array.from({ length: stableSkeletonCount.current }).map(
+                    (_, i) => (
+                      <Skeleton key={i} className="h-18 w-full rounded-xl" />
+                    )
+                  )
                 ) : spots.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-center">
                     <div className="bg-muted mb-3 rounded-full p-4">
