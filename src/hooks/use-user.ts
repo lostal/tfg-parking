@@ -35,84 +35,74 @@ export function useUser(): UseUserReturn {
   // que un cambio de referencia re-dispare el useEffect.
   const supabaseRef = useRef(createClient());
   const supabase = supabaseRef.current;
+  // Ref para comparar el userId actual dentro del callback sin closures stale.
+  const currentUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
-    // Get initial user
-    const getUser = async () => {
-      try {
-        const {
-          data: { user: authUser },
-        } = await supabase.auth.getUser();
+    // Fetch profile desacoplado del callback de auth.
+    // IMPORTANTE: la doc de Supabase advierte que hacer `await` dentro de
+    // onAuthStateChange puede causar un deadlock con el lock interno de auth.
+    // Por eso el fetch del perfil se hace con .then() fuera del callback.
+    const fetchProfile = (userId: string) => {
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (mounted) setProfile(data);
+        });
+    };
 
+    // Carga inicial: getUser() valida el token con el servidor.
+    supabase.auth
+      .getUser()
+      .then(({ data: { user: authUser } }) => {
         if (!mounted) return;
-
         if (authUser) {
-          setUser({
-            id: authUser.id,
-            email: authUser.email ?? "",
-          });
-
-          // Fetch profile
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", authUser.id)
-            .maybeSingle();
-
-          if (mounted) {
-            setProfile(profileData);
-          }
+          currentUserIdRef.current = authUser.id;
+          setUser({ id: authUser.id, email: authUser.email ?? "" });
+          fetchProfile(authUser.id);
         } else {
+          currentUserIdRef.current = null;
           setUser(null);
           setProfile(null);
         }
-      } catch (error) {
+        setLoading(false);
+      })
+      .catch((error) => {
         console.error("Error fetching user:", error);
         if (mounted) {
           setUser(null);
           setProfile(null);
-        }
-      } finally {
-        if (mounted) {
           setLoading(false);
         }
-      }
-    };
+      });
 
-    getUser();
-
-    // Listen to auth state changes
+    // Escucha cambios de sesión.
+    // El callback es SÍNCRONO — no usar async/await aquí para evitar
+    // deadlocks con el lock interno de GoTrue.
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
 
+      // SIGNED_IN se dispara también al refocalizar una pestaña.
+      // Si el usuario no ha cambiado, no hay nada que actualizar.
+      if (session?.user?.id === currentUserIdRef.current) return;
+
       if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email ?? "",
-        });
-
-        // Fetch updated profile
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        if (mounted) {
-          setProfile(profileData);
-        }
+        currentUserIdRef.current = session.user.id;
+        setUser({ id: session.user.id, email: session.user.email ?? "" });
+        fetchProfile(session.user.id);
       } else {
+        currentUserIdRef.current = null;
         setUser(null);
         setProfile(null);
       }
-
-      if (mounted) {
-        setLoading(false);
-      }
+      setLoading(false);
     });
 
     return () => {

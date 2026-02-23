@@ -22,6 +22,7 @@ import { useUser } from "@/hooks/use-user";
 import { signOutAction } from "@/lib/supabase/sign-out";
 import { ROUTES } from "@/lib/constants";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,7 +40,7 @@ import {
 } from "@/components/ui/sidebar";
 
 export function NavUser() {
-  const { profile } = useUser();
+  const { profile, loading } = useUser();
   const { isMobile } = useSidebar();
   const [isPending, startTransition] = useTransition();
 
@@ -49,7 +50,7 @@ export function NavUser() {
     });
   };
 
-  const displayName = profile?.full_name || "Usuario";
+  const displayName = profile?.full_name ?? "";
   const displayEmail = profile?.email || "";
   const initials = displayName
     .split(" ")
@@ -73,6 +74,22 @@ export function NavUser() {
             icon: CalendarCheck,
           }
         : null;
+
+  if (loading) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton size="lg" disabled>
+            <Skeleton className="h-8 w-8 rounded-lg" />
+            <div className="grid flex-1 gap-1">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-2.5 w-32" />
+            </div>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
+  }
 
   return (
     <SidebarMenu>

@@ -14,6 +14,7 @@ import useDialogState from "@/hooks/use-dialog-state";
 import { ROUTES } from "@/lib/constants";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,10 +28,10 @@ import {
 import { SignOutDialog } from "@/components/sign-out-dialog";
 
 export function ProfileDropdown() {
-  const { profile } = useUser();
+  const { profile, loading } = useUser();
   const [open, setOpen] = useDialogState();
 
-  const displayName = profile?.full_name || "Usuario";
+  const displayName = profile?.full_name ?? "";
   const displayEmail = profile?.email || "";
   const initials = displayName
     .split(" ")
@@ -38,6 +39,10 @@ export function ProfileDropdown() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  if (loading) {
+    return <Skeleton className="h-8 w-8 rounded-full" />;
+  }
 
   return (
     <>
