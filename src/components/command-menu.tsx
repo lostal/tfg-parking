@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/command";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { sidebarData } from "@/components/layout/data/sidebar-data";
+import { updateTheme } from "@/app/(dashboard)/ajustes/actions";
 
 export function CommandMenu() {
   const router = useRouter();
@@ -36,6 +37,11 @@ export function CommandMenu() {
     },
     [setOpen]
   );
+
+  const handleThemeChange = (theme: "light" | "dark" | "system") => {
+    setTheme(theme);
+    void updateTheme({ theme });
+  };
 
   return (
     <CommandDialog modal open={open} onOpenChange={setOpen}>
@@ -81,14 +87,20 @@ export function CommandMenu() {
           ))}
           <CommandSeparator />
           <CommandGroup heading="Tema">
-            <CommandItem onSelect={() => runCommand(() => setTheme("light"))}>
+            <CommandItem
+              onSelect={() => runCommand(() => handleThemeChange("light"))}
+            >
               <Sun /> <span>Claro</span>
             </CommandItem>
-            <CommandItem onSelect={() => runCommand(() => setTheme("dark"))}>
+            <CommandItem
+              onSelect={() => runCommand(() => handleThemeChange("dark"))}
+            >
               <Moon className="scale-90" />
               <span>Oscuro</span>
             </CommandItem>
-            <CommandItem onSelect={() => runCommand(() => setTheme("system"))}>
+            <CommandItem
+              onSelect={() => runCommand(() => handleThemeChange("system"))}
+            >
               <Laptop />
               <span>Sistema</span>
             </CommandItem>

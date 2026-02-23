@@ -15,13 +15,11 @@ import {
   updateNotificationPreferencesSchema,
   updateOutlookPreferencesSchema,
   updateCessionRulesSchema,
-  updatePreferencesSchema,
   updateThemeSchema,
   type UpdateProfileInput,
   type UpdateNotificationPreferencesInput,
   type UpdateOutlookPreferencesInput,
   type UpdateCessionRulesInput,
-  type UpdatePreferencesInput,
   type UpdateThemeInput,
 } from "@/lib/validations";
 
@@ -139,32 +137,6 @@ export async function updateCessionRules(data: UpdateCessionRulesInput) {
   if (error) {
     console.error("Error al actualizar las reglas de cesión:", error);
     throw new Error("No se pudieron actualizar las reglas de cesión");
-  }
-
-  revalidatePath("/ajustes");
-  return { success: true };
-}
-
-// ─── Update Preferences (Combined Theme + View) ─────────────
-
-export async function updatePreferences(data: UpdatePreferencesInput) {
-  const user = await requireAuth();
-  const validated = updatePreferencesSchema.parse(data);
-
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("user_preferences")
-    .update({
-      theme: validated.theme,
-      default_view: validated.default_view,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", user.id);
-
-  if (error) {
-    console.error("Error al actualizar las preferencias:", error);
-    throw new Error("No se pudieron actualizar las preferencias");
   }
 
   revalidatePath("/ajustes");

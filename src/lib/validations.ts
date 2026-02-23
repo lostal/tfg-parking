@@ -149,19 +149,10 @@ export type UpdateNotificationPreferencesInput = z.infer<
   typeof updateNotificationPreferencesSchema
 >;
 
-// ─── Settings: Preferences (Theme + View) ────────────────────
-
-export const updatePreferencesSchema = z.object({
-  theme: z.enum(["light", "dark"]),
-  default_view: z.enum(["map", "list", "calendar"]),
-});
-
-export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;
-
 // ─── Settings: Theme only ─────────────────────────────────────
 
 export const updateThemeSchema = z.object({
-  theme: z.enum(["light", "dark"]),
+  theme: z.enum(["light", "dark", "system"]),
 });
 
 export type UpdateThemeInput = z.infer<typeof updateThemeSchema>;

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -10,52 +10,55 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { updateTheme } from "../actions";
 import type { ValidatedUserPreferences } from "@/lib/supabase/helpers";
-import { updateThemeSchema, type UpdateThemeInput } from "@/lib/validations";
+
+/**
+ * Local schema for the preferences form.
+ * Only light/dark — "system" is managed via the navbar dropdown.
+ */
+const preferencesFormSchema = z.object({
+  theme: z.enum(["light", "dark"]),
+});
+
+type PreferencesFormValues = z.infer<typeof preferencesFormSchema>;
 
 interface PreferencesFormProps {
   preferences: Pick<ValidatedUserPreferences, "theme">;
 }
 
 export function PreferencesForm({ preferences }: PreferencesFormProps) {
-  const { theme: currentTheme, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
-  const {
-    handleSubmit,
-    control,
-    setValue,
-    reset,
-    formState: { isDirty, isSubmitting },
-  } = useForm<UpdateThemeInput>({
-    resolver: zodResolver(updateThemeSchema),
-    defaultValues: {
-      theme: preferences.theme === "system" ? "light" : preferences.theme,
-    },
+  // Initialise with current theme cast to light/dark (shadcn-admin pattern).
+  // If theme is "system", we fall back to the DB preference cast, or "light".
+  const defaultValues: PreferencesFormValues = {
+    theme:
+      theme === "light" || theme === "dark"
+        ? theme
+        : preferences.theme === "dark"
+          ? "dark"
+          : "light",
+  };
+
+  const form = useForm<PreferencesFormValues>({
+    resolver: zodResolver(preferencesFormSchema),
+    defaultValues,
   });
 
-  // Sync form with the actual active theme once next-themes has hydrated.
-  // This ensures the form reflects what the user sees if they changed theme
-  // via the navbar toggle since the last time they saved preferences.
-  useEffect(() => {
-    if (currentTheme === "light" || currentTheme === "dark") {
-      reset({ theme: currentTheme }, { keepDirty: false });
-    }
-  }, [currentTheme, reset]);
+  const themeValue = form.watch("theme");
 
-  const themeValue = useWatch({ control, name: "theme" });
-
-  const onSubmit = async (data: UpdateThemeInput) => {
+  async function onSubmit(data: PreferencesFormValues) {
     try {
-      setTheme(data.theme);
-      await updateTheme(data);
+      if (data.theme !== theme) setTheme(data.theme);
+      await updateTheme({ theme: data.theme });
       toast.success("Preferencias actualizadas correctamente");
     } catch (error) {
       toast.error("Error al actualizar las preferencias");
       console.error(error);
     }
-  };
+  }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
       {/* Theme with Visual Previews */}
       <div className="space-y-3">
         <Label>Tema</Label>
@@ -65,9 +68,7 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
         <RadioGroup
           value={themeValue}
           onValueChange={(value) =>
-            setValue("theme", value as "light" | "dark", {
-              shouldDirty: true,
-            })
+            form.setValue("theme", value as "light" | "dark")
           }
           className="grid max-w-md grid-cols-2 gap-8 pt-2"
         >
@@ -131,9 +132,7 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
         </RadioGroup>
       </div>
 
-      <Button type="submit" disabled={!isDirty || isSubmitting}>
-        {isSubmitting ? "Guardando..." : "Actualizar preferencias"}
-      </Button>
+      <Button type="submit">Actualizar preferencias</Button>
     </form>
   );
 }
