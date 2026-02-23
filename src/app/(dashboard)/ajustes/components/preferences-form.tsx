@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
@@ -39,12 +39,12 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
           : "light",
   };
 
-  const form = useForm<PreferencesFormValues>({
+  const { handleSubmit, control, setValue } = useForm<PreferencesFormValues>({
     resolver: zodResolver(preferencesFormSchema),
     defaultValues,
   });
 
-  const themeValue = form.watch("theme");
+  const themeValue = useWatch({ control, name: "theme" });
 
   async function onSubmit(data: PreferencesFormValues) {
     try {
@@ -58,7 +58,7 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
   }
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       {/* Theme with Visual Previews */}
       <div className="space-y-3">
         <Label>Tema</Label>
@@ -68,7 +68,7 @@ export function PreferencesForm({ preferences }: PreferencesFormProps) {
         <RadioGroup
           value={themeValue}
           onValueChange={(value) =>
-            form.setValue("theme", value as "light" | "dark")
+            setValue("theme", value as "light" | "dark")
           }
           className="grid max-w-md grid-cols-2 gap-8 pt-2"
         >
