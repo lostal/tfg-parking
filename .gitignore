@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+.claude
 
 # debug
 npm-debug.log*
@@ -46,6 +47,9 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# supabase
+/supabase/.temp/
 
 # coverage
 /coverage/
