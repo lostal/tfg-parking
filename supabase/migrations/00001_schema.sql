@@ -671,12 +671,21 @@ grant select, insert, update, delete on all tables in schema public to authentic
 grant select on all tables in schema public to anon;
 grant execute on all functions in schema public to authenticated, anon;
 
+-- service_role bypasses RLS but still needs PostgreSQL-level GRANTs
+grant usage on schema public to service_role;
+grant select, insert, update, delete on all tables in schema public to service_role;
+grant execute on all functions in schema public to service_role;
+
 alter default privileges in schema public
   grant select, insert, update, delete on tables to authenticated;
 alter default privileges in schema public
   grant select on tables to anon;
 alter default privileges in schema public
   grant execute on functions to authenticated, anon;
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to service_role;
+alter default privileges in schema public
+  grant execute on functions to service_role;
 
 -- ═══════════════════════════════════════════════════════════════
 -- REALTIME

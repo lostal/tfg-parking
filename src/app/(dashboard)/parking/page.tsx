@@ -12,11 +12,17 @@ import { ProfileDropdown } from "@/components/profile-dropdown";
 import { requireAuth } from "@/lib/supabase/auth";
 import { getSpots } from "@/lib/queries/spots";
 import { ParkingCalendarView } from "./_components/parking-calendar-view";
+import { getResourceConfig } from "@/lib/config";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { TriangleAlert } from "lucide-react";
 
 export default async function ParkingPage() {
   const user = await requireAuth();
 
-  const spots = await getSpots("parking");
+  const [spots, bookingEnabled] = await Promise.all([
+    getSpots("parking"),
+    getResourceConfig("parking", "booking_enabled"),
+  ]);
   const assignedParkingSpot =
     spots.find((s) => s.assigned_to === user.id) ?? null;
 
@@ -41,6 +47,16 @@ export default async function ParkingPage() {
         </div>
 
         <div className="mx-auto max-w-lg">
+          {!bookingEnabled && (
+            <Alert variant="destructive" className="mb-6">
+              <TriangleAlert className="size-4" />
+              <AlertTitle>Reservas deshabilitadas</AlertTitle>
+              <AlertDescription>
+                El administrador ha desactivado temporalmente las nuevas
+                reservas de parking.
+              </AlertDescription>
+            </Alert>
+          )}
           <ParkingCalendarView
             hasAssignedSpot={!!assignedParkingSpot}
             assignedSpot={assignedParkingSpot}

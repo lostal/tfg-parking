@@ -4,9 +4,6 @@
  * Centralized config values, magic strings, and defaults.
  */
 
-/** Maximum days in advance a reservation can be made (configurable via admin) */
-export const DEFAULT_MAX_ADVANCE_DAYS = 14;
-
 /** Application metadata */
 export const APP_NAME = "GRUPOSIETE Reservas";
 export const APP_DESCRIPTION =
@@ -18,19 +15,18 @@ export const ROUTES = {
   LOGIN: "/login",
   CALLBACK: "/auth/callback",
   DASHBOARD: "/panel",
-  /** Home page for non-admin roles (management & employee) */
+  /** Home page for non-admin roles (employee) */
   PARKING: "/parking",
   MIS_RESERVAS: "/mis-reservas",
   PARKING_CESSATIONS: "/parking/cesiones",
   PARKING_MAP: "/parking/mapa",
-  CALENDAR: "/calendario",
   VISITORS: "/visitantes",
   ADMIN: "/administracion",
   ADMIN_USERS: "/administracion/usuarios",
   ADMIN_SETTINGS: "/administracion/ajustes",
   ADMIN_SETTINGS_PARKING: "/administracion/ajustes/parking",
   ADMIN_SETTINGS_OFFICES: "/administracion/ajustes/oficinas",
-  ADMIN_SETTINGS_ADVANCED: "/administracion/ajustes/avanzado",
+
   OFFICES: "/oficinas",
   OFFICES_CESSIONS: "/oficinas/cesiones",
   SETTINGS: "/ajustes",

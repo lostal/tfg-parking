@@ -13,6 +13,7 @@ const envSchema = z.object({
   // Supabase
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 
   // Microsoft Entra ID (optional until P3+)
   MICROSOFT_CLIENT_ID: z.string().min(1).optional(),

@@ -14,48 +14,61 @@ type ReservationJoin = Reservation & {
 };
 
 /**
- * Fila de reserva de parking con etiqueta de plaza y nombre de usuario.
- * @internal Tipo local a la capa de queries de parking — no usar como tipo público.
+ * Fila de reserva con etiqueta de plaza, nombre de usuario y campos de oficina.
+ * @internal Tipo local a la capa de queries — no usar como tipo público.
  * Para el tipo público compartido ver `ReservationWithDetails` en `@/types`.
  */
-export interface ParkingReservationRow extends Reservation {
+export interface ReservationRow extends Reservation {
   spot_label: string;
   user_name: string;
+  resource_type: "parking" | "office";
 }
 
 /**
  * Obtiene todas las reservas confirmadas para una fecha específica,
  * con detalles de plaza y usuario.
+ *
+ * @param resourceType - Si se proporciona, filtra por tipo de recurso ('parking' | 'office').
  */
 export async function getReservationsByDate(
-  date: string
-): Promise<ParkingReservationRow[]> {
+  date: string,
+  resourceType?: "parking" | "office"
+): Promise<ReservationRow[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("reservations")
     .select(
-      "*, spots!reservations_spot_id_fkey(label), profiles!reservations_user_id_fkey(full_name)"
+      "*, spots!reservations_spot_id_fkey(label, resource_type), profiles!reservations_user_id_fkey(full_name)"
     )
     .eq("date", date)
     .eq("status", "confirmed")
-    .order("created_at", { ascending: false })
-    .returns<ReservationJoin[]>();
+    .order("created_at", { ascending: false });
+
+  if (resourceType) {
+    query = query.eq("spots.resource_type", resourceType);
+  }
+
+  const { data, error } = await query.returns<ReservationJoin[]>();
 
   if (error) throw new Error(`Error al obtener reservas: ${error.message}`);
 
   return data.map(
-    (r): ParkingReservationRow => ({
+    (r): ReservationRow => ({
       id: r.id,
       spot_id: r.spot_id,
       user_id: r.user_id,
       date: r.date,
       status: r.status,
       notes: r.notes,
+      start_time: r.start_time,
+      end_time: r.end_time,
       created_at: r.created_at,
       updated_at: r.updated_at,
       spot_label: r.spots?.label ?? "",
       user_name: r.profiles?.full_name ?? "",
+      resource_type:
+        (r.spots?.resource_type as "parking" | "office") ?? "parking",
     })
   );
 }
@@ -69,7 +82,7 @@ export async function getReservationsByDate(
 export async function getUserReservations(
   userId: string,
   resourceType?: "parking" | "office"
-): Promise<ParkingReservationRow[]> {
+): Promise<ReservationRow[]> {
   const supabase = await createClient();
   const today = new Date().toISOString().split("T")[0]!;
 
@@ -93,17 +106,21 @@ export async function getUserReservations(
     throw new Error(`Error al obtener reservas del usuario: ${error.message}`);
 
   return data.map(
-    (r): ParkingReservationRow => ({
+    (r): ReservationRow => ({
       id: r.id,
       spot_id: r.spot_id,
       user_id: r.user_id,
       date: r.date,
       status: r.status,
       notes: r.notes,
+      start_time: r.start_time,
+      end_time: r.end_time,
       created_at: r.created_at,
       updated_at: r.updated_at,
       spot_label: r.spots?.label ?? "",
       user_name: r.profiles?.full_name ?? "",
+      resource_type:
+        (r.spots?.resource_type as "parking" | "office") ?? "parking",
     })
   );
 }

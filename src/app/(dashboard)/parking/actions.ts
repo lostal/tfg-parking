@@ -7,6 +7,7 @@
  * y funciones de consulta para la vista de lista del parking.
  */
 
+import { revalidatePath } from "next/cache";
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/auth";
@@ -17,10 +18,11 @@ import {
 import type { SpotWithStatus } from "@/types";
 import {
   getUserReservations,
-  type ParkingReservationRow,
+  type ReservationRow,
 } from "@/lib/queries/reservations";
 import { getAllResourceConfigs } from "@/lib/config";
 import { getDayOfWeek } from "@/lib/utils";
+import { validateBookingDate } from "@/lib/booking-validation";
 
 // ─── Available spots ─────────────────────────────────────────
 
@@ -108,7 +110,7 @@ export async function getAvailableSpotsForDate(
       if (spot.type === "visitor") continue;
 
       if (spot.assigned_to !== null) {
-        // Plaza con propietario: solo disponible si existe una cesión activa
+        // Plaza con propietario: solo disponible si tiene cesión activa
         const cession = cessionBySpot.get(spot.id);
         if (!cession || cession.status !== "available") continue;
 
@@ -123,13 +125,13 @@ export async function getAvailableSpotsForDate(
           status: "ceded",
         });
       } else {
-        // Plaza sin propietario → libremente reservable
+        // Plaza sin propietario (assigned_to === null): libre para reservar
         available.push({
           id: spot.id,
           label: spot.label,
           type: spot.type,
           resource_type: "parking",
-          assigned_to: spot.assigned_to,
+          assigned_to: null,
           position_x: spot.position_x,
           position_y: spot.position_y,
           status: "free",
@@ -150,17 +152,17 @@ export async function getAvailableSpotsForDate(
  * Obtiene las reservas confirmadas futuras del usuario actual.
  * Devuelve reservas desde hoy en adelante, con detalles de plaza.
  */
-export async function getMyReservations(): Promise<
-  ActionResult<ParkingReservationRow[]>
+export async function getMyParkingReservations(): Promise<
+  ActionResult<ReservationRow[]>
 > {
   try {
     const user = await getCurrentUser();
     if (!user) return error("No autenticado");
 
-    const reservations = await getUserReservations(user.id);
+    const reservations = await getUserReservations(user.id, "parking");
     return success(reservations);
   } catch (err) {
-    console.error("Error en getMyReservations:", err);
+    console.error("Error en getMyParkingReservations:", err);
     return error(
       err instanceof Error ? err.message : "Error al obtener tus reservas"
     );
@@ -194,29 +196,22 @@ export const createReservation = actionClient
       );
     }
 
-    // Comprobar si el día está permitido
-    const dayOfWeek = getDayOfWeek(parsedInput.date);
-    if (!config.allowed_days.includes(dayOfWeek)) {
-      throw new Error("No se puede reservar en este día de la semana");
-    }
-
-    // Comprobar antelación máxima
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const reservationDate = new Date(parsedInput.date);
-    const daysAhead = Math.round(
-      (reservationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    if (daysAhead < 0) {
-      throw new Error("No puedes reservar para fechas pasadas");
-    }
-    if (daysAhead > config.max_advance_days) {
-      throw new Error(
-        `Solo puedes reservar con un máximo de ${config.max_advance_days} días de antelación`
-      );
-    }
+    // Comprobar día permitido, fechas pasadas y antelación máxima
+    validateBookingDate(parsedInput.date, config);
 
     const supabase = await createClient();
+
+    // Verificar que el spot es de tipo parking
+    const { data: spot } = await supabase
+      .from("spots")
+      .select("id, resource_type")
+      .eq("id", parsedInput.spot_id)
+      .maybeSingle();
+
+    if (!spot) throw new Error("Plaza no encontrada");
+    if (spot.resource_type !== "parking") {
+      throw new Error("Esta plaza no es un espacio de parking");
+    }
 
     // Check if user already has a reservation for this date
     const { data: existing } = await supabase
@@ -252,6 +247,8 @@ export const createReservation = actionClient
       throw new Error(`Error al crear reserva: ${error.message}`);
     }
 
+    revalidatePath("/parking");
+    revalidatePath("/mis-reservas");
     return { id: data.id };
   });
 
@@ -269,15 +266,21 @@ export const cancelReservation = actionClient
 
     const supabase = await createClient();
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("reservations")
       .update({ status: "cancelled" })
       .eq("id", parsedInput.id)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .select("id");
 
     if (error) {
       throw new Error(`Error al cancelar reserva: ${error.message}`);
     }
+    if (!data || data.length === 0) {
+      throw new Error("Reserva no encontrada o no pertenece a tu cuenta");
+    }
 
+    revalidatePath("/parking");
+    revalidatePath("/mis-reservas");
     return { cancelled: true };
   });

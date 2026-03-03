@@ -18,7 +18,6 @@ import {
   updateResourceConfigSchema,
   type UpdateResourceConfigInput,
 } from "@/lib/validations";
-import { z } from "zod/v4";
 
 // ─── Helper interno ───────────────────────────────────────────
 
@@ -109,31 +108,6 @@ export const updateOfficeConfig = actionClient
     await invalidateConfigCache();
     revalidatePath("/administracion/ajustes/oficinas");
     revalidatePath("/oficinas");
-
-    return { updated: true };
-  });
-
-// ─── Schema para configuración avanzada ──────────────────────
-
-const updateAdvancedConfigSchema = z.object({
-  // Espacio para futuras configuraciones avanzadas
-  // Por ahora acepta un objeto arbitrario de booleanos/números
-  entries: z.array(
-    z.object({
-      key: z.string().min(1),
-      value: z.union([z.boolean(), z.number(), z.string(), z.null()]),
-    })
-  ),
-});
-
-export const updateAdvancedConfig = actionClient
-  .schema(updateAdvancedConfigSchema)
-  .action(async ({ parsedInput }) => {
-    const adminUser = await requireAdmin();
-
-    await upsertConfigs(parsedInput.entries, adminUser.id);
-    await invalidateConfigCache();
-    revalidatePath("/administracion/ajustes");
 
     return { updated: true };
   });

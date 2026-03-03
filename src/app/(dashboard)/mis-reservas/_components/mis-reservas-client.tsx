@@ -45,7 +45,7 @@ import {
 import { cancelReservation } from "@/app/(dashboard)/parking/actions";
 import { cancelCession } from "@/app/(dashboard)/parking/cession-actions";
 import { cancelOfficeReservation } from "@/app/(dashboard)/oficinas/actions";
-import type { ParkingReservationRow } from "@/lib/queries/reservations";
+import type { ReservationRow } from "@/lib/queries/reservations";
 import type { ReservationWithDetails as OfficeReservationWithDetails } from "@/types";
 import type { CessionWithDetails } from "@/lib/queries/cessions";
 import { ROUTES } from "@/lib/constants";
@@ -54,12 +54,12 @@ import { ROUTES } from "@/lib/constants";
 
 /** Reserva con indicador de recurso para mostrar en la lista unificada */
 type MergedReservation = (
-  | (ParkingReservationRow & { resourceType: "parking" })
+  | (ReservationRow & { resourceType: "parking" })
   | (OfficeReservationWithDetails & { resourceType: "office" })
 ) & { spot_label: string; date: string };
 
 interface MisReservasClientProps {
-  reservations?: ParkingReservationRow[];
+  reservations?: ReservationRow[];
   officeReservations?: OfficeReservationWithDetails[];
   cessions?: CessionWithDetails[];
   /** true si el usuario tiene una plaza de parking asignada (modo cesión) */
@@ -127,9 +127,9 @@ function CessionStatusBadge({ status }: { status: string }) {
   );
 }
 
-// ─── Reservation Row ─────────────────────────────────────────
+// ─── Reservation Item ─────────────────────────────────────────
 
-function ReservationRow({
+function ReservationItem({
   reservation,
   cancellingId,
   onCancel,
@@ -449,7 +449,7 @@ export function MisReservasClient({
   // canCede: hay al menos una plaza asignada que ceder
   const canCede = hasParkingSpot || hasOfficeSpot;
   const [reservations, setReservations] =
-    React.useState<ParkingReservationRow[]>(initialReservations);
+    React.useState<ReservationRow[]>(initialReservations);
   const [officeReservations, setOfficeReservations] = React.useState<
     OfficeReservationWithDetails[]
   >(initialOfficeReservations);
@@ -528,7 +528,7 @@ export function MisReservasClient({
     <GroupedList
       items={mergedReservations}
       renderItem={(item) => (
-        <ReservationRow
+        <ReservationItem
           key={item.id}
           reservation={item}
           cancellingId={cancellingId}

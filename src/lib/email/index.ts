@@ -42,7 +42,14 @@ export async function sendVisitorReservationEmail(
   }
 
   const resend = new Resend(apiKey);
-  const fromAddress = process.env.RESEND_FROM_EMAIL ?? "noreply@parking.local";
+  const fromAddress = process.env.RESEND_FROM_EMAIL;
+
+  if (!fromAddress) {
+    console.warn(
+      "RESEND_FROM_EMAIL no configurada — email de confirmación de visitante no enviado"
+    );
+    return;
+  }
 
   const { to, icsBuffer, ...emailProps } = params;
 
@@ -89,7 +96,14 @@ export async function sendVisitorCancellationEmail(
   }
 
   const resend = new Resend(apiKey);
-  const fromAddress = process.env.RESEND_FROM_EMAIL ?? "noreply@parking.local";
+  const fromAddress = process.env.RESEND_FROM_EMAIL;
+
+  if (!fromAddress) {
+    console.warn(
+      "RESEND_FROM_EMAIL no configurada — email de cancelación de visitante no enviado"
+    );
+    return;
+  }
 
   const { to, icsBuffer, ...emailProps } = params;
 

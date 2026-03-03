@@ -51,32 +51,29 @@ export function OutlookSyncForm({
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch() no es compatible con React Compiler (pre-existing)
   const outlookCreateEvents = watch("outlook_create_events");
   const outlookSyncEnabled = watch("outlook_sync_enabled");
 
   const onSubmit = async (data: UpdateOutlookPreferencesInput) => {
-    try {
-      setIsLoading(true);
-      await updateOutlookPreferences(data);
+    setIsLoading(true);
+    const result = await updateOutlookPreferences(data);
+    setIsLoading(false);
+    if (!result.success) {
+      toast.error(result.error ?? "Error al actualizar las preferencias");
+    } else {
       toast.success("Preferencias de Outlook actualizadas correctamente");
-    } catch (error) {
-      toast.error("Error al actualizar las preferencias");
-      console.error(error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleForceSync = async () => {
-    try {
-      setIsSyncing(true);
-      const result = await forceCalendarSync();
-      toast.success(result.message || "Sincronización completada");
-    } catch (error) {
-      toast.error("Error al sincronizar");
-      console.error(error);
-    } finally {
-      setIsSyncing(false);
+    setIsSyncing(true);
+    const result = await forceCalendarSync();
+    setIsSyncing(false);
+    if (result.success) {
+      toast.success("Sincronización completada");
+    } else {
+      toast.info(result.message);
     }
   };
 

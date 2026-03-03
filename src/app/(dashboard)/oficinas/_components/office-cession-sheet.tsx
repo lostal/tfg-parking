@@ -57,9 +57,9 @@ export function OfficeCessionSheet({
 
   for (const dateStr of selectedDates) {
     const data = dayData.get(dateStr);
-    if (data?.cessionStatus_day === "can-cede") {
+    if (data?.cessionDayStatus === "can-cede") {
       toCreate.push(dateStr);
-    } else if (data?.cessionStatus_day === "ceded-free" && data.myCessionId) {
+    } else if (data?.cessionDayStatus === "ceded-free" && data.myCessionId) {
       toCancel.push({ date: dateStr, cessionId: data.myCessionId });
     }
   }

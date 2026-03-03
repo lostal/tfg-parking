@@ -1,16 +1,27 @@
 /**
- * Smoke test — validates the test setup works correctly.
+ * Smoke test — verifica que el actionClient y sus helpers
+ * devuelven la estructura ActionResult correcta.
  */
-
 import { describe, it, expect } from "vitest";
+import { success, error } from "@/lib/actions";
 
-describe("Test Setup", () => {
-  it("should run a basic test", () => {
-    expect(1 + 1).toBe(2);
+describe("actionClient helpers", () => {
+  it("success() devuelve la forma correcta", () => {
+    const result = success({ id: "123" });
+    expect(result).toEqual({ success: true, data: { id: "123" } });
   });
 
-  it("should support TypeScript generics", () => {
-    const identity = <T>(value: T): T => value;
-    expect(identity("hello")).toBe("hello");
+  it("error() devuelve la forma correcta sin fieldErrors", () => {
+    const result = error("Algo salió mal");
+    expect(result).toEqual({ success: false, error: "Algo salió mal" });
+  });
+
+  it("error() incluye fieldErrors cuando se proporcionan", () => {
+    const result = error("Inválido", { campo: ["Requerido"] });
+    expect(result).toEqual({
+      success: false,
+      error: "Inválido",
+      fieldErrors: { campo: ["Requerido"] },
+    });
   });
 });

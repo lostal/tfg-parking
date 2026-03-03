@@ -61,32 +61,29 @@ export function NotificationsForm({
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch() no es compatible con React Compiler (pre-existing)
   const notificationChannel = watch("notification_channel");
   const notifyDailyDigest = watch("notify_daily_digest");
 
   const onSubmit = async (data: UpdateNotificationPreferencesInput) => {
-    try {
-      setIsLoading(true);
-      await updateNotificationPreferences(data);
+    setIsLoading(true);
+    const result = await updateNotificationPreferences(data);
+    setIsLoading(false);
+    if (!result.success) {
+      toast.error(result.error ?? "Error al actualizar las preferencias");
+    } else {
       toast.success("Preferencias actualizadas correctamente");
-    } catch (error) {
-      toast.error("Error al actualizar las preferencias");
-      console.error(error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleTestNotification = async () => {
-    try {
-      setIsTesting(true);
-      const result = await testTeamsNotification();
-      toast.success(result.message || "Notificación de prueba enviada");
-    } catch (error) {
-      toast.error("Error al enviar notificación de prueba");
-      console.error(error);
-    } finally {
-      setIsTesting(false);
+    setIsTesting(true);
+    const result = await testTeamsNotification();
+    setIsTesting(false);
+    if (result.success) {
+      toast.success("Notificación de prueba enviada");
+    } else {
+      toast.info(result.message);
     }
   };
 

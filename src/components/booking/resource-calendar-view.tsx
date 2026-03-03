@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ResourceCalendar } from "./resource-calendar";
 import type { ResourceDayData } from "@/lib/calendar/resource-types";
+import type { ActionResult } from "@/lib/actions";
 
 // ─── Props ─────────────────────────────────────────────────────
 
@@ -56,11 +57,11 @@ export interface ResourceCalendarViewProps {
   assignedSpot?: { id: string; label: string } | null;
   /**
    * Server action que devuelve los datos del mes.
-   * Debe ser compatible con el formato de next-safe-action:
-   * `{ success: boolean; data?: ResourceDayData[]; error?: string }`
+   * Tipado con ActionResult para detectar errores en compilación.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  loadMonthData: (input: { monthStart: string }) => Promise<any>;
+  loadMonthData: (input: {
+    monthStart: string;
+  }) => Promise<ActionResult<ResourceDayData[]>>;
   /** Mostrar contador de disponibilidad en celdas. True para parking. */
   showAvailableCount?: boolean;
   /**
@@ -99,9 +100,9 @@ export function ResourceCalendarView({
   );
 
   // Sheet cesión (con plaza asignada): días seleccionados + open
-  const [managementSelected, setManagementSelected] = React.useState<
-    Set<string>
-  >(new Set());
+  const [cessionSelected, setCessionSelected] = React.useState<Set<string>>(
+    new Set()
+  );
   const [cessionSheetOpen, setCessionSheetOpen] = React.useState(false);
 
   // ── Caché ─────────────────────────────────────────────────
@@ -132,21 +133,16 @@ export function ResourceCalendarView({
 
       try {
         const result = await loadMonthDataAction({ monthStart });
-        const ok = result?.success ?? result?.data !== undefined;
-        if (ok) {
+        if (result.success) {
           const map = new Map<string, ResourceDayData>(
-            (result.data as ResourceDayData[]).map((d) => [d.date, d])
+            result.data.map((d) => [d.date, d])
           );
           monthCache.current.set(monthKey, map);
           if (format(currentMonthRef.current, "yyyy-MM") === monthKey) {
             setDayData(map);
           }
         } else if (!silent) {
-          toast.error(
-            typeof result?.error === "string"
-              ? result.error
-              : "Error al cargar el calendario"
-          );
+          toast.error(result.error ?? "Error al cargar el calendario");
         }
       } catch {
         if (!silent) toast.error("Error al cargar el calendario");
@@ -172,7 +168,7 @@ export function ResourceCalendarView({
     currentMonthRef.current = newMonth;
     setMonthSlideDir(dir);
     setCurrentMonth(newMonth);
-    setManagementSelected(new Set());
+    setCessionSelected(new Set());
     setCessionSheetOpen(false);
 
     const cached = monthCache.current.get(format(newMonth, "yyyy-MM"));
@@ -194,9 +190,9 @@ export function ResourceCalendarView({
       if (status === "past" || status === "unavailable") return;
       setBookingSheetDate(dateStr);
     } else {
-      const status = data.cessionStatus_day;
+      const status = data.cessionDayStatus;
       if (status !== "can-cede" && status !== "ceded-free") return;
-      setManagementSelected((prev) => {
+      setCessionSelected((prev) => {
         const next = new Set(prev);
         if (next.has(dateStr)) {
           next.delete(dateStr);
@@ -212,7 +208,7 @@ export function ResourceCalendarView({
 
   const handleActionSuccess = () => {
     monthCache.current.delete(format(currentMonthRef.current, "yyyy-MM"));
-    setManagementSelected(new Set());
+    setCessionSelected(new Set());
     setCessionSheetOpen(false);
     setBookingSheetDate(null);
     void loadMonth(currentMonthRef.current);
@@ -226,7 +222,7 @@ export function ResourceCalendarView({
         currentMonth={currentMonth}
         slideDirection={monthSlideDir}
         onMonthChange={handleMonthChange}
-        selectedDates={managementSelected}
+        selectedDates={cessionSelected}
         onDayClick={handleDayClick}
         showAvailableCount={showAvailableCount}
       />
@@ -243,7 +239,7 @@ export function ResourceCalendarView({
       {/* Barra de confirmación del modo cesión */}
       {hasAssignedSpot && assignedSpot && (
         <AnimatePresence>
-          {managementSelected.size > 0 && (
+          {cessionSelected.size > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -252,8 +248,8 @@ export function ResourceCalendarView({
               className="bg-card mt-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-sm"
             >
               <span className="text-sm font-medium">
-                {managementSelected.size}{" "}
-                {managementSelected.size === 1
+                {cessionSelected.size}{" "}
+                {cessionSelected.size === 1
                   ? "día seleccionado"
                   : "días seleccionados"}
               </span>
@@ -262,7 +258,7 @@ export function ResourceCalendarView({
                   variant="ghost"
                   size="sm"
                   className="h-8 gap-1.5"
-                  onClick={() => setManagementSelected(new Set())}
+                  onClick={() => setCessionSelected(new Set())}
                 >
                   <X className="size-3.5" />
                   Limpiar
@@ -286,7 +282,7 @@ export function ResourceCalendarView({
         assignedSpot &&
         renderCessionSheet({
           open: cessionSheetOpen,
-          selectedDates: managementSelected,
+          selectedDates: cessionSelected,
           spotId: assignedSpot.id,
           spotLabel: assignedSpot.label,
           dayData,

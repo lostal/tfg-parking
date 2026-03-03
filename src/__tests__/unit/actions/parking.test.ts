@@ -49,7 +49,6 @@ vi.mock("@/lib/config", () => ({
     allowed_days: [1, 2, 3, 4, 5],
     max_advance_days: 365,
     max_consecutive_days: 5,
-    max_daily_reservations: 1,
     max_weekly_reservations: 5,
     max_monthly_reservations: 20,
     time_slots_enabled: false,
@@ -70,6 +69,11 @@ function setupSupabaseMock(
   config: {
     spots?: ReturnType<typeof createMockSpot>[];
     spotsError?: { message: string };
+    /**
+     * Datos devueltos por maybeSingle() en la query de verificación resource_type.
+     * Usado por createReservation (Bug 2 fix). Por defecto: plaza de parking válida.
+     */
+    spotSingleData?: { id: string; resource_type: string } | null;
     reservations?: { id: string; spot_id: string }[];
     cessions?: { id: string; spot_id: string; status: string }[];
     visitorReservations?: { id: string; spot_id: string }[];
@@ -83,11 +87,21 @@ function setupSupabaseMock(
 ) {
   const mockFrom = vi.fn((table: string) => {
     switch (table) {
-      case "spots":
-        return createQueryChain({
+      case "spots": {
+        const chain = createQueryChain({
           data: config.spots ?? [],
           error: config.spotsError ?? null,
         });
+        // Override maybeSingle para la verificación de resource_type en createReservation
+        (chain.maybeSingle as ReturnType<typeof vi.fn>).mockResolvedValue({
+          data:
+            config.spotSingleData !== undefined
+              ? config.spotSingleData
+              : { id: UUID, resource_type: "parking" },
+          error: null,
+        });
+        return chain;
+      }
       case "reservations": {
         // La query de duplicado usa .maybeSingle() — devolver existingReservation
         // El insert usa .select().single() — devolver insertResult

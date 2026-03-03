@@ -39,15 +39,13 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   });
 
   const onSubmit = async (data: UpdateProfileInput) => {
-    try {
-      setIsLoading(true);
-      await updateProfile(data);
+    setIsLoading(true);
+    const result = await updateProfile(data);
+    setIsLoading(false);
+    if (!result.success) {
+      toast.error(result.error ?? "Error al actualizar el perfil");
+    } else {
       toast.success("Perfil actualizado correctamente");
-    } catch (error) {
-      toast.error("Error al actualizar el perfil");
-      console.error(error);
-    } finally {
-      setIsLoading(false);
     }
   };
 

@@ -7,9 +7,7 @@
  */
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/supabase/auth";
-import { ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout";
@@ -18,23 +16,24 @@ import { SearchProvider } from "@/context/search-context";
 import { SkipToMain } from "@/components/skip-to-main";
 import { getUserPreferences } from "@/lib/queries/preferences";
 import { ThemeSync } from "@/components/providers/theme-sync";
+import { getResourceConfig } from "@/lib/config";
 
 export default async function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await requireAuth().catch(() => null);
-
-  if (!user) {
-    redirect(ROUTES.LOGIN);
-  }
+  const user = await requireAuth();
 
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
-  // Fetch user's saved theme to restore it on new sessions (incognito, new device)
-  const prefs = await getUserPreferences(user.id);
+  // Fetch user preferences and visitor_booking_enabled config in parallel.
+  // getResourceConfig usa el cache de 5 min (tag system-config) para consistencia.
+  const [prefs, visitorBookingEnabled] = await Promise.all([
+    getUserPreferences(user.id),
+    getResourceConfig("parking", "visitor_booking_enabled"),
+  ]);
   const dbTheme = prefs?.theme ?? "system";
 
   return (
@@ -42,7 +41,10 @@ export default async function DashboardLayout({
       <SidebarProvider defaultOpen={defaultOpen}>
         <SkipToMain />
         <ThemeSync dbTheme={dbTheme} />
-        <AppSidebar role={(user.profile?.role ?? "employee") as UserRole} />
+        <AppSidebar
+          role={(user.profile?.role ?? "employee") as UserRole}
+          visitorBookingEnabled={visitorBookingEnabled}
+        />
         <SidebarInset
           className={cn(
             "@container/content",

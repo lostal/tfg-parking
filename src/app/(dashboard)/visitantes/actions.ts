@@ -263,7 +263,7 @@ export const updateVisitorReservation = actionClient
       .eq("id", parsedInput.id)
       .eq("status", "confirmed");
 
-    const { error: updateError } = await (isAdmin
+    const { error: updateError, count } = await (isAdmin
       ? baseQuery
       : baseQuery.eq("reserved_by", user.id));
 
@@ -275,6 +275,11 @@ export const updateVisitorReservation = actionClient
       }
       throw new Error(
         `Error al actualizar reserva de visitante: ${updateError.message}`
+      );
+    }
+    if (count === 0) {
+      throw new Error(
+        "Reserva no encontrada, ya cancelada o sin permisos para editarla"
       );
     }
 

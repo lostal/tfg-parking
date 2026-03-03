@@ -9,9 +9,11 @@
 --   3. seed.sql           <- este archivo
 --
 -- Usuarios de prueba:
---   admin@gruposiete.com          / Admin1234!       → admin
---   empleado-fijo@gruposiete.com  / Empleado1234!    → employee (plaza parking 15 asignada)
---   empleado@gruposiete.com       / Empleado1234!    → employee (sin plaza fija)
+--   admin@gruposiete.com               / Admin1234!       → admin
+--   empleado-fijo@gruposiete.com       / Empleado1234!    → employee (plaza parking 15 + OF-01..OF-05)
+--   empleado@gruposiete.com            / Empleado1234!    → employee (sin plaza fija)
+--   empleado-solo-parking@gruposiete.com / Empleado1234!  → employee (plaza parking 16, sin oficina)
+--   empleado-solo-oficina@gruposiete.com / Empleado1234!  → employee (OF-08, sin parking)
 -- ============================================================
 
 -- ─── 1. Limpiar datos de transaccion previos ─────────────────
@@ -26,7 +28,9 @@ delete from auth.users
 where email in (
   'admin@gruposiete.com',
   'empleado@gruposiete.com',
-  'empleado-fijo@gruposiete.com'
+  'empleado-fijo@gruposiete.com',
+  'empleado-solo-parking@gruposiete.com',
+  'empleado-solo-oficina@gruposiete.com'
 );
 
 -- ─── 3. Insertar usuarios en auth.users ──────────────────────
@@ -71,6 +75,28 @@ values
     '{"full_name": "Empleado General"}'::jsonb,
     'authenticated', 'authenticated',
     now(), now(), '', '', '', ''
+  ),
+  -- Empleado con plaza de parking pero sin plaza de oficina
+  (
+    gen_random_uuid(),
+    '00000000-0000-0000-0000-000000000000',
+    'empleado-solo-parking@gruposiete.com',
+    crypt('Empleado1234!', gen_salt('bf')),
+    now(),
+    '{"full_name": "Empleado Solo Parking"}'::jsonb,
+    'authenticated', 'authenticated',
+    now(), now(), '', '', '', ''
+  ),
+  -- Empleado con plaza de oficina pero sin plaza de parking
+  (
+    gen_random_uuid(),
+    '00000000-0000-0000-0000-000000000000',
+    'empleado-solo-oficina@gruposiete.com',
+    crypt('Empleado1234!', gen_salt('bf')),
+    now(),
+    '{"full_name": "Empleado Solo Oficina"}'::jsonb,
+    'authenticated', 'authenticated',
+    now(), now(), '', '', '', ''
   );
 
 -- ─── 4. Insertar identidades (necesario para login por email) ─
@@ -94,7 +120,9 @@ from auth.users u
 where u.email in (
   'admin@gruposiete.com',
   'empleado@gruposiete.com',
-  'empleado-fijo@gruposiete.com'
+  'empleado-fijo@gruposiete.com',
+  'empleado-solo-parking@gruposiete.com',
+  'empleado-solo-oficina@gruposiete.com'
 )
 on conflict (provider, provider_id) do nothing;
 
@@ -115,7 +143,9 @@ from auth.users u
 where u.email in (
   'admin@gruposiete.com',
   'empleado@gruposiete.com',
-  'empleado-fijo@gruposiete.com'
+  'empleado-fijo@gruposiete.com',
+  'empleado-solo-parking@gruposiete.com',
+  'empleado-solo-oficina@gruposiete.com'
 )
 on conflict (id) do update
   set role       = excluded.role,
@@ -135,14 +165,36 @@ set assigned_to = (
 where label = '15'
   and resource_type = 'parking';
 
+-- ─── 7. Asignar plaza de parking al empleado-solo-parking ────
+-- Plaza 16 asignada a 'empleado-solo-parking@gruposiete.com'
+
+update public.spots
+set assigned_to = (
+  select id from public.profiles where email = 'empleado-solo-parking@gruposiete.com'
+)
+where label = '16'
+  and resource_type = 'parking';
+
+-- ─── 8. Asignar plaza de oficina al empleado-solo-oficina ────
+-- OF-08 asignada a 'empleado-solo-oficina@gruposiete.com'
+
+update public.spots
+set assigned_to = (
+  select id from public.profiles where email = 'empleado-solo-oficina@gruposiete.com'
+)
+where label = 'OF-08'
+  and resource_type = 'office';
+
 -- ─── Resumen ─────────────────────────────────────────────────
 -- Usuarios:
---   admin@gruposiete.com          Admin1234!    admin
---   empleado-fijo@gruposiete.com  Empleado1234! employee (plaza 15 con dueño asignado)
---   empleado@gruposiete.com       Empleado1234! employee (sin plaza fija)
+--   admin@gruposiete.com                 Admin1234!    admin
+--   empleado-fijo@gruposiete.com         Empleado1234! employee (parking 15 + oficina via admin)
+--   empleado@gruposiete.com              Empleado1234! employee (sin plaza fija)
+--   empleado-solo-parking@gruposiete.com Empleado1234! employee (parking 16, sin oficina)
+--   empleado-solo-oficina@gruposiete.com Empleado1234! employee (OF-08, sin parking)
 --
 -- Spots (creados en 00001_schema.sql):
---   Parking standard (7 libres): 13, 14, 16, 17, 18, 19, 49  (15 tiene dueño)
+--   Parking standard libres: 13, 14, 17, 18, 19, 49  (15→fijo, 16→solo-parking)
 --   Parking visitor:  50
---   Oficina standard: OF-01..OF-09  (OF-06, OF-07 sin dueño en seed; asignar desde admin)
+--   Oficina standard: OF-01..OF-09  (OF-08→solo-oficina; OF-06, OF-07 sin dueño)
 --   Oficina inactiva: OF-10 (is_active = false)

@@ -1,8 +1,8 @@
 /**
  * Cessations View Component
  *
- * Desktop-optimized interface for management users to cede their parking spot
- * and manage active cessions.
+ * Interfaz para que los usuarios con plaza asignada cedan sus
+ * plazas de parking y gestionen cesiones activas.
  */
 
 "use client";

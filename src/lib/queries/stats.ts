@@ -29,9 +29,12 @@ export interface MovementDistribution {
 /**
  * Devuelve los conteos diarios de reservas + visitantes para los últimos N días.
  * Usada por el gráfico de barras del panel admin.
+ *
+ * @param resourceType - Si se proporciona, filtra reservas por tipo de recurso.
  */
 export async function getDailyCountsLast30Days(
-  days = 30
+  days = 30,
+  resourceType?: "parking" | "office"
 ): Promise<DailyCount[]> {
   const supabase = await createClient();
 
@@ -42,13 +45,27 @@ export async function getDailyCountsLast30Days(
   const startStr = startDate.toISOString().split("T")[0]!;
   const endStr = endDate.toISOString().split("T")[0]!;
 
+  // Para filtrar por resource_type necesitamos hacer join con spots
+  const reservationsSelect = resourceType
+    ? "date, spots!reservations_spot_id_fkey(resource_type)"
+    : "date";
+
+  let reservationsQuery = supabase
+    .from("reservations")
+    .select(reservationsSelect)
+    .eq("status", "confirmed")
+    .gte("date", startStr)
+    .lte("date", endStr);
+
+  if (resourceType) {
+    reservationsQuery = reservationsQuery.eq(
+      "spots.resource_type",
+      resourceType
+    );
+  }
+
   const [reservationsResult, visitorsResult] = await Promise.all([
-    supabase
-      .from("reservations")
-      .select("date")
-      .eq("status", "confirmed")
-      .gte("date", startStr)
-      .lte("date", endStr),
+    reservationsQuery,
     supabase
       .from("visitor_reservations")
       .select("date")
@@ -71,7 +88,9 @@ export async function getDailyCountsLast30Days(
     countsByDate.set(dateStr, { reservations: 0, visitors: 0 });
   }
 
-  for (const r of reservationsResult.data ?? []) {
+  for (const r of (reservationsResult.data ?? []) as unknown as {
+    date: string;
+  }[]) {
     const entry = countsByDate.get(r.date);
     if (entry) entry.reservations++;
   }
@@ -91,17 +110,15 @@ export async function getDailyCountsLast30Days(
   });
 }
 
-/** Tipo interno para la query de reservas con etiqueta de plaza */
-type ReservaConPlaza = {
-  id: string;
-  date: string;
-  spots: { label: string } | null;
-};
-
 /**
  * Devuelve las N plazas con más reservas confirmadas en el mes actual.
+ *
+ * @param resourceType - Si se proporciona, filtra por tipo de recurso.
  */
-export async function getTopSpots(limit = 6): Promise<SpotUsage[]> {
+export async function getTopSpots(
+  limit = 6,
+  resourceType?: "parking" | "office"
+): Promise<SpotUsage[]> {
   const supabase = await createClient();
 
   const now = new Date();
@@ -112,22 +129,38 @@ export async function getTopSpots(limit = 6): Promise<SpotUsage[]> {
     .toISOString()
     .split("T")[0]!;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("reservations")
-    .select("id, date, spots!reservations_spot_id_fkey(label)")
+    .select("id, date, spots!reservations_spot_id_fkey(label, resource_type)")
     .eq("status", "confirmed")
     .gte("date", firstOfMonth)
-    .lte("date", lastOfMonth)
-    .returns<ReservaConPlaza[]>();
+    .lte("date", lastOfMonth);
+
+  if (resourceType) {
+    query = query.eq("spots.resource_type", resourceType);
+  }
+
+  type ReservaConPlazaFiltrada = {
+    id: string;
+    date: string;
+    spots: { label: string; resource_type: string } | null;
+  };
+
+  const { data, error } = await query.returns<ReservaConPlazaFiltrada[]>();
 
   if (error) {
     console.error("[stats] getTopSpots DB error:", error.message);
     return [];
   }
 
+  // Filtrar en JS las filas cuyo join no matched (spots is null) si resourceType dado
+  const filtered = resourceType
+    ? data.filter((r) => r.spots?.resource_type === resourceType)
+    : data;
+
   // Agrupar por plaza
   const countBySpot = new Map<string, number>();
-  for (const r of data) {
+  for (const r of filtered) {
     const label = r.spots?.label ?? "—";
     countBySpot.set(label, (countBySpot.get(label) ?? 0) + 1);
   }
@@ -184,8 +217,12 @@ export async function getMovementDistribution(): Promise<
 
 /**
  * Devuelve el total de reservas confirmadas para el mes actual.
+ *
+ * @param resourceType - Si se proporciona, filtra por tipo de recurso.
  */
-export async function getMonthlyReservationCount(): Promise<number> {
+export async function getMonthlyReservationCount(
+  resourceType?: "parking" | "office"
+): Promise<number> {
   const supabase = await createClient();
 
   const now = new Date();
@@ -196,12 +233,35 @@ export async function getMonthlyReservationCount(): Promise<number> {
     .toISOString()
     .split("T")[0]!;
 
-  const { count } = await supabase
+  let query = supabase
     .from("reservations")
-    .select("id", { count: "exact", head: true })
+    .select(
+      resourceType
+        ? "id, spots!reservations_spot_id_fkey(resource_type)"
+        : "id",
+      {
+        count: "exact",
+        head: !resourceType, // head:true solo si no filtramos por resource_type
+      }
+    )
     .eq("status", "confirmed")
     .gte("date", firstOfMonth)
     .lte("date", lastOfMonth);
+
+  if (resourceType) {
+    query = query.eq("spots.resource_type", resourceType);
+  }
+
+  const { count, data } = await query;
+
+  // Si filtramos por resource_type, el count de head:false puede no ser exacto
+  // por el comportamiento del join — usamos el tamaño real del array
+  if (resourceType && data) {
+    const filtered = (
+      data as unknown as { spots: { resource_type: string } | null }[]
+    ).filter((r) => r.spots?.resource_type === resourceType);
+    return filtered.length;
+  }
 
   return count ?? 0;
 }

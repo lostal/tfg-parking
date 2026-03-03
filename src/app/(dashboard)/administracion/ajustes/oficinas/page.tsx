@@ -21,6 +21,7 @@ export default async function AdminSettingsOfficesPage() {
         config={config}
         onSave={updateOfficeConfig}
         showTimeSlots={true}
+        showVisitorBooking={false}
       />
     </ContentSection>
   );

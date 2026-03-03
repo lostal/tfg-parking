@@ -40,10 +40,10 @@ import {
 } from "@/components/ui/tooltip";
 
 import type { SpotWithStatus } from "@/types";
-import type { ParkingReservationRow } from "@/lib/queries/reservations";
+import type { ReservationRow } from "@/lib/queries/reservations";
 import {
   getAvailableSpotsForDate,
-  getMyReservations,
+  getMyParkingReservations,
   createReservation,
   cancelReservation,
 } from "../actions";
@@ -112,7 +112,7 @@ function MyReservationsSection({
   onCancel,
   cancellingId,
 }: {
-  reservations: ParkingReservationRow[];
+  reservations: ReservationRow[];
   onCancel: (id: string) => void;
   cancellingId: string | null;
 }) {
@@ -213,9 +213,9 @@ function EmptyState({ date }: { date: Date }) {
 export function ListView() {
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
   const [spots, setSpots] = React.useState<SpotWithStatus[]>([]);
-  const [myReservations, setMyReservations] = React.useState<
-    ParkingReservationRow[]
-  >([]);
+  const [myReservations, setMyReservations] = React.useState<ReservationRow[]>(
+    []
+  );
   const [loading, setLoading] = React.useState(true);
   const [bookingSpotId, setBookingSpotId] = React.useState<string | null>(null);
   const [cancellingId, setCancellingId] = React.useState<string | null>(null);
@@ -229,7 +229,7 @@ export function ListView() {
     try {
       const [spotsResult, reservationsResult] = await Promise.all([
         getAvailableSpotsForDate(dateStr),
-        getMyReservations(),
+        getMyParkingReservations(),
       ]);
 
       if (spotsResult.success) {

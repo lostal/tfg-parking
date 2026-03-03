@@ -55,7 +55,7 @@ export interface ResourceDayData {
   myReservationEndTime?: string | null;
 
   // Cession mode fields
-  cessionStatus_day?: ResourceCessionDayStatus;
+  cessionDayStatus?: ResourceCessionDayStatus;
   myCessionId?: string;
   cessionStatus?: CessionStatus;
 }

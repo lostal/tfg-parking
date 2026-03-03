@@ -168,6 +168,8 @@ export function createMockReservation(
     date: "2025-03-15",
     status: "confirmed",
     notes: null,
+    start_time: null,
+    end_time: null,
     created_at: "2025-01-01T10:00:00Z",
     updated_at: "2025-01-01T10:00:00Z",
     ...overrides,

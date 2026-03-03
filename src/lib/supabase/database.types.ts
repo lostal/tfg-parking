@@ -163,9 +163,11 @@ export type Database = {
         Row: {
           created_at: string;
           date: string;
+          end_time: string | null;
           id: string;
           notes: string | null;
           spot_id: string;
+          start_time: string | null;
           status: Database["public"]["Enums"]["reservation_status"];
           updated_at: string;
           user_id: string;
@@ -173,9 +175,11 @@ export type Database = {
         Insert: {
           created_at?: string;
           date: string;
+          end_time?: string | null;
           id?: string;
           notes?: string | null;
           spot_id: string;
+          start_time?: string | null;
           status?: Database["public"]["Enums"]["reservation_status"];
           updated_at?: string;
           user_id: string;
@@ -183,9 +187,11 @@ export type Database = {
         Update: {
           created_at?: string;
           date?: string;
+          end_time?: string | null;
           id?: string;
           notes?: string | null;
           spot_id?: string;
+          start_time?: string | null;
           status?: Database["public"]["Enums"]["reservation_status"];
           updated_at?: string;
           user_id?: string;
@@ -501,6 +507,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["user_role"];
       };
       is_admin: { Args: never; Returns: boolean };
+      reservation_tsrange: {
+        Args: { p_date: string; p_end: string; p_start: string };
+        Returns: unknown;
+      };
       user_has_assigned_spot: {
         Args: { p_resource_type: string };
         Returns: boolean;

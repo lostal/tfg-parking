@@ -18,6 +18,7 @@ import {
   buildMonthRange,
   computeCessionDayStatus,
   iterMonthDays,
+  isOutsideBookingWindow,
   FEW_SPOTS_THRESHOLD,
 } from "@/lib/calendar/calendar-utils";
 import { z } from "zod/v4";
@@ -42,7 +43,7 @@ const getCalendarDataSchema = z.object({
 
 /**
  * Obtiene el estado de todos los días del mes para el usuario actual.
- * La respuesta incluye tanto employeeStatus como managementStatus
+ * La respuesta incluye tanto el estado de cesión como el de reserva
  * según el rol del usuario.
  */
 export const getCalendarMonthData = actionClient
@@ -78,8 +79,6 @@ export const getCalendarMonthData = actionClient
         .lte("date", lastDay)
         .neq("status", "cancelled");
 
-      const spotId: string = assignedSpot.id;
-      void spotId; // confirma que spotId siempre existe dentro de este bloque
       const cessionsByDate = new Map(
         (cessionsResult.data ?? []).map((c) => [c.date, c])
       );
@@ -88,9 +87,10 @@ export const getCalendarMonthData = actionClient
         const cession = cessionsByDate.get(dateStr);
         return {
           date: dateStr,
-          cessionStatus_day: computeCessionDayStatus({
+          cessionDayStatus: computeCessionDayStatus({
             dateStr,
             allowedDays,
+            minAdvanceHours: config.cession_min_advance_hours,
             cession,
           }),
           myCessionId: cession?.id,
@@ -125,31 +125,26 @@ export const getCalendarMonthData = actionClient
             .gte("date", firstDay)
             .lte("date", lastDay)
             .eq("status", "confirmed")
+            .eq("spots.resource_type", "parking")
             .returns<MyReservationRow[]>(),
         ]);
 
       const allSpots = spotsData.data ?? [];
 
-      // Plazas libremente reservables = type='standard' sin propietario.
-      // Las plazas con assigned_to solo se reservan vía cesión de su dueño.
-      // Las plazas type='visitor' nunca cuentan para empleados.
-      const reservableSpots = allSpots.filter(
-        (s) => s.type === "standard" && !s.assigned_to
-      );
-      const totalOriginalSpots = reservableSpots.length;
-      const reservableIds = new Set(reservableSpots.map((s) => s.id));
-      // Set de todos los IDs de parking (para filtrar cesiones cross-resource)
+      // Bajo el nuevo modelo, TODAS las plazas reservables vienen de cesiones activas
+      // (solo plazas con propietario asignado que las liberan explícitamente).
+      // No existe el concepto de plaza 'libre' sin propietario.
       const allParkingIds = new Set(allSpots.map((s) => s.id));
 
-      // Agrupa reservas por fecha
+      // Agrupa reservas por fecha (filtradas a IDs de parking)
       const reservedByDate = new Map<string, Set<string>>();
       for (const r of reservationsData.data ?? []) {
+        if (!allParkingIds.has(r.spot_id)) continue; // guardia cross-resource
         if (!reservedByDate.has(r.date)) reservedByDate.set(r.date, new Set());
         reservedByDate.get(r.date)!.add(r.spot_id);
       }
 
-      // Cesiones disponibles de plazas con dueño añaden disponibilidad.
-      // Guard de resource_type: solo procesar cesiones cuyo spot_id sea de parking.
+      // Cesiones disponibles de plazas con propietario = el pool de plazas reservables.
       const cededAvailableByDate = new Map<string, number>();
       for (const c of cessionsData.data ?? []) {
         if (allParkingIds.has(c.spot_id) && c.status === "available") {
@@ -174,15 +169,13 @@ export const getCalendarMonthData = actionClient
 
       return Array.from(iterMonthDays(year, month)).map((dateStr) => {
         const myRes = myReservationByDate.get(dateStr);
-        const reserved = reservedByDate.get(dateStr) ?? new Set();
         const cededAvail = cededAvailableByDate.get(dateStr) ?? 0;
-
-        // Plazas reservables ocupadas por reservas ese día
-        const employeeReserved = [...reserved].filter((id) =>
-          reservableIds.has(id)
+        // Reservas confirmadas sobre plazas cedidas ese día
+        const reserved = reservedByDate.get(dateStr) ?? new Set();
+        const reservedOnCeded = [...reserved].filter((id) =>
+          allParkingIds.has(id)
         ).length;
-        const totalAvailable =
-          totalOriginalSpots - employeeReserved + cededAvail;
+        const totalAvailable = Math.max(0, cededAvail - reservedOnCeded);
 
         let status: ResourceDayStatus;
 
@@ -190,6 +183,8 @@ export const getCalendarMonthData = actionClient
           status = "unavailable";
         } else if (isPast(dateStr)) {
           status = "past";
+        } else if (isOutsideBookingWindow(dateStr, config.max_advance_days)) {
+          status = "unavailable";
         } else if (myRes) {
           status = "reserved";
         } else if (totalAvailable <= 0) {

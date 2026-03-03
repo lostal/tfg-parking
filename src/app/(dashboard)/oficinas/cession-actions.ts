@@ -7,11 +7,16 @@
  * (management) puedan cederlo al pool general en fechas específicas.
  */
 
-import { actionClient } from "@/lib/actions";
+import { actionClient, success, error, type ActionResult } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import { createCessionSchema, cancelCessionSchema } from "@/lib/validations";
 import { getAllResourceConfigs } from "@/lib/config";
+import { isTooSoonForCession } from "@/lib/calendar/calendar-utils";
+import {
+  getUserCessions,
+  type CessionWithDetails,
+} from "@/lib/queries/cessions";
 
 /**
  * Crea cesiones de puesto de oficina para múltiples fechas.
@@ -51,17 +56,13 @@ export const createOfficeCession = actionClient
     }
 
     // Check advance hours if configured
-    if (config.cession_min_advance_hours > 0 && parsedInput.dates.length > 0) {
-      const firstDate = parsedInput.dates[0]!;
-      const now = new Date();
-      const targetDate = new Date(firstDate + "T00:00:00");
-      const hoursAhead =
-        (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-      if (hoursAhead < config.cession_min_advance_hours) {
-        throw new Error(
-          `La cesión debe realizarse con al menos ${config.cession_min_advance_hours} horas de antelación`
-        );
+    if (config.cession_min_advance_hours > 0) {
+      for (const dateStr of parsedInput.dates) {
+        if (isTooSoonForCession(dateStr, config.cession_min_advance_hours)) {
+          throw new Error(
+            `La fecha ${dateStr} no cumple la antelación mínima de ${config.cession_min_advance_hours} horas`
+          );
+        }
       }
     }
 
@@ -111,7 +112,9 @@ export const cancelOfficeCession = actionClient
       throw new Error("No puedes cancelar esta cesión");
     }
 
-    // Verificar si hay una reserva activa sobre esta plaza+fecha
+    // Buscar si hay una reserva activa sobre este puesto+fecha.
+    // IMPORTANTE: comprobamos la reserva real en BD, NO nos fiamos del campo
+    // cession.status para evitar estados inconsistentes.
     const { data: activeReservation } = await supabase
       .from("reservations")
       .select("id")
@@ -122,16 +125,23 @@ export const cancelOfficeCession = actionClient
 
     if (activeReservation && user.profile?.role !== "admin") {
       throw new Error(
-        "No puedes cancelar una cesión que ya ha sido reservada. Contacta con un administrador."
+        "No se puede cancelar: alguien ya ha reservado este puesto"
       );
     }
 
-    // Si admin cancela con reserva activa, cancela también la reserva
-    if (activeReservation && user.profile?.role === "admin") {
-      await supabase
+    // Cancelar la reserva activa del empleado PRIMERO: si falla, la cesión
+    // permanece intacta y no hay estado inconsistente.
+    if (activeReservation) {
+      const { error: reservationError } = await supabase
         .from("reservations")
         .update({ status: "cancelled" })
         .eq("id", activeReservation.id);
+
+      if (reservationError) {
+        throw new Error(
+          `No se pudo anular la reserva del empleado: ${reservationError.message}. La cesión no ha sido modificada.`
+        );
+      }
     }
 
     const { error: updateError } = await supabase
@@ -143,5 +153,26 @@ export const cancelOfficeCession = actionClient
       throw new Error(`Error al cancelar cesión: ${updateError.message}`);
     }
 
-    return { cancelled: true };
+    return { cancelled: true, reservationAlsoCancelled: !!activeReservation };
   });
+
+/**
+ * Obtiene las cesiones de oficina activas del usuario actual.
+ * Wrapper de acción para que los componentes cliente puedan llamarla.
+ */
+export async function getMyOfficeCessions(): Promise<
+  ActionResult<CessionWithDetails[]>
+> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return error("No autenticado");
+
+    const cessions = await getUserCessions(user.id, "office");
+    return success(cessions);
+  } catch (err) {
+    console.error("getMyOfficeCessions error:", err);
+    return error(
+      err instanceof Error ? err.message : "Error al obtener cesiones"
+    );
+  }
+}

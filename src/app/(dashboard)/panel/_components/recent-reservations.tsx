@@ -7,10 +7,10 @@
 
 import { ParkingCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { ParkingReservationRow } from "@/lib/queries/reservations";
+import type { ReservationRow } from "@/lib/queries/reservations";
 
 interface RecentReservationsProps {
-  reservations: ParkingReservationRow[];
+  reservations: ReservationRow[];
 }
 
 export function RecentReservations({ reservations }: RecentReservationsProps) {

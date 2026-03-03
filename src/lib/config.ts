@@ -11,12 +11,12 @@
  *   const config  = await getAllResourceConfigs('office');
  */
 
-import { unstable_cache } from "next/cache";
+import { unstable_cache, revalidateTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { ResourceType } from "@/lib/supabase/types";
 
-// ─── Tipos de recurso ─────────────────────────────────────────
-
-export type ResourceType = "parking" | "office";
+// Re-export so callers can import ResourceType from @/lib/config as before
+export type { ResourceType };
 
 // ─── Definición de claves de configuración ────────────────────
 
@@ -33,7 +33,6 @@ export type ResourceConfigKey =
   | "allowed_days"
   | "max_advance_days"
   | "max_consecutive_days"
-  | "max_daily_reservations"
   | "max_weekly_reservations"
   | "max_monthly_reservations"
   | "time_slots_enabled"
@@ -57,11 +56,14 @@ export interface ResourceConfigValues {
   booking_enabled: boolean;
   visitor_booking_enabled: boolean;
   allowed_days: number[]; // 0=Dom, 1=Lun, ..., 6=Sáb
-  max_advance_days: number;
-  max_consecutive_days: number;
-  max_daily_reservations: number;
-  max_weekly_reservations: number;
-  max_monthly_reservations: number;
+  /** null = sin límite de antelación */
+  max_advance_days: number | null;
+  /** null = sin límite de días consecutivos */
+  max_consecutive_days: number | null;
+  /** null = sin límite semanal */
+  max_weekly_reservations: number | null;
+  /** null = sin límite mensual */
+  max_monthly_reservations: number | null;
   time_slots_enabled: boolean;
   slot_duration_minutes: number | null;
   day_start_hour: number | null;
@@ -86,7 +88,6 @@ const PARKING_DEFAULTS: ResourceConfigValues = {
   allowed_days: [1, 2, 3, 4, 5],
   max_advance_days: 14,
   max_consecutive_days: 5,
-  max_daily_reservations: 1,
   max_weekly_reservations: 5,
   max_monthly_reservations: 20,
   time_slots_enabled: false,
@@ -105,7 +106,6 @@ const OFFICE_DEFAULTS: ResourceConfigValues = {
   allowed_days: [1, 2, 3, 4, 5],
   max_advance_days: 7,
   max_consecutive_days: 3,
-  max_daily_reservations: 2,
   max_weekly_reservations: 10,
   max_monthly_reservations: 40,
   time_slots_enabled: true,
@@ -173,86 +173,37 @@ export async function getAllResourceConfigs(
   const defaults = RESOURCE_DEFAULTS[resourceType];
   const prefix = `${resourceType}.` as const;
 
-  return {
-    booking_enabled:
-      raw[`${prefix}booking_enabled`] !== undefined
-        ? Boolean(raw[`${prefix}booking_enabled`])
-        : defaults.booking_enabled,
+  const result = {} as ResourceConfigValues;
 
-    visitor_booking_enabled:
-      raw[`${prefix}visitor_booking_enabled`] !== undefined
-        ? Boolean(raw[`${prefix}visitor_booking_enabled`])
-        : defaults.visitor_booking_enabled,
+  for (const _key of Object.keys(defaults) as Array<
+    keyof ResourceConfigValues
+  >) {
+    const fullKey = `${prefix}${_key}`;
+    const rawVal = raw[fullKey];
+    const defVal = defaults[_key];
 
-    allowed_days: Array.isArray(raw[`${prefix}allowed_days`])
-      ? (raw[`${prefix}allowed_days`] as number[])
-      : defaults.allowed_days,
+    if (rawVal === undefined) {
+      // @ts-expect-error – iterando claves genéricas; el tipo es correcto en runtime
+      result[_key] = defVal;
+    } else if (Array.isArray(defVal)) {
+      // @ts-expect-error – idem
+      result[_key] = Array.isArray(rawVal) ? rawVal : defVal;
+    } else if (typeof defVal === "boolean") {
+      // @ts-expect-error – idem
+      result[_key] = Boolean(rawVal);
+    } else if (typeof defVal === "number" || defVal === null) {
+      // null explícito en BD = "sin límite"; undefined ya fue gestionado arriba
+      // @ts-expect-error – idem
+      result[_key] =
+        rawVal === null ? null : typeof rawVal === "number" ? rawVal : defVal;
+    } else {
+      // null | number | string — conservar el valor raw o el default
+      // @ts-expect-error – idem
+      result[_key] = rawVal ?? defVal;
+    }
+  }
 
-    max_advance_days:
-      typeof raw[`${prefix}max_advance_days`] === "number"
-        ? (raw[`${prefix}max_advance_days`] as number)
-        : defaults.max_advance_days,
-
-    max_consecutive_days:
-      typeof raw[`${prefix}max_consecutive_days`] === "number"
-        ? (raw[`${prefix}max_consecutive_days`] as number)
-        : defaults.max_consecutive_days,
-
-    max_daily_reservations:
-      typeof raw[`${prefix}max_daily_reservations`] === "number"
-        ? (raw[`${prefix}max_daily_reservations`] as number)
-        : defaults.max_daily_reservations,
-
-    max_weekly_reservations:
-      typeof raw[`${prefix}max_weekly_reservations`] === "number"
-        ? (raw[`${prefix}max_weekly_reservations`] as number)
-        : defaults.max_weekly_reservations,
-
-    max_monthly_reservations:
-      typeof raw[`${prefix}max_monthly_reservations`] === "number"
-        ? (raw[`${prefix}max_monthly_reservations`] as number)
-        : defaults.max_monthly_reservations,
-
-    time_slots_enabled:
-      raw[`${prefix}time_slots_enabled`] !== undefined
-        ? Boolean(raw[`${prefix}time_slots_enabled`])
-        : defaults.time_slots_enabled,
-
-    slot_duration_minutes:
-      typeof raw[`${prefix}slot_duration_minutes`] === "number"
-        ? (raw[`${prefix}slot_duration_minutes`] as number)
-        : defaults.slot_duration_minutes,
-
-    day_start_hour:
-      typeof raw[`${prefix}day_start_hour`] === "number"
-        ? (raw[`${prefix}day_start_hour`] as number)
-        : defaults.day_start_hour,
-
-    day_end_hour:
-      typeof raw[`${prefix}day_end_hour`] === "number"
-        ? (raw[`${prefix}day_end_hour`] as number)
-        : defaults.day_end_hour,
-
-    cession_enabled:
-      raw[`${prefix}cession_enabled`] !== undefined
-        ? Boolean(raw[`${prefix}cession_enabled`])
-        : defaults.cession_enabled,
-
-    cession_min_advance_hours:
-      typeof raw[`${prefix}cession_min_advance_hours`] === "number"
-        ? (raw[`${prefix}cession_min_advance_hours`] as number)
-        : defaults.cession_min_advance_hours,
-
-    cession_max_per_week:
-      typeof raw[`${prefix}cession_max_per_week`] === "number"
-        ? (raw[`${prefix}cession_max_per_week`] as number)
-        : defaults.cession_max_per_week,
-
-    auto_cession_enabled:
-      raw[`${prefix}auto_cession_enabled`] !== undefined
-        ? Boolean(raw[`${prefix}auto_cession_enabled`])
-        : defaults.auto_cession_enabled,
-  };
+  return result;
 }
 
 /**
@@ -295,8 +246,5 @@ export async function getResourceConfig<K extends ResourceConfigKey>(
  * Debe llamarse después de cada mutación en system_config.
  */
 export async function invalidateConfigCache(): Promise<void> {
-  const { revalidateTag } = await import("next/cache");
-  // En Next.js 15, el tipo de revalidateTag requiere 2 argumentos para la nueva
-  // API de "use cache"; para unstable_cache sigue funcionando con 1 arg en runtime.
-  (revalidateTag as unknown as (tag: string) => void)(CONFIG_CACHE_TAG);
+  revalidateTag(CONFIG_CACHE_TAG, "default");
 }

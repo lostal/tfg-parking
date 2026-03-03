@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Globe, Car, Building2, SlidersHorizontal } from "lucide-react";
+import { Globe, Car, Building2 } from "lucide-react";
 
 const adminSettingsSections = [
   {
@@ -34,12 +34,6 @@ const adminSettingsSections = [
     label: "Oficinas",
     icon: Building2,
     href: ROUTES.ADMIN_SETTINGS_OFFICES,
-  },
-  {
-    id: "avanzado",
-    label: "Avanzado",
-    icon: SlidersHorizontal,
-    href: ROUTES.ADMIN_SETTINGS_ADVANCED,
   },
 ] as const;
 

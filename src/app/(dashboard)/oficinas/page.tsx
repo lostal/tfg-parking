@@ -11,23 +11,29 @@ import { ThemeSwitch } from "@/components/layout/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { requireAuth } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getResourceConfig } from "@/lib/config";
+import { getAllResourceConfigs } from "@/lib/config";
 import { OfficeCalendarView } from "./_components/office-calendar-view";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { TriangleAlert } from "lucide-react";
 
 export default async function OficinasPage() {
   const user = await requireAuth();
 
   const supabase = await createClient();
-  const [assignedSpotResult, timeSlotsEnabled] = await Promise.all([
+  const [assignedSpotResult, officeConfig] = await Promise.all([
     supabase
       .from("spots")
       .select("id, label")
       .eq("assigned_to", user.id)
       .eq("resource_type", "office")
       .maybeSingle(),
-    getResourceConfig("office", "time_slots_enabled"),
+    getAllResourceConfigs("office"),
   ]);
   const assignedSpot = assignedSpotResult.data;
+  const {
+    booking_enabled: bookingEnabled,
+    time_slots_enabled: timeSlotsEnabled,
+  } = officeConfig;
 
   const title = "Oficinas";
   const description = assignedSpot
@@ -50,6 +56,16 @@ export default async function OficinasPage() {
         </div>
 
         <div className="mx-auto max-w-lg">
+          {!bookingEnabled && (
+            <Alert variant="destructive" className="mb-6">
+              <TriangleAlert className="size-4" />
+              <AlertTitle>Reservas deshabilitadas</AlertTitle>
+              <AlertDescription>
+                El administrador ha desactivado temporalmente las nuevas
+                reservas de oficinas.
+              </AlertDescription>
+            </Alert>
+          )}
           <OfficeCalendarView
             hasAssignedSpot={!!assignedSpot}
             assignedSpot={assignedSpot ?? null}

@@ -194,18 +194,24 @@ export const updateGlobalConfigSchema = z.object({
 
 export type UpdateGlobalConfigInput = z.infer<typeof updateGlobalConfigSchema>;
 
-/** Schema base de configuración de recurso (parking u oficina) */
+/** Schema base de configuración de recurso (parking u oficina).
+ * Los valores por defecto viven en `src/lib/config.ts` (PARKING_DEFAULTS / OFFICE_DEFAULTS)
+ * y se inyectan en el formulario admin desde la config actual del sistema.
+ * Este schema sólo valida rangos — no define defaults propios. */
 export const updateResourceConfigSchema = z.object({
   booking_enabled: z.boolean(),
   visitor_booking_enabled: z.boolean(),
   allowed_days: z
     .array(z.number().int().min(0).max(6))
     .min(1, "Selecciona al menos un día"),
-  max_advance_days: z.number().int().min(1).max(365),
-  max_consecutive_days: z.number().int().min(1).max(30),
-  max_daily_reservations: z.number().int().min(1).max(10),
-  max_weekly_reservations: z.number().int().min(1).max(50),
-  max_monthly_reservations: z.number().int().min(1).max(200),
+  /** null = sin límite de antelación */
+  max_advance_days: z.number().int().min(1).max(365).nullable(),
+  /** null = sin límite de días consecutivos */
+  max_consecutive_days: z.number().int().min(1).max(30).nullable(),
+  /** null = sin límite semanal */
+  max_weekly_reservations: z.number().int().min(1).max(50).nullable(),
+  /** null = sin límite mensual */
+  max_monthly_reservations: z.number().int().min(1).max(200).nullable(),
   time_slots_enabled: z.boolean(),
   slot_duration_minutes: z.number().int().min(15).max(480).nullable(),
   day_start_hour: z.number().int().min(0).max(23).nullable(),

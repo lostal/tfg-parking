@@ -42,9 +42,58 @@ interface ResourceConfigFormProps {
   ) => Promise<{ success: boolean; error?: string }>;
   /** Whether time slot fields should be shown (only for offices) */
   showTimeSlots?: boolean;
+  /** Whether the visitor booking toggle should be shown (false for offices) */
+  showVisitorBooking?: boolean;
 }
 
-// ─── Section sub-components ────────────────────────────────────
+// ─── Nullable number input (vacío = sin límite) ───────────────
+
+function NullableNumberInput({
+  id,
+  label,
+  description,
+  value,
+  min,
+  max,
+  onChange,
+  error,
+}: {
+  id: string;
+  label: string;
+  description?: string;
+  value: number | null;
+  min?: number;
+  max?: number;
+  onChange: (v: number | null) => void;
+  error?: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        type="number"
+        min={min}
+        max={max}
+        value={value ?? ""}
+        placeholder="Sin límite"
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (raw === "") {
+            onChange(null);
+          } else {
+            const n = parseInt(raw, 10);
+            if (!isNaN(n)) onChange(n);
+          }
+        }}
+      />
+      {description && (
+        <p className="text-muted-foreground text-xs">{description}</p>
+      )}
+      {error && <p className="text-destructive text-sm">{error}</p>}
+    </div>
+  );
+}
 
 type FormValues = UpdateResourceConfigInput;
 type FormMethods = UseFormReturn<FormValues>;
@@ -171,116 +220,67 @@ function TimeSlotsSection({
   );
 }
 
-function ReservationLimitsSection({
-  errors,
-  register,
-}: Pick<SectionProps, "errors" | "register">) {
+function ReservationLimitsSection({ values, errors, setValue }: SectionProps) {
   return (
     <div className="space-y-4">
       <div>
         <h4 className="text-sm leading-none font-medium">Límites de reserva</h4>
         <p className="text-muted-foreground mt-1 text-sm">
-          Define cuántas reservas puede hacer un usuario y con cuánta antelación
+          Define cuántas reservas puede hacer un usuario y con cuánta
+          antelación. Deja un campo vacío para no aplicar ese límite.
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="max_advance_days">Días máximos de antelación</Label>
-          <Input
-            id="max_advance_days"
-            type="number"
-            min={1}
-            max={365}
-            {...register("max_advance_days", { valueAsNumber: true })}
-          />
-          <p className="text-muted-foreground text-xs">
-            El usuario no puede reservar más allá de estos días en el futuro
-          </p>
-          {errors.max_advance_days && (
-            <p className="text-destructive text-sm">
-              {errors.max_advance_days.message}
-            </p>
-          )}
-        </div>
+        <NullableNumberInput
+          id="max_advance_days"
+          label="Días máximos de antelación"
+          description="El usuario no puede reservar más allá de estos días en el futuro"
+          value={values.max_advance_days}
+          min={1}
+          max={365}
+          onChange={(v) =>
+            setValue("max_advance_days", v, { shouldDirty: true })
+          }
+          error={errors.max_advance_days?.message as string | undefined}
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="max_consecutive_days">
-            Días consecutivos máximos
-          </Label>
-          <Input
-            id="max_consecutive_days"
-            type="number"
-            min={1}
-            max={30}
-            {...register("max_consecutive_days", { valueAsNumber: true })}
-          />
-          <p className="text-muted-foreground text-xs">
-            Límite de días seguidos que puede reservar un usuario
-          </p>
-          {errors.max_consecutive_days && (
-            <p className="text-destructive text-sm">
-              {errors.max_consecutive_days.message}
-            </p>
-          )}
-        </div>
+        <NullableNumberInput
+          id="max_consecutive_days"
+          label="Días consecutivos máximos"
+          description="Límite de días seguidos que puede reservar un usuario"
+          value={values.max_consecutive_days}
+          min={1}
+          max={30}
+          onChange={(v) =>
+            setValue("max_consecutive_days", v, { shouldDirty: true })
+          }
+          error={errors.max_consecutive_days?.message as string | undefined}
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="max_daily_reservations">
-            Reservas máximas por día
-          </Label>
-          <Input
-            id="max_daily_reservations"
-            type="number"
-            min={1}
-            max={10}
-            {...register("max_daily_reservations", { valueAsNumber: true })}
-          />
-          <p className="text-muted-foreground text-xs">
-            Número de reservas que un usuario puede tener activas el mismo día
-          </p>
-          {errors.max_daily_reservations && (
-            <p className="text-destructive text-sm">
-              {errors.max_daily_reservations.message}
-            </p>
-          )}
-        </div>
+        <NullableNumberInput
+          id="max_weekly_reservations"
+          label="Reservas máximas por semana"
+          value={values.max_weekly_reservations}
+          min={1}
+          max={50}
+          onChange={(v) =>
+            setValue("max_weekly_reservations", v, { shouldDirty: true })
+          }
+          error={errors.max_weekly_reservations?.message as string | undefined}
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="max_weekly_reservations">
-            Reservas máximas por semana
-          </Label>
-          <Input
-            id="max_weekly_reservations"
-            type="number"
-            min={1}
-            max={50}
-            {...register("max_weekly_reservations", { valueAsNumber: true })}
-          />
-          {errors.max_weekly_reservations && (
-            <p className="text-destructive text-sm">
-              {errors.max_weekly_reservations.message}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="max_monthly_reservations">
-            Reservas máximas por mes
-          </Label>
-          <Input
-            id="max_monthly_reservations"
-            type="number"
-            min={1}
-            max={200}
-            {...register("max_monthly_reservations", { valueAsNumber: true })}
-          />
-          {errors.max_monthly_reservations && (
-            <p className="text-destructive text-sm">
-              {errors.max_monthly_reservations.message}
-            </p>
-          )}
-        </div>
+        <NullableNumberInput
+          id="max_monthly_reservations"
+          label="Reservas máximas por mes"
+          value={values.max_monthly_reservations}
+          min={1}
+          max={200}
+          onChange={(v) =>
+            setValue("max_monthly_reservations", v, { shouldDirty: true })
+          }
+          error={errors.max_monthly_reservations?.message as string | undefined}
+        />
       </div>
     </div>
   );
@@ -394,6 +394,7 @@ export function ResourceConfigForm({
   config,
   onSave,
   showTimeSlots = true,
+  showVisitorBooking = true,
 }: ResourceConfigFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -411,7 +412,6 @@ export function ResourceConfigForm({
       allowed_days: config.allowed_days,
       max_advance_days: config.max_advance_days,
       max_consecutive_days: config.max_consecutive_days,
-      max_daily_reservations: config.max_daily_reservations,
       max_weekly_reservations: config.max_weekly_reservations,
       max_monthly_reservations: config.max_monthly_reservations,
       time_slots_enabled: config.time_slots_enabled,
@@ -480,7 +480,9 @@ export function ResourceConfigForm({
             />
           </div>
 
-          <VisitorSection values={values} setValue={setValue} />
+          {showVisitorBooking && (
+            <VisitorSection values={values} setValue={setValue} />
+          )}
 
           <div className="rounded-lg border p-4">
             <div className="mb-3 space-y-0.5">
@@ -526,7 +528,7 @@ export function ResourceConfigForm({
       )}
 
       {/* ─── Límites de reserva ──────────────────────────── */}
-      <ReservationLimitsSection errors={errors} register={register} />
+      <ReservationLimitsSection {...sectionProps} />
 
       <Separator />
 

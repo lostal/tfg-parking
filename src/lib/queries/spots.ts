@@ -1,7 +1,7 @@
 /**
  * Queries de Plazas
  *
- * Funciones de servidor para leer datos de plazas de aparcamiento.
+ * Funciones de servidor para leer datos de plazas y espacios.
  * Solo para Server Components — NO usar en componentes cliente.
  */
 
@@ -49,6 +49,8 @@ export async function getSpots(
 /**
  * Obtiene todas las plazas activas con estado calculado para una fecha específica.
  *
+ * @param resourceType - Si se proporciona, filtra por tipo de recurso ('parking' | 'office').
+ *
  * Lógica de estado:
  * - Plaza asignada sin cesión en esa fecha → "occupied" (asignada)
  * - Plaza asignada con cesión (available) → "ceded" (libre para reservar)
@@ -57,13 +59,25 @@ export async function getSpots(
  * - Plaza con reserva de visitante confirmada → "visitor-blocked"
  * - En cualquier otro caso → "free"
  */
-export async function getSpotsByDate(date: string): Promise<SpotWithStatus[]> {
+export async function getSpotsByDate(
+  date: string,
+  resourceType?: "parking" | "office"
+): Promise<SpotWithStatus[]> {
   const supabase = await createClient();
 
   // Obtener todos los datos en paralelo
+  let spotsQuery = supabase
+    .from("spots")
+    .select("*")
+    .eq("is_active", true)
+    .order("label");
+  if (resourceType) {
+    spotsQuery = spotsQuery.eq("resource_type", resourceType);
+  }
+
   const [spotsResult, reservationsResult, cessionsResult, visitorResult] =
     await Promise.all([
-      supabase.from("spots").select("*").eq("is_active", true).order("label"),
+      spotsQuery,
       supabase
         .from("reservations")
         .select(
@@ -98,7 +112,7 @@ export async function getSpotsByDate(date: string): Promise<SpotWithStatus[]> {
   const visitorBySpot = new Map(visitorReservations.map((v) => [v.spot_id, v]));
 
   return spots.map((spot): SpotWithStatus => {
-    let status: SpotStatus = "free";
+    let status: SpotStatus = "occupied";
     let reservation_id: string | undefined;
     let reserved_by_name: string | undefined;
 
@@ -124,6 +138,9 @@ export async function getSpotsByDate(date: string): Promise<SpotWithStatus[]> {
         // Sin cesión activa → bloqueada por su dueño
         status = "occupied";
       }
+    } else {
+      // Plaza sin propietario (assigned_to === null): disponible para asignación futura
+      status = "free";
     }
 
     return {

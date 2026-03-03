@@ -67,20 +67,19 @@ export function ManagementCessionRules({
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch() no es compatible con React Compiler (pre-existing)
   const autoCedeOnOOO = watch("auto_cede_on_ooo");
   const autoCedeNotify = watch("auto_cede_notify");
   const autoCedeDays = watch("auto_cede_days");
 
   const onSubmit = async (data: UpdateCessionRulesInput) => {
-    try {
-      setIsLoading(true);
-      await updateCessionRules(data);
+    setIsLoading(true);
+    const result = await updateCessionRules(data);
+    setIsLoading(false);
+    if (!result.success) {
+      toast.error(result.error ?? "Error al actualizar las reglas");
+    } else {
       toast.success("Reglas actualizadas correctamente");
-    } catch (error) {
-      toast.error("Error al actualizar las reglas");
-      console.error(error);
-    } finally {
-      setIsLoading(false);
     }
   };
 

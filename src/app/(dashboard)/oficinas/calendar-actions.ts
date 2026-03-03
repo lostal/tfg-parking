@@ -19,6 +19,7 @@ import {
   buildMonthRange,
   computeCessionDayStatus,
   iterMonthDays,
+  isOutsideBookingWindow,
   FEW_SPOTS_THRESHOLD,
 } from "@/lib/calendar/calendar-utils";
 import { z } from "zod/v4";
@@ -55,7 +56,7 @@ export const getOfficeCalendarMonthData = actionClient
     const supabase = await createClient();
 
     const config = await getAllResourceConfigs("office");
-    const allowedDays: number[] = config.allowed_days ?? [1, 2, 3, 4, 5];
+    const allowedDays: number[] = config.allowed_days;
     const { year, month, firstDay, lastDay } = buildMonthRange(monthStart);
 
     // Comprobar si el usuario tiene puesto asignado de oficina
@@ -84,9 +85,10 @@ export const getOfficeCalendarMonthData = actionClient
         const cession = cessionsByDate.get(dateStr);
         return {
           date: dateStr,
-          cessionStatus_day: computeCessionDayStatus({
+          cessionDayStatus: computeCessionDayStatus({
             dateStr,
             allowedDays,
+            minAdvanceHours: config.cession_min_advance_hours,
             cession,
           }),
           myCessionId: cession?.id,
@@ -123,30 +125,24 @@ export const getOfficeCalendarMonthData = actionClient
             .gte("date", firstDay)
             .lte("date", lastDay)
             .eq("status", "confirmed")
+            .eq("spots.resource_type", "office")
             .returns<MyOfficeReservationRow[]>(),
         ]);
 
       const allOfficeSpots = spotsData.data ?? [];
-
-      // Puestos libremente reservables = type='standard' sin propietario.
-      // Los puestos con assigned_to solo entran en el pool si su dueño los cede.
-      const reservableOfficeSpots = allOfficeSpots.filter(
-        (s) => s.type === "standard" && !s.assigned_to
-      );
+      // Bajo el nuevo modelo, TODAS las plazas reservables vienen de cesiones activas.
+      // No existe el concepto de puesto "libre" sin propietario.
       const officeSpotsSet = new Set(allOfficeSpots.map((s) => s.id));
-      const reservableOfficeIds = new Set(
-        reservableOfficeSpots.map((s) => s.id)
-      );
-      const totalOfficeSpots = reservableOfficeSpots.length;
 
-      // Reservas por fecha (solo puestos libremente reservables)
-      const reservedByDate = new Map<string, number>();
+      // Reservas confirmadas por fecha (filtradas a puestos de oficina)
+      const reservedByDate = new Map<string, Set<string>>();
       for (const r of reservationsData.data ?? []) {
-        if (!reservableOfficeIds.has(r.spot_id)) continue;
-        reservedByDate.set(r.date, (reservedByDate.get(r.date) ?? 0) + 1);
+        if (!officeSpotsSet.has(r.spot_id)) continue; // guardia cross-resource
+        if (!reservedByDate.has(r.date)) reservedByDate.set(r.date, new Set());
+        reservedByDate.get(r.date)!.add(r.spot_id);
       }
 
-      // Cesiones disponibles de puestos asignados añaden plazas ese día
+      // Cesiones disponibles de puestos asignados = el pool de puestos reservables
       const cededAvailableByDate = new Map<string, number>();
       for (const c of cessionsData.data ?? []) {
         if (officeSpotsSet.has(c.spot_id) && c.status === "available") {
@@ -180,9 +176,13 @@ export const getOfficeCalendarMonthData = actionClient
       return Array.from(iterMonthDays(year, month)).map((dateStr) => {
         const dow = getDayOfWeek(dateStr);
         const myRes = myReservationByDate.get(dateStr);
-        const reserved = reservedByDate.get(dateStr) ?? 0;
         const cededAvail = cededAvailableByDate.get(dateStr) ?? 0;
-        const totalAvailable = totalOfficeSpots - reserved + cededAvail;
+        // Reservas confirmadas sobre puestos cedidos ese día
+        const reserved = reservedByDate.get(dateStr) ?? new Set();
+        const reservedOnCeded = [...reserved].filter((id) =>
+          officeSpotsSet.has(id)
+        ).length;
+        const totalAvailable = Math.max(0, cededAvail - reservedOnCeded);
 
         let status: ResourceDayStatus;
 
@@ -190,6 +190,8 @@ export const getOfficeCalendarMonthData = actionClient
           status = "unavailable";
         } else if (isPast(dateStr)) {
           status = "past";
+        } else if (isOutsideBookingWindow(dateStr, config.max_advance_days)) {
+          status = "unavailable";
         } else if (myRes) {
           status = "reserved";
         } else if (totalAvailable <= 0) {

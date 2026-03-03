@@ -122,10 +122,10 @@ export async function getOfficeAvailabilityForDate(
     }
 
     if (spot.assigned_to !== null) {
-      // Puesto con propietario: solo disponible si el dueño lo ha cedido
+      // Puesto con propietario: solo disponible si el dueño lo ha cedido activamente
       const cession = cessionBySpot.get(spot.id);
       if (!cession || cession.status !== "available") {
-        // Sin cesión activa: bloqueado por su dueño (no está reservado por nadie)
+        // Sin cesión activa: bloqueado por su dueño
         result.push({
           id: spot.id,
           label: spot.label,
@@ -150,6 +150,7 @@ export async function getOfficeAvailabilityForDate(
         status: "ceded",
       });
     } else {
+      // Sin propietario → no reservable directamente; se muestra como ocupado
       result.push({
         id: spot.id,
         label: spot.label,
@@ -158,7 +159,7 @@ export async function getOfficeAvailabilityForDate(
         assigned_to: spot.assigned_to,
         position_x: spot.position_x,
         position_y: spot.position_y,
-        status: "free",
+        status: "occupied",
       });
     }
   }

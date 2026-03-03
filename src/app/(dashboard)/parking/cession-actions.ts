@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import { createCessionSchema, cancelCessionSchema } from "@/lib/validations";
 import { getAllResourceConfigs } from "@/lib/config";
+import { isTooSoonForCession } from "@/lib/calendar/calendar-utils";
 import {
   getUserCessions as queryUserCessions,
   type CessionWithDetails,
@@ -37,35 +38,35 @@ export const createCession = actionClient
       throw new Error("Las cesiones de parking están deshabilitadas");
     }
 
-    // Comprobar antelación mínima en la primera fecha seleccionada
-    if (config.cession_min_advance_hours > 0 && parsedInput.dates.length > 0) {
-      const firstDate = parsedInput.dates[0]!;
-      const now = new Date();
-      const targetDate = new Date(firstDate + "T00:00:00");
-      const hoursAhead =
-        (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-      if (hoursAhead < config.cession_min_advance_hours) {
-        throw new Error(
-          `La cesión debe realizarse con al menos ${config.cession_min_advance_hours} horas de antelación`
-        );
-      }
-    }
-
     const supabase = await createClient();
 
-    // Verify user owns the spot
+    // Verificar que el usuario es dueño de la plaza y que es de parking
+    // (verificar ANTES del check de antelación para dar el error correcto)
     const { data: spot, error: spotError } = await supabase
       .from("spots")
-      .select("id, assigned_to")
+      .select("id, assigned_to, resource_type")
       .eq("id", parsedInput.spot_id)
       .maybeSingle();
 
     if (spotError)
       throw new Error(`Error al verificar plaza: ${spotError.message}`);
     if (!spot) throw new Error("Plaza no encontrada");
+    if (spot.resource_type !== "parking") {
+      throw new Error("Esta plaza no es un espacio de parking");
+    }
     if (spot.assigned_to !== user.id) {
       throw new Error("Solo puedes ceder tu propia plaza");
+    }
+
+    // Comprobar antelación mínima en TODAS las fechas seleccionadas
+    if (config.cession_min_advance_hours > 0) {
+      for (const dateStr of parsedInput.dates) {
+        if (isTooSoonForCession(dateStr, config.cession_min_advance_hours)) {
+          throw new Error(
+            `La fecha ${dateStr} no cumple la antelación mínima de ${config.cession_min_advance_hours} horas`
+          );
+        }
+      }
     }
 
     // Insert one cession per date

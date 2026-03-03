@@ -200,15 +200,18 @@ export function buildUsersColumns(
           Plaza Parking
         </span>
       ),
-      cell: ({ row }) => (
-        <InlineSpotSelect
-          userId={row.original.id}
-          currentSpotId={row.original.parking_spot?.id ?? null}
-          availableSpots={assignedParkingSpots}
-          resourceType="parking"
-          placeholder="Sin plaza"
-        />
-      ),
+      cell: ({ row }) =>
+        row.original.role === "admin" ? (
+          <span className="text-muted-foreground text-sm">—</span>
+        ) : (
+          <InlineSpotSelect
+            userId={row.original.id}
+            currentSpotId={row.original.parking_spot?.id ?? null}
+            availableSpots={assignedParkingSpots}
+            resourceType="parking"
+            placeholder="Sin plaza"
+          />
+        ),
       enableSorting: false,
       meta: { className: "hidden @xl/content:table-cell" },
     },
@@ -220,15 +223,18 @@ export function buildUsersColumns(
           Puesto Oficina
         </span>
       ),
-      cell: ({ row }) => (
-        <InlineSpotSelect
-          userId={row.original.id}
-          currentSpotId={row.original.office_spot?.id ?? null}
-          availableSpots={assignedOfficeSpots}
-          resourceType="office"
-          placeholder="Sin puesto"
-        />
-      ),
+      cell: ({ row }) =>
+        row.original.role === "admin" ? (
+          <span className="text-muted-foreground text-sm">—</span>
+        ) : (
+          <InlineSpotSelect
+            userId={row.original.id}
+            currentSpotId={row.original.office_spot?.id ?? null}
+            availableSpots={assignedOfficeSpots}
+            resourceType="office"
+            placeholder="Sin puesto"
+          />
+        ),
       enableSorting: false,
       meta: { className: "hidden @xl/content:table-cell" },
     },

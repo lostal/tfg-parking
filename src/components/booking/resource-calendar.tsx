@@ -205,7 +205,7 @@ function DayCell({
     // "none" es interactivo: permite abrir el sheet para ver el mensaje "sin plazas"
     canInteract = status !== "past" && status !== "unavailable";
   } else {
-    const status = data?.cessionStatus_day ?? "past";
+    const status = data?.cessionDayStatus ?? "past";
     colorClass = CESSION_COLORS[status];
     ariaLabel = `${dayNumber} – ${CESSION_LABELS[status]}`;
     canInteract = status === "can-cede" || status === "ceded-free";

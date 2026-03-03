@@ -7,6 +7,7 @@
  * Soporta reservas de día completo y por franjas horarias (según config).
  */
 
+import { revalidatePath } from "next/cache";
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/auth";
@@ -22,6 +23,7 @@ import {
   getUserOfficeReservations,
 } from "@/lib/queries/offices";
 import { getDayOfWeek } from "@/lib/utils";
+import { validateBookingDate } from "@/lib/booking-validation";
 
 // ─── Queries ──────────────────────────────────────────────────
 
@@ -145,27 +147,8 @@ export const createOfficeReservation = actionClient
       );
     }
 
-    // Comprobar día permitido
-    const dayOfWeek = getDayOfWeek(parsedInput.date);
-    if (!config.allowed_days.includes(dayOfWeek)) {
-      throw new Error("No se puede reservar en este día de la semana");
-    }
-
-    // Comprobar antelación máxima
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const reservationDate = new Date(parsedInput.date);
-    const daysAhead = Math.round(
-      (reservationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    if (daysAhead < 0) {
-      throw new Error("No puedes reservar para fechas pasadas");
-    }
-    if (daysAhead > config.max_advance_days) {
-      throw new Error(
-        `Solo puedes reservar con un máximo de ${config.max_advance_days} días de antelación`
-      );
-    }
+    // Comprobar día permitido, fechas pasadas y antelación máxima
+    validateBookingDate(parsedInput.date, config);
 
     // Si las franjas están habilitadas, las horas son obligatorias
     if (config.time_slots_enabled) {
@@ -183,8 +166,7 @@ export const createOfficeReservation = actionClient
       .from("spots")
       .select("id, resource_type")
       .eq("id", parsedInput.spot_id)
-      .maybeSingle()
-      .returns<{ id: string; resource_type: string } | null>();
+      .maybeSingle();
 
     if (!spot) throw new Error("Puesto no encontrado");
     if (spot.resource_type !== "office") {
@@ -225,6 +207,8 @@ export const createOfficeReservation = actionClient
       throw new Error(`Error al crear reserva: ${insertError.message}`);
     }
 
+    revalidatePath("/oficinas");
+    revalidatePath("/mis-reservas");
     return { id: data.id };
   });
 
@@ -239,11 +223,12 @@ export const cancelOfficeReservation = actionClient
 
     const supabase = await createClient();
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("reservations")
       .update({ status: "cancelled" })
       .eq("id", parsedInput.id)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .select("id");
 
     if (error) {
       console.error("[oficinas] cancelOfficeReservation DB error:", {
@@ -253,6 +238,11 @@ export const cancelOfficeReservation = actionClient
       });
       throw new Error(`Error al cancelar reserva: ${error.message}`);
     }
+    if (!data || data.length === 0) {
+      throw new Error("Reserva no encontrada o no pertenece a tu cuenta");
+    }
 
+    revalidatePath("/oficinas");
+    revalidatePath("/mis-reservas");
     return { cancelled: true };
   });

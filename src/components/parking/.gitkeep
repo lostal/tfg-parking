@@ -1,8 +1,0 @@
-/**
- * Parking Feature Components
- *
- * SVG map, spot component, legend, real-time overlay.
- * Will be implemented in P2.
- */
-
-export {};

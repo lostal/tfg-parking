@@ -77,6 +77,8 @@ export const updateSpot = actionClient
     }
 
     revalidatePath("/administracion");
+    revalidatePath("/parking");
+    revalidatePath("/oficinas");
     return { updated: true };
   });
 
@@ -100,6 +102,8 @@ export const deleteSpot = actionClient
     }
 
     revalidatePath("/administracion");
+    revalidatePath("/parking");
+    revalidatePath("/oficinas");
     return { deleted: true };
   });
 

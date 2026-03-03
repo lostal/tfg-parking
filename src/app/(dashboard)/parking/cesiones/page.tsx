@@ -1,5 +1,5 @@
 /**
- * My Cessations Page (Management/Admin) – Redirects to /parking
+ * My Cessations Page – Redirects to /parking
  *
  * La vista de cesiones ahora está integrada en el calendario unificado de /parking.
  */

@@ -3,9 +3,11 @@
 /**
  * Server Actions de Ajustes
  *
- * Acciones para actualizar el perfil, preferencias e integración con Microsoft
+ * Acciones para actualizar el perfil, preferencias e integración con Microsoft.
+ * Todas usan el patrón actionClient → devuelven ActionResult<T>, nunca lanzan.
  */
 
+import { actionClient } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/supabase/auth";
@@ -16,132 +18,110 @@ import {
   updateOutlookPreferencesSchema,
   updateCessionRulesSchema,
   updateThemeSchema,
-  type UpdateProfileInput,
-  type UpdateNotificationPreferencesInput,
-  type UpdateOutlookPreferencesInput,
-  type UpdateCessionRulesInput,
-  type UpdateThemeInput,
 } from "@/lib/validations";
 
 // ─── Update Profile ──────────────────────────────────────────
 
-export async function updateProfile(data: UpdateProfileInput) {
-  const user = await requireAuth();
-  const validated = updateProfileSchema.parse(data);
+export const updateProfile = actionClient
+  .schema(updateProfileSchema)
+  .action(async ({ parsedInput }) => {
+    const user = await requireAuth();
+    const supabase = await createClient();
 
-  const supabase = await createClient();
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: parsedInput.full_name,
+        avatar_url: parsedInput.avatar_url,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", user.id);
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      full_name: validated.full_name,
-      avatar_url: validated.avatar_url,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", user.id);
+    if (error) throw new Error("No se pudo actualizar el perfil");
 
-  if (error) {
-    console.error("Error al actualizar el perfil:", error);
-    throw new Error("No se pudo actualizar el perfil");
-  }
-
-  revalidatePath("/ajustes");
-  return { success: true };
-}
+    revalidatePath("/ajustes");
+    return { updated: true };
+  });
 
 // ─── Update Notification Preferences ─────────────────────────
 
-export async function updateNotificationPreferences(
-  data: UpdateNotificationPreferencesInput
-) {
-  const user = await requireAuth();
-  const validated = updateNotificationPreferencesSchema.parse(data);
+export const updateNotificationPreferences = actionClient
+  .schema(updateNotificationPreferencesSchema)
+  .action(async ({ parsedInput }) => {
+    const user = await requireAuth();
+    const supabase = await createClient();
 
-  const supabase = await createClient();
+    const { error } = await supabase
+      .from("user_preferences")
+      .update({
+        notification_channel: parsedInput.notification_channel,
+        notify_reservation_confirmed: parsedInput.notify_reservation_confirmed,
+        notify_reservation_reminder: parsedInput.notify_reservation_reminder,
+        notify_cession_reserved: parsedInput.notify_cession_reserved,
+        notify_alert_triggered: parsedInput.notify_alert_triggered,
+        notify_visitor_confirmed: parsedInput.notify_visitor_confirmed,
+        notify_daily_digest: parsedInput.notify_daily_digest,
+        daily_digest_time: parsedInput.daily_digest_time || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id);
 
-  const { error } = await supabase
-    .from("user_preferences")
-    .update({
-      notification_channel: validated.notification_channel,
-      notify_reservation_confirmed: validated.notify_reservation_confirmed,
-      notify_reservation_reminder: validated.notify_reservation_reminder,
-      notify_cession_reserved: validated.notify_cession_reserved,
-      notify_alert_triggered: validated.notify_alert_triggered,
-      notify_visitor_confirmed: validated.notify_visitor_confirmed,
-      notify_daily_digest: validated.notify_daily_digest,
-      daily_digest_time: validated.daily_digest_time || null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", user.id);
+    if (error) throw new Error("No se pudieron actualizar las preferencias");
 
-  if (error) {
-    console.error(
-      "Error al actualizar las preferencias de notificación:",
-      error
-    );
-    throw new Error("No se pudieron actualizar las preferencias");
-  }
-
-  revalidatePath("/ajustes");
-  return { success: true };
-}
+    revalidatePath("/ajustes");
+    return { updated: true };
+  });
 
 // ─── Update Outlook Preferences ──────────────────────────────
 
-export async function updateOutlookPreferences(
-  data: UpdateOutlookPreferencesInput
-) {
-  const user = await requireAuth();
-  const validated = updateOutlookPreferencesSchema.parse(data);
+export const updateOutlookPreferences = actionClient
+  .schema(updateOutlookPreferencesSchema)
+  .action(async ({ parsedInput }) => {
+    const user = await requireAuth();
+    const supabase = await createClient();
 
-  const supabase = await createClient();
+    const { error } = await supabase
+      .from("user_preferences")
+      .update({
+        outlook_create_events: parsedInput.outlook_create_events,
+        outlook_calendar_name: parsedInput.outlook_calendar_name || "Parking",
+        outlook_sync_enabled: parsedInput.outlook_sync_enabled,
+        outlook_sync_interval: parsedInput.outlook_sync_interval || 15,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id);
 
-  const { error } = await supabase
-    .from("user_preferences")
-    .update({
-      outlook_create_events: validated.outlook_create_events,
-      outlook_calendar_name: validated.outlook_calendar_name || "Parking",
-      outlook_sync_enabled: validated.outlook_sync_enabled,
-      outlook_sync_interval: validated.outlook_sync_interval || 15,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", user.id);
+    if (error)
+      throw new Error("No se pudieron actualizar las preferencias de Outlook");
 
-  if (error) {
-    console.error("Error al actualizar las preferencias de Outlook:", error);
-    throw new Error("No se pudieron actualizar las preferencias de Outlook");
-  }
-
-  revalidatePath("/ajustes");
-  return { success: true };
-}
+    revalidatePath("/ajustes");
+    return { updated: true };
+  });
 
 // ─── Update Auto-Cession Rules ───────────────────────────────
 
-export async function updateCessionRules(data: UpdateCessionRulesInput) {
-  const user = await requireAuth();
+export const updateCessionRules = actionClient
+  .schema(updateCessionRulesSchema)
+  .action(async ({ parsedInput }) => {
+    const user = await requireAuth();
+    const supabase = await createClient();
 
-  const validated = updateCessionRulesSchema.parse(data);
+    const { error } = await supabase
+      .from("user_preferences")
+      .update({
+        auto_cede_on_ooo: parsedInput.auto_cede_on_ooo,
+        auto_cede_notify: parsedInput.auto_cede_notify,
+        auto_cede_days: parsedInput.auto_cede_days,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id);
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("user_preferences")
-    .update({
-      auto_cede_on_ooo: validated.auto_cede_on_ooo,
-      auto_cede_notify: validated.auto_cede_notify,
-      auto_cede_days: validated.auto_cede_days,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", user.id);
+    if (error)
+      throw new Error("No se pudieron actualizar las reglas de cesión");
 
-  if (error) {
-    console.error("Error al actualizar las reglas de cesión:", error);
-    throw new Error("No se pudieron actualizar las reglas de cesión");
-  }
-
-  revalidatePath("/ajustes");
-  return { success: true };
-}
+    revalidatePath("/ajustes");
+    return { updated: true };
+  });
 
 // ─── Disconnect Microsoft Account ───────────────────────────
 
@@ -155,7 +135,6 @@ export async function disconnectMicrosoftAccount() {
     .eq("user_id", user.id);
 
   if (error) {
-    console.error("Error al desvincular la cuenta de Microsoft:", error);
     throw new Error("No se pudo desvincular la cuenta de Microsoft");
   }
 
@@ -189,25 +168,25 @@ export async function forceCalendarSync() {
 
 // ─── Update Theme ─────────────────────────────────────────────
 
-export async function updateTheme(data: UpdateThemeInput) {
-  const user = await requireAuth();
-  const validated = updateThemeSchema.parse(data);
+export const updateTheme = actionClient
+  .schema(updateThemeSchema)
+  .action(async ({ parsedInput }) => {
+    const user = await requireAuth();
+    const supabase = await createClient();
 
-  const supabase = await createClient();
+    const { error } = await supabase
+      .from("user_preferences")
+      .update({
+        theme: parsedInput.theme,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id);
 
-  const { error } = await supabase
-    .from("user_preferences")
-    .update({ theme: validated.theme, updated_at: new Date().toISOString() })
-    .eq("user_id", user.id);
+    if (error) throw new Error("No se pudo actualizar el tema");
 
-  if (error) {
-    console.error("Error al actualizar el tema:", error);
-    throw new Error("No se pudo actualizar el tema");
-  }
-
-  revalidatePath("/ajustes");
-  return { success: true };
-}
+    revalidatePath("/ajustes");
+    return { updated: true };
+  });
 
 // ─── Delete Own Account ───────────────────────────────────────
 
