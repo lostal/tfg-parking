@@ -1,41 +1,32 @@
 -- ============================================================
--- GRUPOSIETE Parking — Seed Unificado
+-- GRUPOSIETE ERP — Seed Unificado
 -- ============================================================
--- Crea usuarios de prueba + plazas reales del aparcamiento.
+-- Crea usuarios de prueba + asigna plazas reales.
 --
--- Orden de ejecución para reimportación limpia:
---   1. reset.sql          (borra schema y usuarios)
---   2. 00001_schema.sql   (recrea schema)
---   3. seed.sql           ← este archivo
---
--- Para re-ejecutar datos sin tocar el schema:
---   ejecutar solo seed.sql (limpia y reinsertar datos)
+-- Orden de ejecucion:
+--   1. reset.sql
+--   2. 00001_schema.sql   (crea schema + spots iniciales)
+--   3. seed.sql           <- este archivo
 --
 -- Usuarios de prueba:
---   admin@gruposiete.com      / Admin1234!       → admin
---   general@gruposiete.com    / General1234!     → employee
---   direccion@gruposiete.com  / Direccion1234!   → management
---
--- Plazas (según distribución real del parking):
---   Subterráneas (dirección): 15, 16, 17, 18, 19
---   Exteriores   (dirección): 13, 14, 49
---   Visitas:                  50
+--   admin@gruposiete.com          / Admin1234!       → admin
+--   empleado-fijo@gruposiete.com  / Empleado1234!    → employee (plaza parking 15 asignada)
+--   empleado@gruposiete.com       / Empleado1234!    → employee (sin plaza fija)
 -- ============================================================
 
--- ─── 1. Limpiar datos de transacción previos ─────────────────
+-- ─── 1. Limpiar datos de transaccion previos ─────────────────
 truncate table public.cession_rules        cascade;
 truncate table public.cessions             cascade;
 truncate table public.reservations         cascade;
 truncate table public.visitor_reservations cascade;
 truncate table public.alerts               cascade;
-truncate table public.spots                cascade;
 
 -- ─── 2. Limpiar usuarios de prueba previos ───────────────────
 delete from auth.users
 where email in (
   'admin@gruposiete.com',
-  'general@gruposiete.com',
-  'direccion@gruposiete.com'
+  'empleado@gruposiete.com',
+  'empleado-fijo@gruposiete.com'
 );
 
 -- ─── 3. Insertar usuarios en auth.users ──────────────────────
@@ -48,7 +39,7 @@ insert into auth.users (
   email_change_token_new, email_change
 )
 values
-  -- Admin
+  -- Admin del sistema
   (
     gen_random_uuid(),
     '00000000-0000-0000-0000-000000000000',
@@ -59,25 +50,25 @@ values
     'authenticated', 'authenticated',
     now(), now(), '', '', '', ''
   ),
-  -- Empleado general
+  -- Empleado con plaza de parking fija asignada
   (
     gen_random_uuid(),
     '00000000-0000-0000-0000-000000000000',
-    'general@gruposiete.com',
-    crypt('General1234!', gen_salt('bf')),
+    'empleado-fijo@gruposiete.com',
+    crypt('Empleado1234!', gen_salt('bf')),
     now(),
-    '{"full_name": "Usuario General", "user_type": "general"}'::jsonb,
+    '{"full_name": "Empleado Con Plaza"}'::jsonb,
     'authenticated', 'authenticated',
     now(), now(), '', '', '', ''
   ),
-  -- Dirección (management)
+  -- Empleado sin plaza fija (reserva en las disponibles del dia)
   (
     gen_random_uuid(),
     '00000000-0000-0000-0000-000000000000',
-    'direccion@gruposiete.com',
-    crypt('Direccion1234!', gen_salt('bf')),
+    'empleado@gruposiete.com',
+    crypt('Empleado1234!', gen_salt('bf')),
     now(),
-    '{"full_name": "Usuario Dirección", "user_type": "management"}'::jsonb,
+    '{"full_name": "Empleado General"}'::jsonb,
     'authenticated', 'authenticated',
     now(), now(), '', '', '', ''
   );
@@ -102,14 +93,14 @@ select
 from auth.users u
 where u.email in (
   'admin@gruposiete.com',
-  'general@gruposiete.com',
-  'direccion@gruposiete.com'
+  'empleado@gruposiete.com',
+  'empleado-fijo@gruposiete.com'
 )
 on conflict (provider, provider_id) do nothing;
 
 -- ─── 5. Sincronizar perfiles ──────────────────────────────────
--- El trigger handle_new_user debería crearlos automáticamente,
--- pero lo garantizamos explícitamente aquí.
+-- El trigger handle_new_user los crea automaticamente,
+-- pero garantizamos los roles aqui explicitamente.
 
 insert into public.profiles (id, email, full_name, role)
 select
@@ -117,15 +108,14 @@ select
   u.email,
   coalesce(u.raw_user_meta_data->>'full_name', ''),
   case
-    when u.raw_user_meta_data->>'user_type' = 'admin'      then 'admin'::public.user_role
-    when u.raw_user_meta_data->>'user_type' = 'management' then 'management'::public.user_role
+    when u.raw_user_meta_data->>'user_type' = 'admin' then 'admin'::public.user_role
     else 'employee'::public.user_role
   end
 from auth.users u
 where u.email in (
   'admin@gruposiete.com',
-  'general@gruposiete.com',
-  'direccion@gruposiete.com'
+  'empleado@gruposiete.com',
+  'empleado-fijo@gruposiete.com'
 )
 on conflict (id) do update
   set role       = excluded.role,
@@ -133,49 +123,26 @@ on conflict (id) do update
       email      = excluded.email,
       updated_at = now();
 
--- ─── 6. Plazas del parking ────────────────────────────────────
--- Plazas subterráneas de dirección
+-- ─── 6. Asignar plaza de parking al empleado fijo ────────────
+-- Plaza 15 asignada a 'empleado-fijo@gruposiete.com'
+-- (type='standard' con assigned_to = propietario fijo)
+-- El admin puede cambiar esto desde Administracion → Usuarios.
 
-insert into public.spots (label, type, is_active) values
-  ('15', 'management', true),  -- Juan Carlos
-  ('16', 'management', true),  -- Pedro Luis
-  ('17', 'management', true),  -- Álvaro
-  ('18', 'management', true),  -- Cristina
-  ('19', 'management', true);  -- José
-
--- Plazas exteriores de dirección
-
-insert into public.spots (label, type, is_active) values
-  ('13', 'management', true),  -- Yolanda
-  ('14', 'management', true),  -- Pablo
-  ('49', 'management', true);  -- Raúl
-
--- Plaza de visitas
-
-insert into public.spots (label, type, is_active) values
-  ('50', 'visitor', true);
-
--- ─── 7. Configuración del sistema ─────────────────────────────
--- (ya insertada en 00001_schema.sql, aquí garantizamos los valores)
-
-insert into public.system_config (key, value) values
-  ('max_advance_days',        '14'),
-  ('booking_enabled',         'true'),
-  ('visitor_booking_enabled', 'true')
-on conflict (key) do update
-  set value = excluded.value;
+update public.spots
+set assigned_to = (
+  select id from public.profiles where email = 'empleado-fijo@gruposiete.com'
+)
+where label = '15'
+  and resource_type = 'parking';
 
 -- ─── Resumen ─────────────────────────────────────────────────
 -- Usuarios:
---   admin@gruposiete.com      Admin1234!       admin
---   general@gruposiete.com    General1234!     employee
---   direccion@gruposiete.com  Direccion1234!   management
+--   admin@gruposiete.com          Admin1234!    admin
+--   empleado-fijo@gruposiete.com  Empleado1234! employee (plaza 15 con dueño asignado)
+--   empleado@gruposiete.com       Empleado1234! employee (sin plaza fija)
 --
--- Plazas (9 en total):
---   management subterráneas: 15, 16, 17, 18, 19
---   management exteriores:   13, 14, 49
---   visitor:                 50
---
--- Siguiente paso:
---   El usuario de dirección de prueba necesita que el admin
---   le asigne una plaza desde Administración → Usuarios.
+-- Spots (creados en 00001_schema.sql):
+--   Parking standard (7 libres): 13, 14, 16, 17, 18, 19, 49  (15 tiene dueño)
+--   Parking visitor:  50
+--   Oficina standard: OF-01..OF-09  (OF-06, OF-07 sin dueño en seed; asignar desde admin)
+--   Oficina inactiva: OF-10 (is_active = false)

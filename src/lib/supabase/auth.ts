@@ -8,13 +8,13 @@
  *   - getCurrentUser() - Devuelve usuario + perfil o null si no está autenticado
  *   - requireAuth() - Devuelve usuario + perfil o redirige a /login
  *   - requireAdmin() - Devuelve usuario admin o redirige al dashboard
- *   - requireManagement() - Devuelve usuario directivo/admin o redirige
+ *   - requireSpotOwner(resourceType) - Requiere tener plaza asignada del tipo indicado
  */
 
 import { redirect } from "next/navigation";
 import { createClient } from "./server";
 import { ROUTES } from "@/lib/constants";
-import type { Profile, UserRole } from "./types";
+import type { Profile } from "./types";
 
 export interface AuthUser {
   id: string;
@@ -83,17 +83,29 @@ export async function requireAdmin(): Promise<AuthUser> {
 }
 
 /**
- * Requiere rol de directivo o administrador.
- * Usar para funcionalidades como la gestión de cesiones.
- * @returns Usuario directivo/admin con perfil
+ * Requiere tener una plaza asignada del tipo indicado.
+ * Cualquier empleado (o admin) con plaza asignada puede gestionar cesiones.
+ * @param resourceType "parking" | "office"
+ * @returns Usuario autenticado con perfil
  */
-export async function requireManagement(): Promise<AuthUser> {
+export async function requireSpotOwner(
+  resourceType: "parking" | "office"
+): Promise<AuthUser> {
   const user = await requireAuth();
 
-  const allowedRoles: UserRole[] = ["admin", "management"];
+  // Los admins siempre tienen acceso
+  if (user.profile?.role === "admin") return user;
 
-  if (!user.profile?.role || !allowedRoles.includes(user.profile.role)) {
-    redirect(ROUTES.PARKING);
+  const supabase = await createClient();
+  const { data: spot } = await supabase
+    .from("spots")
+    .select("id")
+    .eq("assigned_to", user.id)
+    .eq("resource_type", resourceType)
+    .maybeSingle();
+
+  if (!spot) {
+    redirect(resourceType === "parking" ? ROUTES.PARKING : ROUTES.OFFICES);
   }
 
   return user;

@@ -120,7 +120,10 @@ export async function getTopSpots(limit = 6): Promise<SpotUsage[]> {
     .lte("date", lastOfMonth)
     .returns<ReservaConPlaza[]>();
 
-  if (error) return [];
+  if (error) {
+    console.error("[stats] getTopSpots DB error:", error.message);
+    return [];
+  }
 
   // Agrupar por plaza
   const countBySpot = new Map<string, number>();
@@ -314,4 +317,20 @@ export async function getActiveUsersThisMonth(): Promise<number> {
 
   const uniqueUsers = new Set(data.map((r) => r.user_id));
   return uniqueUsers.size;
+}
+
+/**
+ * Devuelve el número de reservas de visitantes confirmadas para una fecha dada.
+ * Usada por el panel admin (KPI de visitantes hoy).
+ */
+export async function getVisitorsTodayCount(date: string): Promise<number> {
+  const supabase = await createClient();
+
+  const { count } = await supabase
+    .from("visitor_reservations")
+    .select("id", { count: "exact", head: true })
+    .eq("date", date)
+    .eq("status", "confirmed");
+
+  return count ?? 0;
 }

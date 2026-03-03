@@ -32,31 +32,45 @@ import { useSpots } from "./spots-provider";
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
 const spotTypeItems = [
-  { label: "Dirección", value: "management" },
+  { label: "Estándar", value: "standard" },
   { label: "Visitas", value: "visitor" },
+];
+
+const resourceTypeItems = [
+  { label: "Parking", value: "parking" },
+  { label: "Oficina", value: "office" },
 ];
 
 // ─── Add Spot Dialog ──────────────────────────────────────────────────────────
 
 const addSchema = z.object({
   label: z.string().min(1, "Etiqueta requerida").max(20),
-  type: z.enum(["management", "visitor"]),
+  type: z.enum(["standard", "visitor"]),
+  resource_type: z.enum(["parking", "office"]),
 });
 type AddForm = z.infer<typeof addSchema>;
 
 function AddSpotDialog() {
-  const { open, setOpen } = useSpots();
+  const { open, setOpen, activeResourceType } = useSpots();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   const form = useForm<AddForm>({
     resolver: zodResolver(addSchema),
-    defaultValues: { label: "", type: "management" },
+    defaultValues: {
+      label: "",
+      type: "standard",
+      resource_type: activeResourceType,
+    },
   });
 
   const closeDialog = () => {
     setOpen(null);
-    form.reset();
+    form.reset({
+      label: "",
+      type: "standard",
+      resource_type: activeResourceType,
+    });
   };
 
   const onSubmit = (values: AddForm) => {
@@ -73,12 +87,25 @@ function AddSpotDialog() {
   };
 
   return (
-    <Dialog open={open === "add"} onOpenChange={(o) => !o && closeDialog()}>
+    <Dialog
+      open={open === "add"}
+      onOpenChange={(o) => {
+        if (o) {
+          form.reset({
+            label: "",
+            type: "standard",
+            resource_type: activeResourceType,
+          });
+        } else {
+          closeDialog();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Nueva plaza</DialogTitle>
           <DialogDescription>
-            Rellena los datos para crear una nueva plaza de aparcamiento.
+            Rellena los datos para crear una nueva plaza.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -90,29 +117,48 @@ function AddSpotDialog() {
                 <FormItem>
                   <FormLabel>Etiqueta</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: 15, A-03..." {...field} />
+                    <Input placeholder="Ej: P-15, OF-03..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo</FormLabel>
-                  <FormControl>
-                    <SelectDropdown
-                      defaultValue={field.value}
-                      onValueChange={field.onChange}
-                      items={spotTypeItems}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="resource_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Recurso</FormLabel>
+                    <FormControl>
+                      <SelectDropdown
+                        defaultValue={field.value}
+                        onValueChange={field.onChange}
+                        items={resourceTypeItems}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo</FormLabel>
+                    <FormControl>
+                      <SelectDropdown
+                        defaultValue={field.value}
+                        onValueChange={field.onChange}
+                        items={spotTypeItems}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>
                 Cancelar
@@ -133,7 +179,8 @@ function AddSpotDialog() {
 
 const editSchema = z.object({
   label: z.string().min(1, "Etiqueta requerida").max(20),
-  type: z.enum(["management", "visitor"]),
+  type: z.enum(["standard", "visitor"]),
+  resource_type: z.enum(["parking", "office"]),
   is_active: z.boolean(),
 });
 type EditForm = z.infer<typeof editSchema>;
@@ -150,7 +197,9 @@ function EditSpotDialog() {
     resolver: zodResolver(editSchema),
     values: {
       label: currentRow?.label ?? "",
-      type: (currentRow?.type as EditForm["type"]) ?? "management",
+      type: (currentRow?.type as EditForm["type"]) ?? "standard",
+      resource_type:
+        (currentRow?.resource_type as EditForm["resource_type"]) ?? "parking",
       is_active: currentRow?.is_active ?? true,
     },
   });
@@ -199,24 +248,44 @@ function EditSpotDialog() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo</FormLabel>
-                  <FormControl>
-                    <SelectDropdown
-                      defaultValue={field.value}
-                      onValueChange={field.onChange}
-                      items={spotTypeItems}
-                      isControlled
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="resource_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Recurso</FormLabel>
+                    <FormControl>
+                      <SelectDropdown
+                        defaultValue={field.value}
+                        onValueChange={field.onChange}
+                        items={resourceTypeItems}
+                        isControlled
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo</FormLabel>
+                    <FormControl>
+                      <SelectDropdown
+                        defaultValue={field.value}
+                        onValueChange={field.onChange}
+                        items={spotTypeItems}
+                        isControlled
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="is_active"

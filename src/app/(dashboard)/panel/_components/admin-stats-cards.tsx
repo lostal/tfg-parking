@@ -10,7 +10,13 @@
 
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { ParkingCircle, TrendingUp, CalendarDays, Users } from "lucide-react";
+import {
+  ParkingCircle,
+  TrendingUp,
+  CalendarDays,
+  Users,
+  UserCheck,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface AdminStatsCardsProps {
@@ -19,6 +25,7 @@ interface AdminStatsCardsProps {
   occupancyPercent: number;
   monthlyReservations: number;
   activeUsersMonth: number;
+  visitorsToday: number;
 }
 
 // Variantes de animación para el contenedor (stagger)
@@ -95,12 +102,13 @@ export function AdminStatsCards({
   occupancyPercent,
   monthlyReservations,
   activeUsersMonth,
+  visitorsToday,
 }: AdminStatsCardsProps) {
   const usedSpots = totalSpots - freeSpots;
 
   return (
     <motion.div
-      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5"
       variants={containerVariants}
       initial="hidden"
       animate="show"
@@ -178,6 +186,26 @@ export function AdminStatsCards({
             </div>
             <p className="text-muted-foreground text-xs">
               han reservado este mes
+            </p>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Visitantes hoy */}
+      <motion.div variants={cardVariants}>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Visitantes hoy
+            </CardTitle>
+            <UserCheck className="text-muted-foreground h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              <AnimatedNumber value={visitorsToday} />
+            </div>
+            <p className="text-muted-foreground text-xs">
+              reservas de visitantes confirmadas
             </p>
           </CardContent>
         </Card>

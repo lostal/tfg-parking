@@ -45,7 +45,8 @@ export type CreateVisitorReservationInput = z.infer<
 
 export const createSpotSchema = z.object({
   label: z.string().min(1, "Etiqueta requerida").max(20),
-  type: z.enum(["management", "visitor"]),
+  type: z.enum(["standard", "visitor"]),
+  resource_type: z.enum(["parking", "office"]),
   assigned_to: z.string().uuid().optional(),
 });
 
@@ -98,7 +99,7 @@ export type DeleteSpotInput = z.infer<typeof deleteSpotSchema>;
 
 export const updateUserRoleSchema = z.object({
   user_id: z.string().uuid(),
-  role: z.enum(["employee", "management", "admin"]),
+  role: z.enum(["employee", "admin"]),
 });
 
 export type UpdateUserRoleInput = z.infer<typeof updateUserRoleSchema>;
@@ -110,12 +111,14 @@ export const deleteUserSchema = z.object({
 });
 export type DeleteUserInput = z.infer<typeof deleteUserSchema>;
 
-// ─── Admin: Assign spot to management user ───────────────────
+// ─── Admin: Assign spot to user ─────────────────────────────
 
 export const assignSpotToUserSchema = z.object({
   user_id: z.string().uuid(),
   /** UUID of the spot to assign, or null to unassign */
   spot_id: z.string().uuid().nullable(),
+  /** Resource type needed to correctly scope un/assignment to parking xor office */
+  resource_type: z.enum(["parking", "office"]),
 });
 
 export type AssignSpotToUserInput = z.infer<typeof assignSpotToUserSchema>;
@@ -170,7 +173,7 @@ export type UpdateOutlookPreferencesInput = z.infer<
   typeof updateOutlookPreferencesSchema
 >;
 
-// ─── Settings: Auto-Cession Rules (Management) ───────────────
+// ─── Settings: Auto-Cession Rules ───────────────────────────
 
 export const updateCessionRulesSchema = z.object({
   auto_cede_on_ooo: z.boolean(),
@@ -179,3 +182,77 @@ export const updateCessionRulesSchema = z.object({
 });
 
 export type UpdateCessionRulesInput = z.infer<typeof updateCessionRulesSchema>;
+
+// ─── Admin: System Config ─────────────────────────────────────
+
+/** Schema para configurar las claves globales del sistema */
+export const updateGlobalConfigSchema = z.object({
+  notifications_enabled: z.boolean(),
+  email_notifications_enabled: z.boolean(),
+  teams_notifications_enabled: z.boolean(),
+});
+
+export type UpdateGlobalConfigInput = z.infer<typeof updateGlobalConfigSchema>;
+
+/** Schema base de configuración de recurso (parking u oficina) */
+export const updateResourceConfigSchema = z.object({
+  booking_enabled: z.boolean(),
+  visitor_booking_enabled: z.boolean(),
+  allowed_days: z
+    .array(z.number().int().min(0).max(6))
+    .min(1, "Selecciona al menos un día"),
+  max_advance_days: z.number().int().min(1).max(365),
+  max_consecutive_days: z.number().int().min(1).max(30),
+  max_daily_reservations: z.number().int().min(1).max(10),
+  max_weekly_reservations: z.number().int().min(1).max(50),
+  max_monthly_reservations: z.number().int().min(1).max(200),
+  time_slots_enabled: z.boolean(),
+  slot_duration_minutes: z.number().int().min(15).max(480).nullable(),
+  day_start_hour: z.number().int().min(0).max(23).nullable(),
+  day_end_hour: z.number().int().min(1).max(24).nullable(),
+  cession_enabled: z.boolean(),
+  cession_min_advance_hours: z.number().int().min(0).max(168),
+  cession_max_per_week: z.number().int().min(1).max(7),
+  auto_cession_enabled: z.boolean(),
+});
+
+export type UpdateResourceConfigInput = z.infer<
+  typeof updateResourceConfigSchema
+>;
+
+// ─── Office Reservations ──────────────────────────────────────
+
+export const createOfficeReservationSchema = z
+  .object({
+    spot_id: z.string().uuid(),
+    date: z.iso.date(),
+    start_time: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Formato HH:MM")
+      .optional(),
+    end_time: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Formato HH:MM")
+      .optional(),
+    notes: z.string().max(500).optional(),
+  })
+  .refine(
+    (data) => (data.start_time === undefined) === (data.end_time === undefined),
+    {
+      message:
+        "Si se especifica hora de inicio, la hora de fin es obligatoria y viceversa",
+      path: ["end_time"],
+    }
+  )
+  .refine(
+    (data) =>
+      !data.start_time || !data.end_time || data.end_time > data.start_time,
+    {
+      message: "La hora de fin debe ser posterior a la hora de inicio",
+      path: ["end_time"],
+    }
+  );
+
+export type CreateOfficeReservationInput = z.infer<
+  typeof createOfficeReservationSchema
+>;

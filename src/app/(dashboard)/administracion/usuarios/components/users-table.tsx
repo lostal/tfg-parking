@@ -25,12 +25,12 @@ import {
 } from "@/components/ui/table";
 import { DataTablePagination, DataTableToolbar } from "@/components/data-table";
 import type { Profile, Spot } from "@/lib/supabase/types";
-import type { ProfileWithSpot } from "./types";
+import type { ProfileWithSpots } from "./types";
 import { buildUsersColumns, roleOptions } from "./users-columns";
 
 // Stable reference outside component — avoids recreating on every render
 function globalFilterFn(
-  row: { getValue: (id: string) => unknown; original: ProfileWithSpot },
+  row: { getValue: (id: string) => unknown; original: ProfileWithSpots },
   _columnId: string,
   filterValue: unknown
 ) {
@@ -42,10 +42,15 @@ function globalFilterFn(
 
 interface UsersTableProps {
   profiles: Profile[];
-  managementSpots: Spot[];
+  assignedParkingSpots: Spot[];
+  assignedOfficeSpots: Spot[];
 }
 
-export function UsersTable({ profiles, managementSpots }: UsersTableProps) {
+export function UsersTable({
+  profiles,
+  assignedParkingSpots,
+  assignedOfficeSpots,
+}: UsersTableProps) {
   // Local UI-only states
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -53,20 +58,22 @@ export function UsersTable({ profiles, managementSpots }: UsersTableProps) {
   const [globalFilter, setGlobalFilter] = useState("");
 
   // Stable data — only recalculates when props change, not on every state update
-  const data = useMemo<ProfileWithSpot[]>(
+  const data = useMemo<ProfileWithSpots[]>(
     () =>
       profiles.map((p) => ({
         ...p,
-        assigned_spot:
-          managementSpots.find((s) => s.assigned_to === p.id) ?? null,
+        parking_spot:
+          assignedParkingSpots.find((s) => s.assigned_to === p.id) ?? null,
+        office_spot:
+          assignedOfficeSpots.find((s) => s.assigned_to === p.id) ?? null,
       })),
-    [profiles, managementSpots]
+    [profiles, assignedParkingSpots, assignedOfficeSpots]
   );
 
-  // Columns depend on managementSpots — memoize to avoid recreation
+  // Columns depend on both spot arrays — memoize to avoid recreation
   const columns = useMemo(
-    () => buildUsersColumns(managementSpots),
-    [managementSpots]
+    () => buildUsersColumns(assignedParkingSpots, assignedOfficeSpots),
+    [assignedParkingSpots, assignedOfficeSpots]
   );
 
   // eslint-disable-next-line react-hooks/incompatible-library

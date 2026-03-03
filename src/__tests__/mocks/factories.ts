@@ -22,6 +22,7 @@ export function createMockSpot(overrides?: Partial<SpotRow>): SpotRow {
     label: "A-01",
     type: "standard",
     assigned_to: null,
+    resource_type: "parking",
     is_active: true,
     position_x: 10,
     position_y: 20,
@@ -171,6 +172,39 @@ export function createMockReservation(
     updated_at: "2025-01-01T10:00:00Z",
     ...overrides,
   };
+}
+
+// ─── Office variants ──────────────────────────────────────────────────────────
+
+export function createMockOfficeSpot(overrides?: Partial<SpotRow>): SpotRow {
+  return createMockSpot({
+    id: "spot-00000000-0000-0000-0000-000000000002",
+    label: "OF-01",
+    resource_type: "office",
+    ...overrides,
+  });
+}
+
+export function createMockOfficeReservation(
+  overrides?: Partial<ReservationRow>
+): ReservationRow {
+  return createMockReservation({
+    id: "res-00000000-0000-0000-0000-000000000002",
+    spot_id: "spot-00000000-0000-0000-0000-000000000002",
+    ...overrides,
+  });
+}
+
+export function createMockOfficeCession(overrides?: {
+  id?: string;
+  spot_id?: string;
+  status?: "available" | "reserved" | "cancelled";
+}) {
+  return createMockCession({
+    id: "ces-00000000-0000-0000-0000-000000000002",
+    spot_id: "spot-00000000-0000-0000-0000-000000000002",
+    ...overrides,
+  });
 }
 
 // ─── Auth User ────────────────────────────────────────────────────────────────

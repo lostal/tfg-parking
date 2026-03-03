@@ -33,7 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
-import type { CalendarDayData } from "../calendar-actions";
+import type { ResourceDayData } from "@/lib/calendar/resource-types";
 import { createCession, cancelCession } from "../cession-actions";
 
 interface ManagementCessionSheetProps {
@@ -42,7 +42,7 @@ interface ManagementCessionSheetProps {
   /** Días seleccionados (Set<"yyyy-MM-dd">) */
   selectedDates: Set<string>;
   /** Datos del mes – para saber el estado de cada fecha seleccionada */
-  dayData: Map<string, CalendarDayData>;
+  dayData: Map<string, ResourceDayData>;
   /** Spot ID del directivo */
   spotId: string;
   spotLabel: string;
@@ -71,9 +71,9 @@ export function ManagementCessionSheet({
 
   for (const dateStr of selectedDates) {
     const data = dayData.get(dateStr);
-    if (data?.managementStatus === "can-cede") {
+    if (data?.cessionStatus_day === "can-cede") {
       toCreate.push(dateStr);
-    } else if (data?.managementStatus === "ceded-free" && data.myCessionId) {
+    } else if (data?.cessionStatus_day === "ceded-free" && data.myCessionId) {
       toCancel.push({ date: dateStr, cessionId: data.myCessionId });
     }
   }

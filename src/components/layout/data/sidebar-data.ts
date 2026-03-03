@@ -5,14 +5,12 @@
  * Items are grouped by section and support icons, badges, and sub-items.
  *
  * Role visibility:
- *   employee   → usuario general
- *   management → usuario de dirección (puede ceder su plaza)
- *   admin      → administrador (no puede reservar para sí mismo)
+ *   employee   → usuario general (puede reservar y ceder si tiene plaza asignada)
+ *   admin      → administrador (gestiona usuarios, plazas y configuración)
  */
 
 import {
   LayoutDashboard,
-  Car,
   Users,
   Shield,
   Settings,
@@ -20,9 +18,11 @@ import {
   Bell,
   Cloud,
   MapPin,
-  ParkingSquare,
+  LayoutGrid,
   CalendarCheck,
-  Repeat2,
+  Building2,
+  SlidersHorizontal,
+  ParkingCircle,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { type SidebarData } from "../types";
@@ -39,28 +39,31 @@ export const sidebarData: SidebarData = {
           roles: ["admin"],
         },
         {
-          title: "Parking",
-          url: ROUTES.PARKING,
-          icon: Car,
-          // Employees and management can reserve (management only ceded spots)
-          roles: ["employee", "management"],
+          title: "Espacios",
+          icon: LayoutGrid,
+          roles: ["employee"],
+          items: [
+            {
+              title: "Parking",
+              url: ROUTES.PARKING,
+              icon: ParkingCircle,
+            },
+            {
+              title: "Oficinas",
+              url: ROUTES.OFFICES,
+              icon: Building2,
+            },
+            {
+              title: "Mapa",
+              url: ROUTES.PARKING_MAP,
+              icon: MapPin,
+            },
+          ],
         },
         {
-          title: "Mis Reservas",
+          title: "Mi Actividad",
           url: ROUTES.MIS_RESERVAS,
           icon: CalendarCheck,
-          roles: ["employee"],
-        },
-        {
-          title: "Mis Cesiones",
-          url: ROUTES.MIS_RESERVAS,
-          icon: Repeat2,
-          roles: ["management"],
-        },
-        {
-          title: "Mapa",
-          url: ROUTES.PARKING_MAP,
-          icon: MapPin,
           roles: ["employee"],
         },
         {
@@ -77,13 +80,19 @@ export const sidebarData: SidebarData = {
         {
           title: "Plazas",
           url: ROUTES.ADMIN,
-          icon: ParkingSquare,
+          icon: LayoutGrid,
           roles: ["admin"],
         },
         {
           title: "Usuarios",
           url: ROUTES.ADMIN_USERS,
           icon: Users,
+          roles: ["admin"],
+        },
+        {
+          title: "Configuración",
+          url: ROUTES.ADMIN_SETTINGS,
+          icon: SlidersHorizontal,
           roles: ["admin"],
         },
         {

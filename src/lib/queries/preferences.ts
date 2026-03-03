@@ -46,7 +46,7 @@ export type MicrosoftConnectionStatus = {
 
 export async function getMicrosoftConnectionStatus(
   userId: string
-): Promise<MicrosoftConnectionStatus> {
+): Promise<MicrosoftConnectionStatus | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -56,16 +56,25 @@ export async function getMicrosoftConnectionStatus(
     .single();
 
   if (error) {
-    // Sin tokens = no conectado
-    return {
-      connected: false,
-      scopes: [],
-      lastSync: null,
-      lastOOOCheck: null,
-      currentOOOStatus: false,
-      teamsConnected: false,
-      outlookConnected: false,
-    };
+    if (error.code === "PGRST116") {
+      // Sin filas = usuario no ha conectado su cuenta de Microsoft
+      return {
+        connected: false,
+        scopes: [],
+        lastSync: null,
+        lastOOOCheck: null,
+        currentOOOStatus: false,
+        teamsConnected: false,
+        outlookConnected: false,
+      };
+    }
+    // Error real de DB — loguearlo y retornar null para que el caller lo distinga
+    console.error("[preferences] getMicrosoftConnectionStatus DB error:", {
+      userId,
+      code: error.code,
+      message: error.message,
+    });
+    return null;
   }
 
   // Comprobar si el token ha expirado
@@ -82,9 +91,9 @@ export async function getMicrosoftConnectionStatus(
   };
 }
 
-// ─── Obtener info de plaza de dirección (para usuarios directivos) ──
+// ─── Obtener info de plaza asignada (para usuarios con plaza fija) ──
 
-export type ManagementSpotInfo = {
+export type AssignedSpotInfo = {
   spot: {
     id: string;
     label: string;
@@ -98,17 +107,18 @@ export type ManagementSpotInfo = {
   } | null;
 };
 
-export async function getManagementSpotInfo(
-  userId: string
-): Promise<ManagementSpotInfo> {
+export async function getAssignedSpotInfo(
+  userId: string,
+  resourceType: "parking" | "office" = "parking"
+): Promise<AssignedSpotInfo> {
   const supabase = await createClient();
 
-  // Obtener la plaza asignada al directivo
+  // Obtener la plaza asignada al usuario para el tipo de recurso solicitado
   const { data: spot, error: spotError } = await supabase
     .from("spots")
     .select("id, label, type")
     .eq("assigned_to", userId)
-    .eq("type", "management")
+    .eq("resource_type", resourceType)
     .maybeSingle();
 
   if (spotError || !spot) {
@@ -165,8 +175,13 @@ export async function getManagementSpotInfo(
 export interface UserProfileWithPreferences {
   profile: Profile;
   preferences: ValidatedUserPreferences | null;
-  microsoftStatus: MicrosoftConnectionStatus;
-  managementSpot: ManagementSpotInfo | null;
+  /** null si hubo un error real de DB (distinto de "sin tokens") */
+  microsoftStatus: MicrosoftConnectionStatus | null;
+  /** Plazas asignadas por tipo de recurso */
+  assignedSpots: {
+    parking: AssignedSpotInfo | null;
+    office: AssignedSpotInfo | null;
+  };
 }
 
 // ─── Obtener perfil con preferencias (combinado) ──────────────
@@ -193,22 +208,22 @@ export async function getUserProfileWithPreferences(
     return null;
   }
 
-  // Obtener preferencias (el trigger las crea si no existen)
-  const preferences = await getUserPreferences(userId);
-
-  // Obtener estado de conexión con Microsoft
-  const microsoftStatus = await getMicrosoftConnectionStatus(userId);
-
-  // Si es directivo, obtener info de la plaza
-  let managementSpot: ManagementSpotInfo | null = null;
-  if (profile.role === "management" || profile.role === "admin") {
-    managementSpot = await getManagementSpotInfo(userId);
-  }
+  // Obtener preferencias, estado Microsoft y plazas asignadas en paralelo
+  const [preferences, microsoftStatus, parkingSpotData, officeSpotData] =
+    await Promise.all([
+      getUserPreferences(userId),
+      getMicrosoftConnectionStatus(userId),
+      getAssignedSpotInfo(userId, "parking"),
+      getAssignedSpotInfo(userId, "office"),
+    ]);
 
   return {
     profile,
     preferences,
     microsoftStatus,
-    managementSpot,
+    assignedSpots: {
+      parking: parkingSpotData.spot ? parkingSpotData : null,
+      office: officeSpotData.spot ? officeSpotData : null,
+    },
   };
 }

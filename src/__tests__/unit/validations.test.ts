@@ -194,31 +194,48 @@ describe("createVisitorReservationSchema", () => {
 // ─── createSpotSchema ────────────────────────────────────────────────────────
 
 describe("createSpotSchema", () => {
-  it("acepta spot de tipo management", () => {
-    const r = createSpotSchema.safeParse({ label: "M-01", type: "management" });
-    expect(r.success).toBe(true);
-  });
-
-  it("acepta spot de tipo visitor con assigned_to", () => {
+  it("acepta spot de tipo standard", () => {
     const r = createSpotSchema.safeParse({
-      label: "V-01",
-      type: "visitor",
-      assigned_to: UUID,
+      label: "P-01",
+      type: "standard",
+      resource_type: "parking",
     });
     expect(r.success).toBe(true);
   });
 
-  it("rechaza tipo desconocido", () => {
+  it("acepta spot de tipo visitor", () => {
+    const r = createSpotSchema.safeParse({
+      label: "V-01",
+      type: "visitor",
+      resource_type: "parking",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("rechaza tipo desconocido (assigned ya no existe)", () => {
     const r = createSpotSchema.safeParse({
       label: "X-01",
-      type: "desconocido",
+      type: "assigned",
+    });
+    expect(r.success).toBe(false);
+    expect(errorPaths(r)).toContain("type");
+  });
+
+  it("rechaza tipo desconocido (disabled ya no existe)", () => {
+    const r = createSpotSchema.safeParse({
+      label: "X-01",
+      type: "disabled",
     });
     expect(r.success).toBe(false);
     expect(errorPaths(r)).toContain("type");
   });
 
   it("rechaza etiqueta vacía", () => {
-    const r = createSpotSchema.safeParse({ label: "", type: "management" });
+    const r = createSpotSchema.safeParse({
+      label: "",
+      type: "standard",
+      resource_type: "parking",
+    });
     expect(r.success).toBe(false);
     expect(errorPaths(r)).toContain("label");
   });
@@ -227,6 +244,7 @@ describe("createSpotSchema", () => {
     const r = createSpotSchema.safeParse({
       label: "a".repeat(21),
       type: "visitor",
+      resource_type: "parking",
     });
     expect(r.success).toBe(false);
     expect(errorPaths(r)).toContain("label");
@@ -234,8 +252,9 @@ describe("createSpotSchema", () => {
 
   it("rechaza assigned_to no UUID", () => {
     const r = createSpotSchema.safeParse({
-      label: "M-01",
-      type: "management",
+      label: "P-01",
+      type: "standard",
+      resource_type: "parking",
       assigned_to: "no-es-uuid",
     });
     expect(r.success).toBe(false);
@@ -347,9 +366,18 @@ describe("updateVisitorReservationSchema", () => {
 // ─── updateUserRoleSchema ────────────────────────────────────────────────────
 
 describe("updateUserRoleSchema", () => {
-  it.each(["employee", "management", "admin"])("acepta role '%s'", (role) => {
+  it.each(["employee", "admin"])("acepta role '%s'", (role) => {
     const r = updateUserRoleSchema.safeParse({ user_id: UUID, role });
     expect(r.success).toBe(true);
+  });
+
+  it("rechaza role 'management' (ya no existe)", () => {
+    const r = updateUserRoleSchema.safeParse({
+      user_id: UUID,
+      role: "management",
+    });
+    expect(r.success).toBe(false);
+    expect(errorPaths(r)).toContain("role");
   });
 
   it("rechaza role desconocido", () => {
@@ -369,6 +397,7 @@ describe("assignSpotToUserSchema", () => {
     const r = assignSpotToUserSchema.safeParse({
       user_id: UUID,
       spot_id: UUID,
+      resource_type: "parking",
     });
     expect(r.success).toBe(true);
   });
@@ -377,6 +406,7 @@ describe("assignSpotToUserSchema", () => {
     const r = assignSpotToUserSchema.safeParse({
       user_id: UUID,
       spot_id: null,
+      resource_type: "parking",
     });
     expect(r.success).toBe(true);
   });

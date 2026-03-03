@@ -52,6 +52,7 @@ export type Database = {
           day_of_week: number | null;
           id: string;
           is_active: boolean;
+          resource_type: Database["public"]["Enums"]["resource_type"];
           rule_type: Database["public"]["Enums"]["cession_rule_type"];
           updated_at: string;
           user_id: string;
@@ -61,6 +62,7 @@ export type Database = {
           day_of_week?: number | null;
           id?: string;
           is_active?: boolean;
+          resource_type?: Database["public"]["Enums"]["resource_type"];
           rule_type: Database["public"]["Enums"]["cession_rule_type"];
           updated_at?: string;
           user_id: string;
@@ -70,6 +72,7 @@ export type Database = {
           day_of_week?: number | null;
           id?: string;
           is_active?: boolean;
+          resource_type?: Database["public"]["Enums"]["resource_type"];
           rule_type?: Database["public"]["Enums"]["cession_rule_type"];
           updated_at?: string;
           user_id?: string;
@@ -213,6 +216,7 @@ export type Database = {
           label: string;
           position_x: number | null;
           position_y: number | null;
+          resource_type: Database["public"]["Enums"]["resource_type"];
           type: Database["public"]["Enums"]["spot_type"];
           updated_at: string;
         };
@@ -224,6 +228,7 @@ export type Database = {
           label: string;
           position_x?: number | null;
           position_y?: number | null;
+          resource_type?: Database["public"]["Enums"]["resource_type"];
           type?: Database["public"]["Enums"]["spot_type"];
           updated_at?: string;
         };
@@ -235,6 +240,7 @@ export type Database = {
           label?: string;
           position_x?: number | null;
           position_y?: number | null;
+          resource_type?: Database["public"]["Enums"]["resource_type"];
           type?: Database["public"]["Enums"]["spot_type"];
           updated_at?: string;
         };
@@ -495,14 +501,18 @@ export type Database = {
         Returns: Database["public"]["Enums"]["user_role"];
       };
       is_admin: { Args: never; Returns: boolean };
-      is_management: { Args: never; Returns: boolean };
+      user_has_assigned_spot: {
+        Args: { p_resource_type: string };
+        Returns: boolean;
+      };
     };
     Enums: {
       cession_rule_type: "out_of_office" | "day_of_week";
       cession_status: "available" | "reserved" | "cancelled";
       reservation_status: "confirmed" | "cancelled";
-      spot_type: "standard" | "management" | "visitor" | "disabled";
-      user_role: "employee" | "management" | "admin";
+      resource_type: "parking" | "office";
+      spot_type: "standard" | "visitor";
+      user_role: "employee" | "admin";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -636,8 +646,9 @@ export const Constants = {
       cession_rule_type: ["out_of_office", "day_of_week"],
       cession_status: ["available", "reserved", "cancelled"],
       reservation_status: ["confirmed", "cancelled"],
-      spot_type: ["standard", "management", "visitor", "disabled"],
-      user_role: ["employee", "management", "admin"],
+      resource_type: ["parking", "office"],
+      spot_type: ["standard", "visitor"],
+      user_role: ["employee", "admin"],
     },
   },
 } as const;

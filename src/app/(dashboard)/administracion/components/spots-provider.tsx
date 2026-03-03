@@ -11,6 +11,9 @@ type SpotsContextType = {
   setOpen: (type: SpotsDialogType | null) => void;
   currentRow: Spot | null;
   setCurrentRow: React.Dispatch<React.SetStateAction<Spot | null>>;
+  /** Tipo de recurso activo en la pestaña actual — determina el default en "Nueva plaza" */
+  activeResourceType: "parking" | "office";
+  setActiveResourceType: (rt: "parking" | "office") => void;
 };
 
 const SpotsContext = React.createContext<SpotsContextType | null>(null);
@@ -18,9 +21,21 @@ const SpotsContext = React.createContext<SpotsContextType | null>(null);
 export function SpotsProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useDialogState<SpotsDialogType>(null);
   const [currentRow, setCurrentRow] = useState<Spot | null>(null);
+  const [activeResourceType, setActiveResourceType] = useState<
+    "parking" | "office"
+  >("parking");
 
   return (
-    <SpotsContext value={{ open, setOpen, currentRow, setCurrentRow }}>
+    <SpotsContext
+      value={{
+        open,
+        setOpen,
+        currentRow,
+        setCurrentRow,
+        activeResourceType,
+        setActiveResourceType,
+      }}
+    >
       {children}
     </SpotsContext>
   );

@@ -16,9 +16,17 @@ import { UsersProvider } from "./components/users-provider";
 import { UsersDialogs } from "./components/users-dialogs";
 
 export default async function AdminUsersPage() {
-  const [profiles, spots] = await Promise.all([getProfiles(), getSpots()]);
+  const [profiles, parkingSpots, officeSpots] = await Promise.all([
+    getProfiles(),
+    getSpots("parking"),
+    getSpots("office"),
+  ]);
 
-  const managementSpots = spots.filter((s) => s.type === "management");
+  // Spots standard (excluye visitor) → administrables y asignables a usuarios
+  const assignedParkingSpots = parkingSpots.filter(
+    (s) => s.type === "standard"
+  );
+  const assignedOfficeSpots = officeSpots.filter((s) => s.type === "standard");
 
   return (
     <UsersProvider>
@@ -34,11 +42,16 @@ export default async function AdminUsersPage() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Usuarios</h2>
             <p className="text-muted-foreground text-sm">
-              Gestiona los usuarios y asigna plazas a los usuarios de dirección.
+              Gestiona los usuarios y asigna plazas de parking y puestos de
+              oficina.
             </p>
           </div>
         </div>
-        <UsersTable profiles={profiles} managementSpots={managementSpots} />
+        <UsersTable
+          profiles={profiles}
+          assignedParkingSpots={assignedParkingSpots}
+          assignedOfficeSpots={assignedOfficeSpots}
+        />
       </Main>
       <UsersDialogs />
     </UsersProvider>

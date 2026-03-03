@@ -1,18 +1,23 @@
 /**
- * Mis Reservas / Mis Cesiones
+ * Mi Actividad
  *
- * Employee  → muestra todas sus reservas futuras agrupadas por período.
- * Management → muestra todas sus cesiones futuras agrupadas por período.
- * Admin      → redirige al panel.
+ * Muestra todas las reservas y cesiones del usuario actual.
+ * Las secciones se adaptan según qué recursos tiene asignados el usuario:
+ * - Sin plazas asignadas → solo "Reservas" (parking + oficina)
+ * - Con ambas plazas → solo "Cesiones" (parking + oficina)
+ * - Solo una plaza → dos secciones (Reservas + Cesiones)
+ * Admin → redirige al panel.
  */
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Car, Building2 } from "lucide-react";
 
 import { requireAuth } from "@/lib/supabase/auth";
+import { createClient } from "@/lib/supabase/server";
 import { getUserReservations } from "@/lib/queries/reservations";
 import { getUserCessions } from "@/lib/queries/cessions";
+import { getUserOfficeReservations } from "@/lib/queries/offices";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
@@ -29,18 +34,53 @@ export default async function MisReservasPage() {
     redirect(ROUTES.DASHBOARD);
   }
 
-  const isManagement = role === "management";
+  const supabase = await createClient();
 
-  const [reservations, cessions] = await Promise.all([
-    !isManagement ? getUserReservations(user.id) : Promise.resolve([]),
-    isManagement ? getUserCessions(user.id) : Promise.resolve([]),
+  const [
+    reservations,
+    cessions,
+    officeReservations,
+    parkingSpotResult,
+    officeSpotResult,
+  ] = await Promise.all([
+    getUserReservations(user.id, "parking"),
+    getUserCessions(user.id),
+    getUserOfficeReservations(user.id),
+    supabase
+      .from("spots")
+      .select("id")
+      .eq("assigned_to", user.id)
+      .eq("resource_type", "parking")
+      .eq("is_active", true)
+      .maybeSingle(),
+    supabase
+      .from("spots")
+      .select("id")
+      .eq("assigned_to", user.id)
+      .eq("resource_type", "office")
+      .eq("is_active", true)
+      .maybeSingle(),
   ]);
 
-  const title = isManagement ? "Mis Cesiones" : "Mis Reservas";
-  const count = isManagement ? cessions.length : reservations.length;
-  const countLabel = isManagement
-    ? `${count} cesión${count !== 1 ? "es" : ""} programada${count !== 1 ? "s" : ""}`
-    : `${count} reserva${count !== 1 ? "s" : ""} confirmada${count !== 1 ? "s" : ""}`;
+  const hasParkingSpot = !!parkingSpotResult.data;
+  const hasOfficeSpot = !!officeSpotResult.data;
+  const canReserve = !hasParkingSpot || !hasOfficeSpot;
+
+  const totalRes = reservations.length + officeReservations.length;
+  const totalCount = totalRes + cessions.length;
+  const countLabel =
+    totalCount === 0
+      ? "No tienes actividad próxima"
+      : [
+          totalRes > 0
+            ? `${totalRes} reserva${totalRes !== 1 ? "s" : ""}`
+            : null,
+          cessions.length > 0
+            ? `${cessions.length} cesión${cessions.length !== 1 ? "es" : ""}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
 
   return (
     <>
@@ -56,27 +96,40 @@ export default async function MisReservasPage() {
       <Main>
         <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-            <p className="text-muted-foreground text-sm">
-              {count > 0
-                ? countLabel
-                : isManagement
-                  ? "No tienes cesiones programadas"
-                  : "No tienes reservas próximas"}
-            </p>
+            <h1 className="text-2xl font-bold tracking-tight">Mi Actividad</h1>
+            <p className="text-muted-foreground text-sm">{countLabel}</p>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href={ROUTES.PARKING}>
-              {isManagement ? "Ceder plaza" : "Reservar plaza"}
-              <ArrowRight className="ml-2 size-4" />
-            </Link>
-          </Button>
+          {/* CTAs contextuales: solo aparecen para los recursos que el usuario puede reservar */}
+          {canReserve && (
+            <div className="flex gap-2">
+              {!hasParkingSpot && (
+                <Button asChild variant="outline" size="sm">
+                  <Link href={ROUTES.PARKING}>
+                    <Car className="mr-1.5 size-3.5" />
+                    Parking
+                    <ArrowRight className="ml-1.5 size-3.5" />
+                  </Link>
+                </Button>
+              )}
+              {!hasOfficeSpot && (
+                <Button asChild variant="outline" size="sm">
+                  <Link href={ROUTES.OFFICES}>
+                    <Building2 className="mr-1.5 size-3.5" />
+                    Oficinas
+                    <ArrowRight className="ml-1.5 size-3.5" />
+                  </Link>
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         <MisReservasClient
-          mode={isManagement ? "cessions" : "reservations"}
           reservations={reservations}
           cessions={cessions}
+          officeReservations={officeReservations}
+          hasParkingSpot={hasParkingSpot}
+          hasOfficeSpot={hasOfficeSpot}
         />
       </Main>
     </>

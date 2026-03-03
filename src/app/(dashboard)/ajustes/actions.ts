@@ -8,7 +8,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAuth, requireManagement } from "@/lib/supabase/auth";
+import { requireAuth } from "@/lib/supabase/auth";
 import { revalidatePath } from "next/cache";
 import {
   updateProfileSchema,
@@ -116,10 +116,10 @@ export async function updateOutlookPreferences(
   return { success: true };
 }
 
-// ─── Update Auto-Cession Rules (Management Only) ─────────────
+// ─── Update Auto-Cession Rules ───────────────────────────────
 
 export async function updateCessionRules(data: UpdateCessionRulesInput) {
-  const user = await requireManagement();
+  const user = await requireAuth();
 
   const validated = updateCessionRulesSchema.parse(data);
 
@@ -166,36 +166,24 @@ export async function disconnectMicrosoftAccount() {
 // ─── Test Teams Notification (Stub for Future) ───────────────
 
 export async function testTeamsNotification() {
-  const user = await requireAuth();
+  await requireAuth();
 
   // TODO: Implementar cuando el bot de Teams esté listo
-  // Por ahora, devolver éxito
-
-  console.warn(
-    `[STUB] Enviaría notificación de prueba al usuario ${user.email} via bot de Teams`
-  );
-
   return {
-    success: true,
-    message: "Función de prueba (pendiente implementar bot de Teams)",
+    success: false,
+    message: "Función no implementada todavía (bot de Teams pendiente)",
   };
 }
 
 // ─── Force Calendar Sync (Stub for Future) ───────────────────
 
 export async function forceCalendarSync() {
-  const user = await requireAuth();
+  await requireAuth();
 
   // TODO: Implementar cuando la sincronización con Outlook esté lista
-  // Por ahora, devolver éxito
-
-  console.warn(
-    `[STUB] Forzaría sincronización de calendario para el usuario ${user.email} con Outlook`
-  );
-
   return {
-    success: true,
-    message: "Función de sincronización (pendiente implementar Outlook API)",
+    success: false,
+    message: "Función no implementada todavía (Outlook API pendiente)",
   };
 }
 

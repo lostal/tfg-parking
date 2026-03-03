@@ -52,7 +52,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import type { SpotWithStatus } from "@/types";
-import type { ReservationWithDetails } from "@/lib/queries/reservations";
+import type { ParkingReservationRow } from "@/lib/queries/reservations";
 import {
   getAvailableSpotsForDate,
   getMyReservations,
@@ -169,26 +169,25 @@ function SpotCard({
   const isCeded = spot.status === "ceded";
 
   const getSpotTypeInfo = () => {
-    switch (spot.type) {
-      case "management":
-        return {
-          label: "Plaza de dirección",
-          description: "Cedida temporalmente",
-          variant: "secondary" as const,
-        };
-      case "visitor":
-        return {
-          label: "Plaza visitantes",
-          description: "Uso temporal",
-          variant: "outline" as const,
-        };
-      default:
-        return {
-          label: "Plaza estándar",
-          description: "Disponible para reservar",
-          variant: "outline" as const,
-        };
+    if (spot.type === "visitor") {
+      return {
+        label: "Plaza visitantes",
+        description: "Uso temporal",
+        variant: "outline" as const,
+      };
     }
+    if (spot.assigned_to) {
+      return {
+        label: "Plaza con propietario",
+        description: "Cedida temporalmente",
+        variant: "secondary" as const,
+      };
+    }
+    return {
+      label: "Plaza estándar",
+      description: "Disponible para reservar",
+      variant: "outline" as const,
+    };
   };
 
   const typeInfo = getSpotTypeInfo();
@@ -244,7 +243,7 @@ function MyReservationsSection({
   onCancel,
   cancellingId,
 }: {
-  reservations: ReservationWithDetails[];
+  reservations: ParkingReservationRow[];
   onCancel: (id: string) => void;
   cancellingId: string | null;
 }) {
@@ -369,7 +368,7 @@ export function ReservationsView() {
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
   const [spots, setSpots] = React.useState<SpotWithStatus[]>([]);
   const [myReservations, setMyReservations] = React.useState<
-    ReservationWithDetails[]
+    ParkingReservationRow[]
   >([]);
   const [loading, setLoading] = React.useState(false);
   const [bookingSpotId, setBookingSpotId] = React.useState<string | null>(null);

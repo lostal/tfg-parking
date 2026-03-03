@@ -17,47 +17,53 @@ import {
 import type { SpotWithStatus } from "@/types";
 import {
   getUserReservations,
-  type ReservationWithDetails,
+  type ParkingReservationRow,
 } from "@/lib/queries/reservations";
+import { getAllResourceConfigs } from "@/lib/config";
+import { getDayOfWeek } from "@/lib/utils";
 
-// ─── Query Functions ─────────────────────────────────────────
-
-// ─── Helpers ─────────────────────────────────────────────────
-
-/** El parking cierra sábados (6) y domingos (0) */
-function isWeekend(dateStr: string): boolean {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const day = new Date(y!, m! - 1, d!).getDay();
-  return day === 0 || day === 6;
-}
+// ─── Available spots ─────────────────────────────────────────
 
 /**
- * Obtiene las plazas disponibles para una fecha dada.
+ * Obtiene las plazas disponibles de parking para una fecha dada.
+ *
+ * Lee la configuración del sistema para determinar:
+ * - Si las reservas están habilitadas
+ * - Si la fecha es un día permitido (según `parking.allowed_days`)
  *
  * Una plaza está "disponible" si:
  * - No tiene una reserva confirmada para esa fecha
- * - Si type='management', debe existir una cesión con status='available'
- * - Está activa
- * - La fecha es un día laborable (el parking cierra fines de semana)
- *
- * Devuelve las plazas que el usuario actual puede reservar.
+ * - Si tiene dueño asignado (assigned_to ≠ null), debe existir una cesión activa
+ * - Está activa y es de tipo 'parking'
  */
 export async function getAvailableSpotsForDate(
   date: string
 ): Promise<ActionResult<SpotWithStatus[]>> {
   try {
-    // El parking cierra los fines de semana
-    if (isWeekend(date)) return success([]);
-
     const user = await getCurrentUser();
     if (!user) return error("No autenticado");
+
+    // Leer configuración del parking desde la BD
+    const config = await getAllResourceConfigs("parking");
+
+    // Comprobar si las reservas están habilitadas
+    if (!config.booking_enabled) return success([]);
+
+    // Comprobar si el día está permitido
+    const dayOfWeek = getDayOfWeek(date);
+    if (!config.allowed_days.includes(dayOfWeek)) return success([]);
 
     const supabase = await createClient();
 
     // Obtener todos los datos en paralelo
     const [spotsResult, reservationsResult, cessionsResult, visitorResult] =
       await Promise.all([
-        supabase.from("spots").select("*").eq("is_active", true).order("label"),
+        supabase
+          .from("spots")
+          .select("*")
+          .eq("is_active", true)
+          .eq("resource_type", "parking")
+          .order("label"),
         supabase
           .from("reservations")
           .select("id, spot_id")
@@ -98,8 +104,11 @@ export async function getAvailableSpotsForDate(
       // Omitir plazas con reservas de visitantes
       if (visitorSpotIds.has(spot.id)) continue;
 
-      if (spot.type === "management") {
-        // Plazas de dirección: solo disponibles si existe una cesión activa
+      // Las plazas de visitas (type='visitor') no son reservables por empleados
+      if (spot.type === "visitor") continue;
+
+      if (spot.assigned_to !== null) {
+        // Plaza con propietario: solo disponible si existe una cesión activa
         const cession = cessionBySpot.get(spot.id);
         if (!cession || cession.status !== "available") continue;
 
@@ -107,16 +116,19 @@ export async function getAvailableSpotsForDate(
           id: spot.id,
           label: spot.label,
           type: spot.type,
+          resource_type: "parking",
           assigned_to: spot.assigned_to,
           position_x: spot.position_x,
           position_y: spot.position_y,
           status: "ceded",
         });
       } else {
+        // Plaza sin propietario → libremente reservable
         available.push({
           id: spot.id,
           label: spot.label,
           type: spot.type,
+          resource_type: "parking",
           assigned_to: spot.assigned_to,
           position_x: spot.position_x,
           position_y: spot.position_y,
@@ -139,7 +151,7 @@ export async function getAvailableSpotsForDate(
  * Devuelve reservas desde hoy en adelante, con detalles de plaza.
  */
 export async function getMyReservations(): Promise<
-  ActionResult<ReservationWithDetails[]>
+  ActionResult<ParkingReservationRow[]>
 > {
   try {
     const user = await getCurrentUser();
@@ -158,17 +170,51 @@ export async function getMyReservations(): Promise<
 /**
  * Crea una nueva reserva de aparcamiento.
  *
- * Reglas de negocio:
+ * Reglas de negocio (leídas desde system_config):
  * - El usuario debe estar autenticado
+ * - Las reservas deben estar habilitadas (booking_enabled)
+ * - La fecha debe ser un día permitido (allowed_days)
+ * - La fecha no puede superar el límite de antelación (max_advance_days)
  * - Una reserva por usuario por día (garantizado por índice único de la BD)
  * - Una reserva por plaza por día (garantizado por índice único de la BD)
- * - La plaza debe estar libre o cedida para esa fecha
  */
 export const createReservation = actionClient
   .schema(createReservationSchema)
   .action(async ({ parsedInput }) => {
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
+
+    // Leer configuración del parking
+    const config = await getAllResourceConfigs("parking");
+
+    // Comprobar si las reservas están habilitadas
+    if (!config.booking_enabled) {
+      throw new Error(
+        "Las reservas de parking están deshabilitadas actualmente"
+      );
+    }
+
+    // Comprobar si el día está permitido
+    const dayOfWeek = getDayOfWeek(parsedInput.date);
+    if (!config.allowed_days.includes(dayOfWeek)) {
+      throw new Error("No se puede reservar en este día de la semana");
+    }
+
+    // Comprobar antelación máxima
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const reservationDate = new Date(parsedInput.date);
+    const daysAhead = Math.round(
+      (reservationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (daysAhead < 0) {
+      throw new Error("No puedes reservar para fechas pasadas");
+    }
+    if (daysAhead > config.max_advance_days) {
+      throw new Error(
+        `Solo puedes reservar con un máximo de ${config.max_advance_days} días de antelación`
+      );
+    }
 
     const supabase = await createClient();
 
@@ -187,8 +233,7 @@ export const createReservation = actionClient
 
     // Insert reservation.
     // El trigger trg_sync_cession_status en la BD sincroniza automáticamente
-    // cession.status → "reserved" dentro de la misma transacción, por lo que
-    // no es necesario ningún sync manual aquí.
+    // cession.status → "reserved" dentro de la misma transacción.
     const { data, error } = await supabase
       .from("reservations")
       .insert({
@@ -201,7 +246,6 @@ export const createReservation = actionClient
       .single();
 
     if (error) {
-      // Handle unique constraint violations
       if (error.code === "23505") {
         throw new Error("Esta plaza ya está reservada para este día");
       }
@@ -214,10 +258,8 @@ export const createReservation = actionClient
 /**
  * Cancela una reserva existente.
  *
- * Reglas de negocio:
- * - El usuario debe ser el propietario de la reserva (o admin — garantizado por RLS)
- * - El trigger trg_sync_cession_status revierte cession.status → "available"
- *   automáticamente si era una plaza de dirección cedida.
+ * El trigger trg_sync_cession_status revierte cession.status → "available"
+ * automáticamente si era una plaza de dirección cedida.
  */
 export const cancelReservation = actionClient
   .schema(cancelReservationSchema)

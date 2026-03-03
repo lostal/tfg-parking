@@ -22,7 +22,7 @@ export default async function SettingsMicrosoftPage() {
     redirect("/panel");
   }
 
-  const { profile, preferences, microsoftStatus, managementSpot } = data;
+  const { profile, preferences, microsoftStatus, assignedSpots } = data;
 
   return (
     <ContentSection
@@ -36,10 +36,10 @@ export default async function SettingsMicrosoftPage() {
           microsoftConnected={microsoftStatus?.connected || false}
           lastSync={microsoftStatus?.lastSync || null}
         />
-        {(profile.role === "management" || profile.role === "admin") && (
+        {profile.role === "admin" && (
           <ManagementCessionRules
             preferences={preferences}
-            spotInfo={managementSpot}
+            spotInfo={assignedSpots.parking}
             microsoftConnected={microsoftStatus?.connected || false}
           />
         )}

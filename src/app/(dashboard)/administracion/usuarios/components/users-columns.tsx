@@ -3,7 +3,14 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Building2, MoreHorizontal, Shield, Trash2, Users } from "lucide-react";
+import {
+  Building2,
+  Car,
+  MoreHorizontal,
+  Shield,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,13 +32,12 @@ import { cn } from "@/lib/utils";
 import type { Spot } from "@/lib/supabase/types";
 import { assignSpotToUser } from "@/app/(dashboard)/administracion/actions";
 import { useUsers } from "./users-provider";
-import type { ProfileWithSpot } from "./types";
+import type { ProfileWithSpots } from "./types";
 
 // ─── Role configuration ────────────────────────────────────────────────────────
 
 export const roleOptions = [
   { label: "Administrador", value: "admin", icon: Shield },
-  { label: "Dirección", value: "management", icon: Building2 },
   { label: "General", value: "employee", icon: Users },
 ] as const;
 
@@ -40,8 +46,6 @@ export const roleOptions = [
 const roleBadgeColors: Record<string, string> = {
   admin:
     "bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700",
-  management:
-    "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700",
   employee:
     "bg-zinc-100 text-zinc-700 border-zinc-300 dark:bg-zinc-800/40 dark:text-zinc-300 dark:border-zinc-600",
 };
@@ -69,16 +73,20 @@ const SPOT_NONE = "__none__";
 function InlineSpotSelect({
   userId,
   currentSpotId,
-  managementSpots,
+  availableSpots,
+  resourceType,
+  placeholder,
 }: {
   userId: string;
   currentSpotId: string | null;
-  managementSpots: Spot[];
+  availableSpots: Spot[];
+  resourceType: "parking" | "office";
+  placeholder: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  const available = managementSpots.filter(
+  const available = availableSpots.filter(
     (s) => !s.assigned_to || s.assigned_to === userId
   );
 
@@ -92,6 +100,7 @@ function InlineSpotSelect({
           const result = await assignSpotToUser({
             user_id: userId,
             spot_id: spotId,
+            resource_type: resourceType,
           });
           if (!result.success) {
             toast.error(result.error);
@@ -103,13 +112,13 @@ function InlineSpotSelect({
       }}
     >
       <SelectTrigger className="h-8 w-32.5">
-        <SelectValue placeholder="Sin plaza" />
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value={SPOT_NONE}>Sin plaza</SelectItem>
+        <SelectItem value={SPOT_NONE}>{placeholder}</SelectItem>
         {available.map((s) => (
           <SelectItem key={s.id} value={s.id}>
-            Plaza {s.label}
+            {s.label}
           </SelectItem>
         ))}
       </SelectContent>
@@ -117,7 +126,7 @@ function InlineSpotSelect({
   );
 }
 
-function UserRowActions({ row }: { row: { original: ProfileWithSpot } }) {
+function UserRowActions({ row }: { row: { original: ProfileWithSpots } }) {
   const { setOpen, setCurrentRow } = useUsers();
   const profile = row.original;
 
@@ -153,8 +162,9 @@ function UserRowActions({ row }: { row: { original: ProfileWithSpot } }) {
 // ─── Column factory ────────────────────────────────────────────────────────────
 
 export function buildUsersColumns(
-  managementSpots: Spot[]
-): ColumnDef<ProfileWithSpot>[] {
+  assignedParkingSpots: Spot[],
+  assignedOfficeSpots: Spot[]
+): ColumnDef<ProfileWithSpots>[] {
   return [
     {
       id: "full_name",
@@ -183,18 +193,42 @@ export function buildUsersColumns(
       enableSorting: false,
     },
     {
-      id: "assigned_spot",
-      header: "Plaza asignada",
-      cell: ({ row }) => {
-        if (row.original.role !== "management") return null;
-        return (
-          <InlineSpotSelect
-            userId={row.original.id}
-            currentSpotId={row.original.assigned_spot?.id ?? null}
-            managementSpots={managementSpots}
-          />
-        );
-      },
+      id: "parking_spot",
+      header: () => (
+        <span className="flex items-center gap-1.5">
+          <Car className="size-3.5" />
+          Plaza Parking
+        </span>
+      ),
+      cell: ({ row }) => (
+        <InlineSpotSelect
+          userId={row.original.id}
+          currentSpotId={row.original.parking_spot?.id ?? null}
+          availableSpots={assignedParkingSpots}
+          resourceType="parking"
+          placeholder="Sin plaza"
+        />
+      ),
+      enableSorting: false,
+      meta: { className: "hidden @xl/content:table-cell" },
+    },
+    {
+      id: "office_spot",
+      header: () => (
+        <span className="flex items-center gap-1.5">
+          <Building2 className="size-3.5" />
+          Puesto Oficina
+        </span>
+      ),
+      cell: ({ row }) => (
+        <InlineSpotSelect
+          userId={row.original.id}
+          currentSpotId={row.original.office_spot?.id ?? null}
+          availableSpots={assignedOfficeSpots}
+          resourceType="office"
+          placeholder="Sin puesto"
+        />
+      ),
       enableSorting: false,
       meta: { className: "hidden @xl/content:table-cell" },
     },

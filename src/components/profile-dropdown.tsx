@@ -9,7 +9,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarCheck, Repeat2, User } from "lucide-react";
+import { CalendarCheck, User } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import useDialogState from "@/hooks/use-dialog-state";
 import { ROUTES } from "@/lib/constants";
@@ -43,17 +43,15 @@ export function ProfileDropdown() {
 
   const role = profile?.role;
 
-  // Reservation/cession link depends on role (mirrors nav-user.tsx)
+  // Empleados ven acceso rápido a sus reservas; admins solo ven perfil
   const reservationLink =
-    role === "management"
-      ? { href: ROUTES.MIS_RESERVAS, label: "Mis Cesiones", icon: Repeat2 }
-      : role === "employee"
-        ? {
-            href: ROUTES.MIS_RESERVAS,
-            label: "Mis Reservas",
-            icon: CalendarCheck,
-          }
-        : null;
+    role === "employee"
+      ? {
+          href: ROUTES.MIS_RESERVAS,
+          label: "Mi Actividad",
+          icon: CalendarCheck,
+        }
+      : null;
 
   if (loading) {
     return <Skeleton className="h-8 w-8 rounded-full" />;

@@ -37,6 +37,7 @@ export const createSpot = actionClient
       .insert({
         label: parsedInput.label,
         type: parsedInput.type,
+        resource_type: parsedInput.resource_type,
         assigned_to: parsedInput.assigned_to ?? null,
       })
       .select("id")
@@ -126,13 +127,13 @@ export const updateUserRole = actionClient
     return { updated: true };
   });
 
-// ─── Assign Spot to Management User ─────────────────────────
+// ─── Assign Spot to User ──────────────────────────────────────────
 
 /**
- * Asigna (o desasigna) una plaza de dirección a un usuario.
+ * Asigna (o desasigna) una plaza a un usuario.
  *
  * Reglas:
- *   - Solo se pueden asignar plazas de tipo dirección.
+ *   - Las plazas de visitas (type='visitor') no se pueden asignar a usuarios.
  *   - Una plaza solo puede estar asignada a un usuario a la vez.
  *   - Pasar spot_id = null elimina la asignación.
  */
@@ -142,47 +143,61 @@ export const assignSpotToUser = actionClient
     await requireAdmin();
     const supabase = await createClient();
 
-    const { user_id, spot_id } = parsedInput;
+    const { user_id, spot_id, resource_type } = parsedInput;
 
-    // 1. If unassigning: clear the spot currently assigned to this user
+    // 1. If unassigning: clear only the spot of the given resource_type for this user
     if (!spot_id) {
       const { error } = await supabase
         .from("spots")
         .update({ assigned_to: null })
-        .eq("assigned_to", user_id);
+        .eq("assigned_to", user_id)
+        .eq("resource_type", resource_type);
 
       if (error) throw new Error(`Error al desasignar plaza: ${error.message}`);
       return { assigned: false };
     }
 
-    // 2. Validate spot is management type
+    // 2. Validate spot is assigned type
     const { data: spot, error: spotErr } = await supabase
       .from("spots")
-      .select("id, type, assigned_to")
+      .select("id, type, resource_type, assigned_to")
       .eq("id", spot_id)
       .single();
 
     if (spotErr || !spot) throw new Error("Plaza no encontrada");
-    if (spot.type !== "management") {
-      throw new Error("Solo se pueden asignar plazas de tipo 'dirección'");
+    if (spot.type === "visitor") {
+      throw new Error("No se pueden asignar plazas de visitas a usuarios");
     }
     if (spot.assigned_to && spot.assigned_to !== user_id) {
       throw new Error("Esa plaza ya está asignada a otro usuario");
     }
 
-    // 3. First, clear any previous spot assigned to this user
-    await supabase
-      .from("spots")
-      .update({ assigned_to: null })
-      .eq("assigned_to", user_id);
-
-    // 4. Assign the new spot
+    // 3. Assign the new spot FIRST — if this fails the user's previous assignment
+    //    remains intact. Order matters: assign → clear avoids leaving the user
+    //    with zero spots if the second step fails.
     const { error } = await supabase
       .from("spots")
       .update({ assigned_to: user_id })
       .eq("id", spot_id);
 
-    if (error) throw new Error(`Error al asignar plaza: ${error.message}`);
+    if (error) {
+      console.error("[admin] assignSpotToUser assign error:", {
+        userId: user_id,
+        spotId: spot_id,
+        error: error.message,
+      });
+      throw new Error(`Error al asignar plaza: ${error.message}`);
+    }
+
+    // 4. Clear any previous spot of the SAME resource_type assigned to this user
+    //    (preserves assignments of the other resource_type). Runs AFTER successful
+    //    assignment — worst case on failure: user has two spots, not zero.
+    await supabase
+      .from("spots")
+      .update({ assigned_to: null })
+      .eq("assigned_to", user_id)
+      .eq("resource_type", spot.resource_type)
+      .neq("id", spot_id); // Don't clear the spot we just assigned
 
     revalidatePath("/administracion/usuarios");
     revalidatePath("/administracion");

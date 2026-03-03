@@ -7,7 +7,15 @@
  * - cancelReservation: autenticación y cancelación en BD
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  beforeAll,
+  afterAll,
+} from "vitest";
 import {
   getAvailableSpotsForDate,
   createReservation,
@@ -28,6 +36,24 @@ vi.mock("@/lib/supabase/auth", () => ({
 
 vi.mock("@/lib/queries/reservations", () => ({
   getUserReservations: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+}));
+
+vi.mock("@/lib/config", () => ({
+  getAllResourceConfigs: vi.fn().mockResolvedValue({
+    booking_enabled: true,
+    visitor_booking_enabled: true,
+    allowed_days: [1, 2, 3, 4, 5],
+    max_advance_days: 365,
+    max_consecutive_days: 5,
+    max_daily_reservations: 1,
+    max_weekly_reservations: 5,
+    max_monthly_reservations: 20,
+    time_slots_enabled: false,
+  }),
 }));
 
 import { createClient } from "@/lib/supabase/server";
@@ -201,10 +227,14 @@ describe("getAvailableSpotsForDate", () => {
     if (result.success) expect(result.data).toHaveLength(0);
   });
 
-  // ── Plazas de dirección ────────────────────────────────────────────────────
+  // ── Plazas asignadas ────────────────────────────────────────────────────
 
-  it("excluye plazas de dirección sin cesión activa", async () => {
-    const spot = createMockSpot({ id: "sm", type: "management" });
+  it("excluye plazas asignadas sin cesión activa", async () => {
+    const spot = createMockSpot({
+      id: "sm",
+      type: "standard",
+      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
+    });
     setupSupabaseMock({ spots: [spot] });
 
     const result = await getAvailableSpotsForDate("2025-03-17");
@@ -213,8 +243,12 @@ describe("getAvailableSpotsForDate", () => {
     if (result.success) expect(result.data).toHaveLength(0);
   });
 
-  it("incluye plaza de dirección con cesión 'available' con status 'ceded'", async () => {
-    const spot = createMockSpot({ id: "sm", type: "management" });
+  it("incluye plaza asignada con cesión 'available' con status 'ceded'", async () => {
+    const spot = createMockSpot({
+      id: "sm",
+      type: "standard",
+      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
+    });
     setupSupabaseMock({
       spots: [spot],
       cessions: [{ id: "c1", spot_id: "sm", status: "available" }],
@@ -229,8 +263,12 @@ describe("getAvailableSpotsForDate", () => {
     }
   });
 
-  it("excluye plaza de dirección con cesión 'reserved'", async () => {
-    const spot = createMockSpot({ id: "sm", type: "management" });
+  it("excluye plaza asignada con cesión 'reserved'", async () => {
+    const spot = createMockSpot({
+      id: "sm",
+      type: "standard",
+      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
+    });
     setupSupabaseMock({
       spots: [spot],
       cessions: [{ id: "c1", spot_id: "sm", status: "reserved" }],
@@ -246,6 +284,16 @@ describe("getAvailableSpotsForDate", () => {
 // ─── createReservation ────────────────────────────────────────────────────────
 
 describe("createReservation", () => {
+  beforeAll(() => {
+    // Mock del tiempo para que "2025-03-17" sea fecha futura
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2025-01-01T00:00:00Z"));
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getCurrentUser).mockResolvedValue(createMockAuthUser() as never);
