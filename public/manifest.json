@@ -1,7 +1,7 @@
 {
-  "name": "GRUPOSIETE Parking",
-  "short_name": "Parking",
-  "description": "Sistema de gestión de reservas de parking corporativo",
+  "name": "GRUPOSIETE Reservas",
+  "short_name": "Reservas",
+  "description": "Sistema de gestión de reservas corporativas",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",

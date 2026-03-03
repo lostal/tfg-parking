@@ -8,10 +8,9 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Building2, Users } from "lucide-react";
+import { Loader2, Car, Building2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import Image from "next/image";
-
-type UserType = "employee" | "management";
 
 /**
  * Login Page - Development Mode
@@ -23,7 +22,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [userType, setUserType] = useState<UserType>("employee");
+  const [hasFixedParking, setHasFixedParking] = useState(false);
+  const [hasFixedOffice, setHasFixedOffice] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -45,7 +45,8 @@ export default function LoginPage() {
             emailRedirectTo: `${window.location.origin}${ROUTES.CALLBACK}`,
             data: {
               full_name: fullName,
-              user_type: userType,
+              has_fixed_parking: hasFixedParking,
+              has_fixed_office: hasFixedOffice,
             },
           },
         });
@@ -78,7 +79,7 @@ export default function LoginPage() {
             {/* Logo modo claro */}
             <Image
               src="/logo-light.png"
-              alt="GRUPOSIETE Parking"
+              alt="GRUPOSIETE Reservas"
               width={240}
               height={80}
               className="h-20 w-auto dark:hidden"
@@ -87,7 +88,7 @@ export default function LoginPage() {
             {/* Logo modo oscuro */}
             <Image
               src="/logo-dark.png"
-              alt="GRUPOSIETE Parking"
+              alt="GRUPOSIETE Reservas"
               width={240}
               height={80}
               className="hidden h-20 w-auto dark:block"
@@ -152,47 +153,43 @@ export default function LoginPage() {
             </div>
 
             {mode === "signup" && (
-              <div className="grid gap-2">
-                <Label>Tipo de usuario</Label>
+              <div className="grid gap-3">
+                <Label>Plazas fijas asignadas</Label>
                 <p className="text-muted-foreground text-xs">
-                  Si perteneces a dirección, el administrador te asignará tu
-                  plaza antes de que puedas cederla.
+                  Marca si ya tienes plaza fija. El administrador te la asignará
+                  tras el registro para que puedas gestionarla.
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setUserType("employee")}
-                    disabled={loading}
-                    className={cn(
-                      "flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-sm transition-colors",
-                      userType === "employee"
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border text-muted-foreground hover:border-primary/50"
-                    )}
-                  >
-                    <Users className="h-6 w-6" />
-                    <span className="font-medium">General</span>
-                    <span className="text-center text-xs opacity-70">
-                      Acceso completo desde el inicio
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUserType("management")}
-                    disabled={loading}
-                    className={cn(
-                      "flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-sm transition-colors",
-                      userType === "management"
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border text-muted-foreground hover:border-primary/50"
-                    )}
-                  >
-                    <Building2 className="h-6 w-6" />
-                    <span className="font-medium">Dirección</span>
-                    <span className="text-center text-xs opacity-70">
-                      Requiere plaza asignada por admin
-                    </span>
-                  </button>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="hasFixedParking"
+                      checked={hasFixedParking}
+                      onCheckedChange={(v) => setHasFixedParking(!!v)}
+                      disabled={loading}
+                    />
+                    <label
+                      htmlFor="hasFixedParking"
+                      className="flex cursor-pointer items-center gap-2 text-sm"
+                    >
+                      <Car className="text-muted-foreground h-4 w-4" />
+                      Tengo plaza de parking fija
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="hasFixedOffice"
+                      checked={hasFixedOffice}
+                      onCheckedChange={(v) => setHasFixedOffice(!!v)}
+                      disabled={loading}
+                    />
+                    <label
+                      htmlFor="hasFixedOffice"
+                      className="flex cursor-pointer items-center gap-2 text-sm"
+                    >
+                      <Building2 className="text-muted-foreground h-4 w-4" />
+                      Tengo puesto de oficina fijo
+                    </label>
+                  </div>
                 </div>
               </div>
             )}
@@ -243,7 +240,7 @@ export default function LoginPage() {
         {/* Mockup modo claro */}
         <Image
           src="/mockup-light.png"
-          alt="GRUPOSIETE Parking"
+          alt="GRUPOSIETE Reservas"
           fill
           className="object-cover object-top select-none dark:hidden"
           priority
@@ -251,7 +248,7 @@ export default function LoginPage() {
         {/* Mockup modo oscuro */}
         <Image
           src="/mockup-dark.png"
-          alt="GRUPOSIETE Parking"
+          alt="GRUPOSIETE Reservas"
           fill
           className="hidden object-cover object-top select-none dark:block"
           priority

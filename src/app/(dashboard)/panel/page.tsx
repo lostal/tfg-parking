@@ -2,7 +2,7 @@
  * Panel de Administración (Admin Dashboard)
  *
  * Server Component — admin only.
- * Non-admin roles are redirected to /inicio.
+ * Non-admin roles are redirected to /parking.
  *
  * Follows the shadcn-admin dashboard pattern:
  *   - Tabs: Resumen + Analítica
@@ -13,7 +13,6 @@ import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/supabase/auth";
 import { getSpotsByDate } from "@/lib/queries/spots";
 import { getProfiles } from "@/lib/queries/profiles";
-import { createClient } from "@/lib/supabase/server";
 import {
   getDailyCountsLast30Days,
   getTopSpots,
@@ -21,6 +20,7 @@ import {
   getMonthlyReservationCount,
   getActiveUsersThisMonth,
   getRecentActivity,
+  getVisitorsTodayCount,
 } from "@/lib/queries/stats";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
@@ -74,15 +74,7 @@ export default async function PanelPage() {
     getMonthlyReservationCount(),
     getActiveUsersThisMonth(),
     getRecentActivity(8),
-    (async () => {
-      const supabase = await createClient();
-      const { count } = await supabase
-        .from("visitor_reservations")
-        .select("id", { count: "exact", head: true })
-        .eq("date", today)
-        .eq("status", "confirmed");
-      return count ?? 0;
-    })(),
+    getVisitorsTodayCount(today),
   ]);
 
   // Compute occupancy
@@ -99,13 +91,8 @@ export default async function PanelPage() {
   const occupancyPercent =
     totalSpots > 0 ? Math.round((occupiedSpots / totalSpots) * 100) : 0;
 
-  // Pending management alerts
-  const pendingManagement = profiles.filter(
-    (p) => p.role === "management" && !spots.some((s) => s.assigned_to === p.id)
-  );
-
-  // Suppress unused variable warning
-  void visitorsToday;
+  // El rol "management" ya no existe – no hay alertas de este tipo
+  const pendingManagement: typeof profiles = [];
 
   return (
     <>
@@ -145,6 +132,7 @@ export default async function PanelPage() {
               occupancyPercent={occupancyPercent}
               monthlyReservations={monthlyReservations}
               activeUsersMonth={activeUsers}
+              visitorsToday={visitorsToday}
             />
 
             {/* Chart + Recent Activity */}

@@ -18,18 +18,30 @@ type ReservationConPerfil = {
 };
 
 /**
- * Obtiene todas las plazas activas (sin estado por fecha).
+ * Obtiene plazas (sin estado por fecha).
  * Usada por el panel admin para la gestión CRUD.
+ *
+ * @param resourceType - Si se proporciona, filtra por tipo de recurso
+ *   ('parking' | 'office'). Sin filtro devuelve todas.
+ * @param includeInactive - Si es true, incluye plazas inactivas. Por defecto false.
  */
-export async function getSpots(): Promise<Spot[]> {
+export async function getSpots(
+  resourceType?: "parking" | "office",
+  includeInactive = false
+): Promise<Spot[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("spots")
-    .select("*")
-    .eq("is_active", true)
-    .order("label");
+  let query = supabase.from("spots").select("*").order("label");
 
+  if (!includeInactive) {
+    query = query.eq("is_active", true);
+  }
+
+  if (resourceType) {
+    query = query.eq("resource_type", resourceType);
+  }
+
+  const { data, error } = await query;
   if (error) throw new Error(`Error al obtener plazas: ${error.message}`);
   return data;
 }
@@ -38,9 +50,9 @@ export async function getSpots(): Promise<Spot[]> {
  * Obtiene todas las plazas activas con estado calculado para una fecha específica.
  *
  * Lógica de estado:
- * - Plaza de dirección sin cesión en esa fecha → "occupied" (asignada)
- * - Plaza de dirección con cesión (available) → "ceded" (libre para reservar)
- * - Plaza de dirección con cesión (reserved) → "reserved"
+ * - Plaza asignada sin cesión en esa fecha → "occupied" (asignada)
+ * - Plaza asignada con cesión (available) → "ceded" (libre para reservar)
+ * - Plaza asignada con cesión (reserved) → "reserved"
  * - Plaza estándar con reserva confirmada → "reserved"
  * - Plaza con reserva de visitante confirmada → "visitor-blocked"
  * - En cualquier otro caso → "free"
@@ -103,13 +115,13 @@ export async function getSpotsByDate(date: string): Promise<SpotWithStatus[]> {
       status = "reserved";
       reservation_id = reservation.id;
       reserved_by_name = reservation.profiles?.full_name ?? undefined;
-    } else if (spot.type === "management") {
+    } else if (spot.assigned_to !== null) {
+      // Plaza con propietario: solo entra en el pool si tiene cesión activa
       if (cession) {
-        // La plaza de dirección ha sido cedida
         status = cession.status === "reserved" ? "reserved" : "ceded";
         reservation_id = cession.id;
       } else {
-        // Plaza de dirección no cedida → ocupada por el asignado
+        // Sin cesión activa → bloqueada por su dueño
         status = "occupied";
       }
     }
@@ -118,6 +130,7 @@ export async function getSpotsByDate(date: string): Promise<SpotWithStatus[]> {
       id: spot.id,
       label: spot.label,
       type: spot.type,
+      resource_type: spot.resource_type,
       assigned_to: spot.assigned_to,
       position_x: spot.position_x,
       position_y: spot.position_y,

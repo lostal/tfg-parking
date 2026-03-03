@@ -25,6 +25,14 @@ export type {
   Database,
 } from "@/lib/supabase/types";
 
+// Re-export config types
+export type {
+  ResourceType,
+  ResourceConfigValues,
+  GlobalConfigValues,
+  ResourceConfigKey,
+} from "@/lib/config";
+
 /**
  * Computed spot status for a given date.
  * Derived at query time, not stored in DB.
@@ -44,6 +52,8 @@ export interface SpotWithStatus {
   id: string;
   label: string;
   type: SpotTypeEnum;
+  /** Parking or office spot — app-level type since Supabase types may lag migrations */
+  resource_type: "parking" | "office";
   assigned_to: string | null;
   position_x: number | null;
   position_y: number | null;
@@ -51,4 +61,32 @@ export interface SpotWithStatus {
   /** The reservation/cession occupying this spot, if any */
   reservation_id?: string;
   reserved_by_name?: string;
+}
+
+/**
+ * Time slot for office reservations.
+ * start_time and end_time are HH:MM strings (24h format).
+ */
+export interface TimeSlot {
+  start_time: string;
+  end_time: string;
+  /** Whether this slot is available for the given spot/date */
+  available: boolean;
+}
+
+/**
+ * Reservation with optional time slot (for office reservations).
+ */
+export interface ReservationWithDetails {
+  id: string;
+  spot_id: string;
+  spot_label: string;
+  resource_type: "parking" | "office";
+  user_id: string;
+  date: string;
+  status: string;
+  notes?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  created_at: string;
 }

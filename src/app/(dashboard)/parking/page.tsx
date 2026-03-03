@@ -1,9 +1,8 @@
 /**
  * Parking Page – Vista unificada de calendario
  *
- * Sirve a todos los roles desde una única ruta (/reservas).
- * Empleado: reservar plazas por día.
- * Directivo: ceder su plaza asignada.
+ * Empleado sin plaza asignada: reservar plazas por día.
+ * Empleado/admin con plaza asignada: ceder su plaza de parking.
  */
 
 import { Header, Main } from "@/components/layout";
@@ -17,18 +16,13 @@ import { ParkingCalendarView } from "./_components/parking-calendar-view";
 export default async function ParkingPage() {
   const user = await requireAuth();
 
-  const role = user.profile?.role ?? "employee";
-  const isManagement = role === "management" || role === "admin";
-
-  let assignedSpot = null;
-  if (isManagement) {
-    const spots = await getSpots();
-    assignedSpot = spots.find((s) => s.assigned_to === user.id) ?? null;
-  }
+  const spots = await getSpots("parking");
+  const assignedParkingSpot =
+    spots.find((s) => s.assigned_to === user.id) ?? null;
 
   const title = "Parking";
-  const description = isManagement
-    ? `Cede tu plaza asignada${assignedSpot ? ` (${assignedSpot.label})` : ""} los días que no la uses`
+  const description = assignedParkingSpot
+    ? `Cede tu plaza asignada (${assignedParkingSpot.label}) los días que no la uses`
     : "Consulta la disponibilidad y reserva tu plaza";
 
   return (
@@ -48,8 +42,8 @@ export default async function ParkingPage() {
 
         <div className="mx-auto max-w-lg">
           <ParkingCalendarView
-            role={isManagement ? "management" : "employee"}
-            assignedSpot={assignedSpot}
+            hasAssignedSpot={!!assignedParkingSpot}
+            assignedSpot={assignedParkingSpot}
           />
         </div>
       </Main>

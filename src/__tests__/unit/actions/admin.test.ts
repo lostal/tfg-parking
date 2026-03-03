@@ -106,7 +106,8 @@ describe("createSpot", () => {
 
     const result = await createSpot({
       label: "A-01",
-      type: "management",
+      type: "standard",
+      resource_type: "parking",
     });
 
     expect(result.success).toBe(true);
@@ -118,7 +119,11 @@ describe("createSpot", () => {
       singleError: { message: "duplicate key", code: "23505" },
     });
 
-    const result = await createSpot({ label: "A-01", type: "management" });
+    const result = await createSpot({
+      label: "A-01",
+      type: "standard",
+      resource_type: "parking",
+    });
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -131,14 +136,22 @@ describe("createSpot", () => {
       singleError: { message: "Error de conexión", code: "PGRST999" },
     });
 
-    const result = await createSpot({ label: "A-01", type: "management" });
+    const result = await createSpot({
+      label: "A-01",
+      type: "standard",
+      resource_type: "parking",
+    });
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toContain("Error al crear plaza");
   });
 
   it("rechaza input inválido sin llamar a la BD (validación Zod)", async () => {
-    const result = await createSpot({ label: "", type: "management" });
+    const result = await createSpot({
+      label: "",
+      type: "standard",
+      resource_type: "parking",
+    });
 
     expect(result.success).toBe(false);
     expect(createClient).not.toHaveBeenCalled();
@@ -148,6 +161,7 @@ describe("createSpot", () => {
     const result = await createSpot({
       label: "A-01",
       type: "invalid-type" as never,
+      resource_type: "parking",
     });
 
     expect(result.success).toBe(false);
@@ -157,7 +171,11 @@ describe("createSpot", () => {
   it("falla si requireAdmin lanza error (no admin)", async () => {
     vi.mocked(requireAdmin).mockRejectedValue(new Error("No autorizado"));
 
-    const result = await createSpot({ label: "A-01", type: "management" });
+    const result = await createSpot({
+      label: "A-01",
+      type: "standard",
+      resource_type: "parking",
+    });
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toBe("No autorizado");
@@ -263,7 +281,7 @@ describe("updateUserRole", () => {
   it("actualiza el rol con éxito", async () => {
     setupSupabaseMock();
 
-    const result = await updateUserRole({ user_id: UUID, role: "management" });
+    const result = await updateUserRole({ user_id: UUID, role: "employee" });
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual({ updated: true });
@@ -303,13 +321,17 @@ describe("assignSpotToUser", () => {
   it("desasigna la plaza cuando spot_id es null", async () => {
     setupSupabaseMock();
 
-    const result = await assignSpotToUser({ user_id: UUID, spot_id: null });
+    const result = await assignSpotToUser({
+      user_id: UUID,
+      spot_id: null,
+      resource_type: "parking",
+    });
 
     expect(result.success).toBe(true);
     if (result.success) expect(result.data).toEqual({ assigned: false });
   });
 
-  it("asigna plaza de tipo management con éxito", async () => {
+  it("asigna plaza estándar con éxito", async () => {
     // Necesita respuestas distintas: primera llamada = validate spot (single),
     // segunda y tercera = update queries (thenable)
     let callCount = 0;
@@ -321,7 +343,7 @@ describe("assignSpotToUser", () => {
         (chain.single as ReturnType<typeof vi.fn>).mockResolvedValue({
           data: {
             id: UUID2,
-            type: "management",
+            type: "standard",
             assigned_to: null,
           },
           error: null,
@@ -336,6 +358,7 @@ describe("assignSpotToUser", () => {
     const result = await assignSpotToUser({
       user_id: UUID,
       spot_id: UUID2,
+      resource_type: "parking",
     });
 
     expect(result.success).toBe(true);
@@ -354,16 +377,17 @@ describe("assignSpotToUser", () => {
     const result = await assignSpotToUser({
       user_id: UUID,
       spot_id: UUID2,
+      resource_type: "parking",
     });
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toContain("Plaza no encontrada");
   });
 
-  it("falla si la plaza no es de tipo management", async () => {
+  it("falla si la plaza es de tipo visitor (no asignable a usuarios)", async () => {
     const chain = createQueryChain({ data: null, error: null });
     (chain.single as ReturnType<typeof vi.fn>).mockResolvedValue({
-      data: { id: UUID2, type: "standard", assigned_to: null },
+      data: { id: UUID2, type: "visitor", assigned_to: null },
       error: null,
     });
     const mockFrom = vi.fn(() => chain);
@@ -372,11 +396,12 @@ describe("assignSpotToUser", () => {
     const result = await assignSpotToUser({
       user_id: UUID,
       spot_id: UUID2,
+      resource_type: "parking",
     });
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain("Solo se pueden asignar plazas de tipo");
+      expect(result.error).toContain("No se pueden asignar plazas de visitas");
     }
   });
 
@@ -385,7 +410,7 @@ describe("assignSpotToUser", () => {
     (chain.single as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: {
         id: UUID2,
-        type: "management",
+        type: "standard",
         assigned_to: "otro-usuario-uuid-0000-0000-000000000099",
       },
       error: null,
@@ -396,6 +421,7 @@ describe("assignSpotToUser", () => {
     const result = await assignSpotToUser({
       user_id: UUID,
       spot_id: UUID2,
+      resource_type: "parking",
     });
 
     expect(result.success).toBe(false);
@@ -408,6 +434,7 @@ describe("assignSpotToUser", () => {
     const result = await assignSpotToUser({
       user_id: "no-es-uuid",
       spot_id: null,
+      resource_type: "parking",
     });
 
     expect(result.success).toBe(false);

@@ -35,6 +35,7 @@ import {
   getAvailableVisitorSpotsForDate,
   type VisitorReservationWithDetails,
 } from "@/lib/queries/visitor-reservations";
+import { getResourceConfig } from "@/lib/config";
 
 // ─── Funciones de consulta ────────────────────────────────────
 
@@ -143,6 +144,17 @@ export const createVisitorReservation = actionClient
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
 
+    // Comprobar si las reservas de visitantes están habilitadas
+    const visitorEnabled = await getResourceConfig(
+      "parking",
+      "visitor_booking_enabled"
+    );
+    if (!visitorEnabled) {
+      throw new Error(
+        "Las reservas para visitantes están deshabilitadas actualmente"
+      );
+    }
+
     const supabase = await createClient();
 
     const { data: spotData } = await supabase
@@ -199,8 +211,13 @@ export const createVisitorReservation = actionClient
         .eq("id", reservationId);
     } catch (emailErr) {
       console.error(
-        "Error al enviar email al visitante (la reserva se creó correctamente):",
-        emailErr
+        "[visitantes] sendConfirmationEmail failed (reserva creada correctamente):",
+        {
+          reservationId,
+          userId: user.id,
+          visitorEmail: parsedInput.visitor_email,
+          error: emailErr instanceof Error ? emailErr.message : emailErr,
+        }
       );
     }
 
@@ -280,8 +297,13 @@ export const updateVisitorReservation = actionClient
         .eq("id", parsedInput.id);
     } catch (emailErr) {
       console.error(
-        "Error al reenviar email al visitante (la reserva se actualizó correctamente):",
-        emailErr
+        "[visitantes] sendConfirmationEmail (update) failed (reserva actualizada correctamente):",
+        {
+          reservationId: parsedInput.id,
+          userId: user.id,
+          visitorEmail: parsedInput.visitor_email,
+          error: emailErr instanceof Error ? emailErr.message : emailErr,
+        }
       );
     }
 
@@ -367,8 +389,12 @@ export const cancelVisitorReservation = actionClient
       });
     } catch (emailErr) {
       console.error(
-        "Error al enviar email de cancelación (la reserva se canceló correctamente):",
-        emailErr
+        "[visitantes] sendCancellationEmail failed (reserva cancelada correctamente):",
+        {
+          reservationId: parsedInput.id,
+          userId: user.id,
+          error: emailErr instanceof Error ? emailErr.message : emailErr,
+        }
       );
     }
 

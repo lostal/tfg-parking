@@ -1,18 +1,18 @@
 /**
  * Cessations Layout
  *
- * Protected layout for management/admin users only.
- * Employees are redirected to the dashboard.
+ * Protected layout: requiere tener plaza de parking asignada.
+ * Cualquier empleado con plaza asignada puede acceder a sus cesiones.
  */
 
-import { requireManagement } from "@/lib/supabase/auth";
+import { requireSpotOwner } from "@/lib/supabase/auth";
 
 export default async function CessationsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await requireManagement();
+  await requireSpotOwner("parking");
 
   return children;
 }

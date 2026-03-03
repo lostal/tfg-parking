@@ -35,7 +35,7 @@ export function AppTitle() {
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
               <Image
                 src="/favicon-512x512.png"
-                alt="GRUPOSIETE Parking"
+                alt="GRUPOSIETE Reservas"
                 width={32}
                 height={32}
                 className="size-8 rounded-lg"
@@ -43,7 +43,7 @@ export function AppTitle() {
             </div>
             <div className="grid flex-1 text-start text-sm leading-tight">
               <span className="truncate font-bold">GRUPOSIETE</span>
-              <span className="truncate text-xs">Parking</span>
+              <span className="truncate text-xs">Reservas</span>
             </div>
           </Link>
         </SidebarMenuButton>

@@ -11,6 +11,7 @@ import { actionClient, success, error, type ActionResult } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/auth";
 import { createCessionSchema, cancelCessionSchema } from "@/lib/validations";
+import { getAllResourceConfigs } from "@/lib/config";
 import {
   getUserCessions as queryUserCessions,
   type CessionWithDetails,
@@ -20,7 +21,7 @@ import {
  * Crea cesiones para múltiples fechas.
  *
  * Reglas de negocio:
- * - El usuario debe ser directivo o administrador
+ * - El usuario debe tener una plaza de parking asignada (assigned_to = user.id, resource_type = 'parking')
  * - El usuario debe ser propietario de la plaza (assigned_to = user.id)
  * - Una cesión por plaza por fecha
  */
@@ -30,11 +31,25 @@ export const createCession = actionClient
     const user = await getCurrentUser();
     if (!user) throw new Error("No autenticado");
 
-    if (
-      !user.profile?.role ||
-      !["management", "admin"].includes(user.profile.role)
-    ) {
-      throw new Error("Solo directivos pueden ceder plazas");
+    // Comprobar si las cesiones de parking están habilitadas
+    const config = await getAllResourceConfigs("parking");
+    if (!config.cession_enabled) {
+      throw new Error("Las cesiones de parking están deshabilitadas");
+    }
+
+    // Comprobar antelación mínima en la primera fecha seleccionada
+    if (config.cession_min_advance_hours > 0 && parsedInput.dates.length > 0) {
+      const firstDate = parsedInput.dates[0]!;
+      const now = new Date();
+      const targetDate = new Date(firstDate + "T00:00:00");
+      const hoursAhead =
+        (targetDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (hoursAhead < config.cession_min_advance_hours) {
+        throw new Error(
+          `La cesión debe realizarse con al menos ${config.cession_min_advance_hours} horas de antelación`
+        );
+      }
     }
 
     const supabase = await createClient();
@@ -71,6 +86,12 @@ export const createCession = actionClient
           "Ya existe una cesión para esta plaza en uno de los días seleccionados"
         );
       }
+      console.error("[parking] createCession DB error:", {
+        userId: user.id,
+        spotId: parsedInput.spot_id,
+        dates: parsedInput.dates,
+        error: error.message,
+      });
       throw new Error(`Error al crear cesión: ${error.message}`);
     }
 
@@ -127,6 +148,24 @@ export const cancelCession = actionClient
       );
     }
 
+    // Cancelar la reserva activa del empleado PRIMERO: si falla, la cesión
+    // permanece intacta y no hay estado inconsistente.
+    // El directivo tiene permiso RLS (policy reservations_cancel_by_spot_owner)
+    // para cancelar reservas sobre su propia plaza asignada.
+    if (activeReservation) {
+      const { error: reservationError } = await supabase
+        .from("reservations")
+        .update({ status: "cancelled" })
+        .eq("id", activeReservation.id);
+
+      if (reservationError) {
+        // La cesión NO se ha modificado → no hay estado inconsistente.
+        throw new Error(
+          `No se pudo anular la reserva del empleado: ${reservationError.message}. La cesión no ha sido modificada.`
+        );
+      }
+    }
+
     // Cancelar la cesión con el cliente normal: el directivo es el propietario
     // (user_id = auth.uid()) → la política RLS cessions_update_own lo permite.
     // El adminClient no es necesario aquí y falla si SUPABASE_SERVICE_ROLE_KEY
@@ -137,25 +176,12 @@ export const cancelCession = actionClient
       .eq("id", parsedInput.id);
 
     if (cancelError) {
+      console.error("[parking] cancelCession DB error:", {
+        userId: user.id,
+        cessionId: parsedInput.id,
+        error: cancelError.message,
+      });
       throw new Error(`Error al cancelar cesión: ${cancelError.message}`);
-    }
-
-    // Si había una reserva activa del empleado, cancelarla también.
-    // El directivo tiene permiso RLS (policy reservations_cancel_by_spot_owner)
-    // para cancelar reservas sobre su propia plaza asignada.
-    if (activeReservation) {
-      const { error: reservationError } = await supabase
-        .from("reservations")
-        .update({ status: "cancelled" })
-        .eq("id", activeReservation.id);
-
-      if (reservationError) {
-        // La cesión ya quedó cancelada, pero la reserva del empleado no.
-        // Lanzar error para que el usuario sepa que debe revisar manualmente.
-        throw new Error(
-          `Cesión cancelada, pero no se pudo anular la reserva del empleado: ${reservationError.message}`
-        );
-      }
     }
 
     return { cancelled: true, reservationAlsoCancelled: !!activeReservation };
@@ -172,7 +198,7 @@ export async function getMyCessions(): Promise<
     const user = await getCurrentUser();
     if (!user) return error("No autenticado");
 
-    const cessions = await queryUserCessions(user.id);
+    const cessions = await queryUserCessions(user.id, "parking");
     return success(cessions);
   } catch (err) {
     console.error("getMyCessions error:", err);

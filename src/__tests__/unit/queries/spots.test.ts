@@ -200,10 +200,14 @@ describe("getSpotsByDate", () => {
     expect(result[0]?.reservation_id).toBe("vis-priority");
   });
 
-  // ── Plaza de dirección sin cesión ──────────────────────────────────────────
+  // ── Plaza asignada sin cesión ──────────────────────────────────────────────────────────
 
-  it("devuelve estado 'occupied' para plaza de dirección sin cesión", async () => {
-    const spot = createMockSpot({ id: "spot-mgmt", type: "management" });
+  it("devuelve estado 'occupied' para plaza asignada sin cesión", async () => {
+    const spot = createMockSpot({
+      id: "spot-mgmt",
+      type: "standard",
+      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
+    });
     setupSupabaseMock({ spots: [spot] });
 
     const result = await getSpotsByDate(DATE);
@@ -214,10 +218,14 @@ describe("getSpotsByDate", () => {
     });
   });
 
-  // ── Plaza de dirección cedida disponible ───────────────────────────────────
+  // ── Plaza asignada cedida disponible ──────────────────────────────────────────
 
-  it("devuelve estado 'ceded' para plaza de dirección con cesión 'available'", async () => {
-    const spot = createMockSpot({ id: "spot-mgmt", type: "management" });
+  it("devuelve estado 'ceded' para plaza asignada con cesión 'available'", async () => {
+    const spot = createMockSpot({
+      id: "spot-mgmt",
+      type: "standard",
+      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
+    });
     const cession = createMockCession({
       id: "ces-1",
       spot_id: "spot-mgmt",
@@ -233,10 +241,14 @@ describe("getSpotsByDate", () => {
     });
   });
 
-  // ── Plaza de dirección cedida y ya reservada ───────────────────────────────
+  // ── Plaza asignada cedida y ya reservada ────────────────────────────────────────
 
-  it("devuelve estado 'reserved' para plaza de dirección con cesión 'reserved'", async () => {
-    const spot = createMockSpot({ id: "spot-mgmt", type: "management" });
+  it("devuelve estado 'reserved' para plaza asignada con cesión 'reserved'", async () => {
+    const spot = createMockSpot({
+      id: "spot-mgmt",
+      type: "standard",
+      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
+    });
     const cession = createMockCession({
       id: "ces-1",
       spot_id: "spot-mgmt",
@@ -252,10 +264,14 @@ describe("getSpotsByDate", () => {
     });
   });
 
-  // ── Visitante en plaza de dirección ───────────────────────────────────────
+  // ── Visitante en plaza asignada ──────────────────────────────────────────────────
 
-  it("visitante en plaza de dirección tiene prioridad sobre la lógica de cesión", async () => {
-    const spot = createMockSpot({ id: "spot-mgmt", type: "management" });
+  it("visitante en plaza asignada tiene prioridad sobre la lógica de cesión", async () => {
+    const spot = createMockSpot({
+      id: "spot-mgmt",
+      type: "standard",
+      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
+    });
     const cession = createMockCession({
       spot_id: "spot-mgmt",
       status: "available",
@@ -283,7 +299,11 @@ describe("getSpotsByDate", () => {
       id: "spot-reserved",
       type: "standard",
     });
-    const spotMgmt = createMockSpot({ id: "spot-mgmt", type: "management" });
+    const spotMgmt = createMockSpot({
+      id: "spot-mgmt",
+      type: "standard",
+      assigned_to: "owner-00000000-0000-0000-0000-000000000001",
+    });
 
     const reservation = createMockReservationWithProfile({
       spot_id: "spot-reserved",

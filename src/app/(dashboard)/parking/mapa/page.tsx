@@ -1,26 +1,19 @@
 /**
- * Parking Map Page (Employee)
+ * Parking Map Page
  *
  * Interactive map view for visualizing parking spots.
- * Only accessible to employees - management users are redirected to cessations.
+ * Accessible to all authenticated users.
  */
 
-import { redirect } from "next/navigation";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { requireAuth } from "@/lib/supabase/auth";
-import { ROUTES } from "@/lib/constants";
 import { ComingSoon } from "@/components/coming-soon";
 
 export default async function ParkingMapPage() {
-  const user = await requireAuth();
-
-  // El mapa es exclusivo para empleados
-  if (user.profile?.role === "management" || user.profile?.role === "admin") {
-    redirect(ROUTES.PARKING);
-  }
+  await requireAuth();
 
   return (
     <>

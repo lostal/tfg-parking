@@ -3,8 +3,9 @@
 /**
  * MisReservasClient
  *
- * Componente cliente compartido para Mis Reservas (employee) y Mis Cesiones (management).
- * Agrupa los ítems por período temporal y permite cancelar directamente desde aquí.
+ * Muestra reservas y cesiones del usuario con tabs:
+ * - "Reservas": parking + oficina unificadas
+ * - "Cesiones": plazas cedidas al pool (visible siempre, puede estar vacío)
  *
  * Patrones reutilizados del proyecto:
  * - Filas de lista de MyReservationsSection (reservations-view.tsx)
@@ -18,11 +19,13 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import {
+  Building2,
   CalendarDays,
+  Car,
+  Clock,
   Loader2,
   Repeat2,
   Trash2,
-  ArrowRight,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -31,6 +34,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -40,18 +44,28 @@ import {
 
 import { cancelReservation } from "@/app/(dashboard)/parking/actions";
 import { cancelCession } from "@/app/(dashboard)/parking/cession-actions";
-import type { ReservationWithDetails } from "@/lib/queries/reservations";
+import { cancelOfficeReservation } from "@/app/(dashboard)/oficinas/actions";
+import type { ParkingReservationRow } from "@/lib/queries/reservations";
+import type { ReservationWithDetails as OfficeReservationWithDetails } from "@/types";
 import type { CessionWithDetails } from "@/lib/queries/cessions";
 import { ROUTES } from "@/lib/constants";
 
 // ─── Types ───────────────────────────────────────────────────
 
-type Mode = "reservations" | "cessions";
+/** Reserva con indicador de recurso para mostrar en la lista unificada */
+type MergedReservation = (
+  | (ParkingReservationRow & { resourceType: "parking" })
+  | (OfficeReservationWithDetails & { resourceType: "office" })
+) & { spot_label: string; date: string };
 
 interface MisReservasClientProps {
-  mode: Mode;
-  reservations?: ReservationWithDetails[];
+  reservations?: ParkingReservationRow[];
+  officeReservations?: OfficeReservationWithDetails[];
   cessions?: CessionWithDetails[];
+  /** true si el usuario tiene una plaza de parking asignada (modo cesión) */
+  hasParkingSpot?: boolean;
+  /** true si el usuario tiene un puesto de oficina asignado (modo cesión) */
+  hasOfficeSpot?: boolean;
 }
 
 type GroupKey = "esta-semana" | "este-mes" | "mas-adelante";
@@ -120,16 +134,21 @@ function ReservationRow({
   cancellingId,
   onCancel,
 }: {
-  reservation: ReservationWithDetails;
+  reservation: MergedReservation;
   cancellingId: string | null;
-  onCancel: (id: string) => void;
+  onCancel: (id: string, resourceType: "parking" | "office") => void;
 }) {
   const date = parseLocalDate(reservation.date);
   const isToday = reservation.date === new Date().toISOString().split("T")[0]!;
+  const isOffice = reservation.resourceType === "office";
+  const officeRes = isOffice
+    ? (reservation as OfficeReservationWithDetails & { resourceType: "office" })
+    : null;
+  const hasTimeSlot = isOffice && officeRes?.start_time;
 
   return (
     <div className="flex items-center gap-4 py-3 pl-1">
-      {/* Date column — círculo de "hoy" al estilo Google Calendar */}
+      {/* Date column */}
       <div className="flex w-9 shrink-0 flex-col items-center gap-0.5">
         <span
           className={cn(
@@ -158,10 +177,29 @@ function ReservationRow({
 
       {/* Content */}
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">Plaza {reservation.spot_label}</p>
-        <p className="text-muted-foreground truncate text-xs capitalize">
-          {format(date, "EEEE d 'de' MMMM", { locale: es })}
-        </p>
+        <div className="flex items-center gap-1.5">
+          {isOffice ? (
+            <Building2 className="text-muted-foreground size-3.5 shrink-0" />
+          ) : (
+            <Car className="text-muted-foreground size-3.5 shrink-0" />
+          )}
+          <p className="text-sm font-medium">
+            {isOffice ? "Puesto" : "Plaza"} {reservation.spot_label}
+          </p>
+        </div>
+        <div className="text-muted-foreground flex items-center gap-1 text-xs capitalize">
+          {hasTimeSlot && officeRes && (
+            <>
+              <Clock className="size-3" />
+              <span>
+                {officeRes.start_time?.slice(0, 5)}–
+                {officeRes.end_time?.slice(0, 5)}
+              </span>
+              ·
+            </>
+          )}
+          <span>{format(date, "EEEE d 'de' MMMM", { locale: es })}</span>
+        </div>
       </div>
 
       {/* Cancel */}
@@ -171,7 +209,7 @@ function ReservationRow({
             size="icon"
             variant="ghost"
             className="hover:bg-destructive/10 hover:text-destructive shrink-0"
-            onClick={() => onCancel(reservation.id)}
+            onClick={() => onCancel(reservation.id, reservation.resourceType)}
             disabled={cancellingId === reservation.id}
           >
             {cancellingId === reservation.id ? (
@@ -232,7 +270,17 @@ function CessionRow({
 
       {/* Content */}
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">Plaza {cession.spot_label}</p>
+        <div className="flex items-center gap-1.5">
+          {cession.resource_type === "office" ? (
+            <Building2 className="text-muted-foreground size-3.5 shrink-0" />
+          ) : (
+            <Car className="text-muted-foreground size-3.5 shrink-0" />
+          )}
+          <p className="text-sm font-medium">
+            {cession.resource_type === "office" ? "Puesto" : "Plaza"}{" "}
+            {cession.spot_label}
+          </p>
+        </div>
         <p className="text-muted-foreground truncate text-xs capitalize">
           {format(date, "EEEE d 'de' MMMM", { locale: es })}
         </p>
@@ -266,11 +314,19 @@ function CessionRow({
 
 // ─── Empty State ─────────────────────────────────────────────
 
-function EmptyState({ mode }: { mode: Mode }) {
+function EmptyState({
+  isCessions,
+  hasParkingSpot,
+  hasOfficeSpot,
+}: {
+  isCessions?: boolean;
+  hasParkingSpot?: boolean;
+  hasOfficeSpot?: boolean;
+}) {
   return (
     <div className="flex h-52 flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-center">
       <div className="bg-muted rounded-full p-3">
-        {mode === "cessions" ? (
+        {isCessions ? (
           <Repeat2 className="text-muted-foreground size-6" />
         ) : (
           <CalendarDays className="text-muted-foreground size-6" />
@@ -278,44 +334,51 @@ function EmptyState({ mode }: { mode: Mode }) {
       </div>
       <div>
         <p className="text-sm font-medium">
-          {mode === "cessions"
+          {isCessions
             ? "No tienes cesiones programadas"
             : "No tienes reservas próximas"}
         </p>
         <p className="text-muted-foreground mt-0.5 text-xs">
-          {mode === "cessions"
-            ? "Ve a Parking para ceder tu plaza fácilmente"
-            : "Ve a Parking para reservar una plaza disponible"}
+          {isCessions
+            ? "Ve a la sección correspondiente para ceder tu espacio"
+            : "Reserva una plaza de parking o un puesto de oficina"}
         </p>
       </div>
-      <Button asChild variant="outline" size="sm">
-        <Link href={ROUTES.PARKING}>
-          {mode === "cessions" ? "Ir a Parking" : "Reservar plaza"}
-          <ArrowRight className="ml-2 size-3.5" />
-        </Link>
-      </Button>
+      <div className="flex gap-2">
+        {/* En modo reservas: CTAs a los recursos que puede reservar */}
+        {/* En modo cesiones: CTAs a los recursos que puede ceder */}
+        {(isCessions ? hasParkingSpot : !hasParkingSpot) && (
+          <Button asChild variant="outline" size="sm">
+            <Link href={ROUTES.PARKING}>
+              <Car className="mr-1.5 size-3.5" />
+              Parking
+            </Link>
+          </Button>
+        )}
+        {(isCessions ? hasOfficeSpot : !hasOfficeSpot) && (
+          <Button asChild variant="outline" size="sm">
+            <Link href={ROUTES.OFFICES}>
+              <Building2 className="mr-1.5 size-3.5" />
+              Oficinas
+            </Link>
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────
+// ─── Grouped List ─────────────────────────────────────────────
 
-export function MisReservasClient({
-  mode,
-  reservations: initialReservations = [],
-  cessions: initialCessions = [],
-}: MisReservasClientProps) {
-  const [reservations, setReservations] =
-    React.useState<ReservationWithDetails[]>(initialReservations);
-  const [cessions, setCessions] =
-    React.useState<CessionWithDetails[]>(initialCessions);
-  const [cancellingId, setCancellingId] = React.useState<string | null>(null);
-
-  const items: Array<ReservationWithDetails | CessionWithDetails> =
-    mode === "reservations" ? reservations : cessions;
-
+function GroupedList<T extends { date: string; id: string }>({
+  items,
+  renderItem,
+}: {
+  items: T[];
+  renderItem: (item: T) => React.ReactNode;
+}) {
   const grouped = React.useMemo(() => {
-    const result: Record<GroupKey, typeof items> = {
+    const result: Record<GroupKey, T[]> = {
       "esta-semana": [],
       "este-mes": [],
       "mas-adelante": [],
@@ -326,15 +389,108 @@ export function MisReservasClient({
     return result;
   }, [items]);
 
-  const handleCancelReservation = async (id: string) => {
+  return (
+    <motion.div
+      className="space-y-6"
+      initial="hidden"
+      animate="show"
+      variants={{
+        hidden: {},
+        show: { transition: { staggerChildren: 0.06 } },
+      }}
+    >
+      {GROUP_ORDER.map((groupKey) => {
+        const groupItems = grouped[groupKey];
+        if (!groupItems || groupItems.length === 0) return null;
+
+        return (
+          <motion.div
+            key={groupKey}
+            className="space-y-2"
+            variants={{
+              hidden: { opacity: 0, y: 10 },
+              show: {
+                opacity: 1,
+                y: 0,
+                transition: { type: "spring", stiffness: 380, damping: 28 },
+              },
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                {GROUP_LABELS[groupKey]}
+              </span>
+              <Separator className="flex-1" />
+              <span className="text-muted-foreground text-xs tabular-nums">
+                {groupItems.length}
+              </span>
+            </div>
+            <div className="divide-border/50 divide-y">
+              {groupItems.map((item) => renderItem(item))}
+            </div>
+          </motion.div>
+        );
+      })}
+    </motion.div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────
+
+export function MisReservasClient({
+  reservations: initialReservations = [],
+  officeReservations: initialOfficeReservations = [],
+  cessions: initialCessions = [],
+  hasParkingSpot = false,
+  hasOfficeSpot = false,
+}: MisReservasClientProps) {
+  // canReserve: hay al menos un recurso sin plaza asignada
+  const canReserve = !hasParkingSpot || !hasOfficeSpot;
+  // canCede: hay al menos una plaza asignada que ceder
+  const canCede = hasParkingSpot || hasOfficeSpot;
+  const [reservations, setReservations] =
+    React.useState<ParkingReservationRow[]>(initialReservations);
+  const [officeReservations, setOfficeReservations] = React.useState<
+    OfficeReservationWithDetails[]
+  >(initialOfficeReservations);
+  const [cessions, setCessions] =
+    React.useState<CessionWithDetails[]>(initialCessions);
+  const [cancellingId, setCancellingId] = React.useState<string | null>(null);
+
+  // Fusionar reservas de parking y oficina en una sola lista ordenada por fecha
+  const mergedReservations = React.useMemo((): MergedReservation[] => {
+    const parking: MergedReservation[] = reservations.map((r) => ({
+      ...r,
+      resourceType: "parking" as const,
+    }));
+    const offices: MergedReservation[] = officeReservations.map((r) => ({
+      ...r,
+      resourceType: "office" as const,
+    }));
+    return [...parking, ...offices].sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
+  }, [reservations, officeReservations]);
+
+  const handleCancelReservation = async (
+    id: string,
+    resourceType: "parking" | "office" = "parking"
+  ) => {
     setCancellingId(id);
     try {
-      const result = await cancelReservation({ id });
-      if (result.success) {
+      const result =
+        resourceType === "office"
+          ? await cancelOfficeReservation({ id })
+          : await cancelReservation({ id });
+      if (result?.success) {
         toast.success("Reserva cancelada");
-        setReservations((prev) => prev.filter((r) => r.id !== id));
+        if (resourceType === "office") {
+          setOfficeReservations((prev) => prev.filter((r) => r.id !== id));
+        } else {
+          setReservations((prev) => prev.filter((r) => r.id !== id));
+        }
       } else {
-        toast.error(result.error);
+        toast.error(result?.error ?? "Error al cancelar");
       }
     } catch {
       toast.error("Error al cancelar la reserva");
@@ -363,73 +519,99 @@ export function MisReservasClient({
     }
   };
 
-  if (items.length === 0) {
-    return <EmptyState mode={mode} />;
+  const hasCessions = cessions.length > 0;
+  const hasReservations = mergedReservations.length > 0;
+
+  // ── Secciones reutilizables ───────────────────────────────
+
+  const reservationsSection = (
+    <>
+      {hasReservations ? (
+        <GroupedList
+          items={mergedReservations}
+          renderItem={(item) => (
+            <ReservationRow
+              key={item.id}
+              reservation={item}
+              cancellingId={cancellingId}
+              onCancel={handleCancelReservation}
+            />
+          )}
+        />
+      ) : (
+        <EmptyState
+          hasParkingSpot={hasParkingSpot}
+          hasOfficeSpot={hasOfficeSpot}
+        />
+      )}
+    </>
+  );
+
+  const cessionsSection = (
+    <>
+      {hasCessions ? (
+        <GroupedList
+          items={cessions}
+          renderItem={(item) => (
+            <CessionRow
+              key={item.id}
+              cession={item}
+              cancellingId={cancellingId}
+              onCancel={handleCancelCession}
+            />
+          )}
+        />
+      ) : (
+        <EmptyState
+          isCessions
+          hasParkingSpot={hasParkingSpot}
+          hasOfficeSpot={hasOfficeSpot}
+        />
+      )}
+    </>
+  );
+
+  // ── Renderizado adaptativo según el rol ──────────────────
+
+  // Solo puede reservar (sin ninguna plaza asignada): sin tabs
+  if (canReserve && !canCede) {
+    return <TooltipProvider>{reservationsSection}</TooltipProvider>;
   }
 
+  // Solo puede ceder (tiene ambas plazas asignadas): sin tabs
+  if (!canReserve && canCede) {
+    return <TooltipProvider>{cessionsSection}</TooltipProvider>;
+  }
+
+  // Puede tanto reservar como ceder: mostrar ambas pestañas
   return (
     <TooltipProvider>
-      <motion.div
-        className="space-y-6"
-        initial="hidden"
-        animate="show"
-        variants={{
-          hidden: {},
-          show: { transition: { staggerChildren: 0.06 } },
-        }}
+      <Tabs
+        defaultValue={
+          hasCessions && !hasReservations ? "cessions" : "reservations"
+        }
       >
-        {GROUP_ORDER.map((groupKey) => {
-          const groupItems = grouped[groupKey];
-          if (!groupItems || groupItems.length === 0) return null;
-
-          return (
-            <motion.div
-              key={groupKey}
-              className="space-y-2"
-              variants={{
-                hidden: { opacity: 0, y: 10 },
-                show: {
-                  opacity: 1,
-                  y: 0,
-                  transition: { type: "spring", stiffness: 380, damping: 28 },
-                },
-              }}
-            >
-              {/* Group header */}
-              <div className="flex items-center gap-3">
-                <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                  {GROUP_LABELS[groupKey]}
-                </span>
-                <Separator className="flex-1" />
-                <span className="text-muted-foreground text-xs tabular-nums">
-                  {groupItems.length}
-                </span>
-              </div>
-
-              {/* Rows */}
-              <div className="divide-border/50 divide-y">
-                {groupItems.map((item) =>
-                  mode === "reservations" ? (
-                    <ReservationRow
-                      key={item.id}
-                      reservation={item as ReservationWithDetails}
-                      cancellingId={cancellingId}
-                      onCancel={handleCancelReservation}
-                    />
-                  ) : (
-                    <CessionRow
-                      key={item.id}
-                      cession={item as CessionWithDetails}
-                      cancellingId={cancellingId}
-                      onCancel={handleCancelCession}
-                    />
-                  )
-                )}
-              </div>
-            </motion.div>
-          );
-        })}
-      </motion.div>
+        <TabsList className="mb-4">
+          <TabsTrigger value="reservations">
+            Reservas
+            {hasReservations && (
+              <span className="bg-primary/10 text-primary ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] leading-none font-semibold">
+                {mergedReservations.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="cessions">
+            Cesiones
+            {hasCessions && (
+              <span className="bg-primary/10 text-primary ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] leading-none font-semibold">
+                {cessions.length}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="reservations">{reservationsSection}</TabsContent>
+        <TabsContent value="cessions">{cessionsSection}</TabsContent>
+      </Tabs>
     </TooltipProvider>
   );
 }

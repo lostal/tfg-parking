@@ -39,6 +39,7 @@ export type SystemConfig = PublicTables["system_config"]["Row"];
 /** Enum types */
 export type UserRole = PublicEnums["user_role"];
 export type SpotType = PublicEnums["spot_type"];
+export type ResourceType = PublicEnums["resource_type"];
 export type ReservationStatus = PublicEnums["reservation_status"];
 export type CessionStatus = PublicEnums["cession_status"];
 export type CessionRuleType = PublicEnums["cession_rule_type"];

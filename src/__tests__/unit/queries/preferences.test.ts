@@ -4,7 +4,7 @@
  * Verifica la lógica de consulta y composición de:
  * - getUserPreferences: preferencias validadas o null en error
  * - getMicrosoftConnectionStatus: estado de conexión basado en token/expiración
- * - getManagementSpotInfo: info de plaza de directivo con estado hoy
+ * - getAssignedSpotInfo: info de plaza asignada con estado hoy
  * - getUserProfileWithPreferences: composición de perfil + preferencias + Microsoft + plaza
  */
 
@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   getUserPreferences,
   getMicrosoftConnectionStatus,
-  getManagementSpotInfo,
+  getAssignedSpotInfo,
   getUserProfileWithPreferences,
 } from "@/lib/queries/preferences";
 import { createQueryChain } from "../../mocks/supabase";
@@ -65,7 +65,7 @@ function setupSupabaseMock(config: {
   preferencesData?: unknown;
   preferencesError?: { message: string } | null;
   tokenData?: unknown;
-  tokenError?: { message: string } | null;
+  tokenError?: { code?: string; message: string } | null;
   profileData?: unknown;
   profileError?: { message: string } | null;
   spotData?: unknown;
@@ -177,15 +177,27 @@ describe("getMicrosoftConnectionStatus", () => {
     vi.clearAllMocks();
   });
 
-  it("devuelve connected=false si no hay token (error de Supabase)", async () => {
-    setupSupabaseMock({ tokenError: { message: "No row found" } });
+  it("devuelve connected=false si no hay token (PGRST116 = sin filas)", async () => {
+    setupSupabaseMock({
+      tokenError: { code: "PGRST116", message: "No row found" },
+    });
 
     const result = await getMicrosoftConnectionStatus(USER_ID);
 
-    expect(result.connected).toBe(false);
-    expect(result.scopes).toEqual([]);
-    expect(result.teamsConnected).toBe(false);
-    expect(result.outlookConnected).toBe(false);
+    expect(result?.connected).toBe(false);
+    expect(result?.scopes).toEqual([]);
+    expect(result?.teamsConnected).toBe(false);
+    expect(result?.outlookConnected).toBe(false);
+  });
+
+  it("devuelve null si hay error real de DB (no PGRST116)", async () => {
+    setupSupabaseMock({
+      tokenError: { message: "Connection refused" },
+    });
+
+    const result = await getMicrosoftConnectionStatus(USER_ID);
+
+    expect(result).toBeNull();
   });
 
   it("devuelve connected=true con token válido (no expirado)", async () => {
@@ -260,9 +272,9 @@ describe("getMicrosoftConnectionStatus", () => {
   });
 });
 
-// ─── getManagementSpotInfo ────────────────────────────────────────────────────
+// ─── getAssignedSpotInfo ────────────────────────────────────────────────────
 
-describe("getManagementSpotInfo", () => {
+describe("getAssignedSpotInfo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -270,7 +282,7 @@ describe("getManagementSpotInfo", () => {
   it("devuelve spot=null y statusToday='unknown' si no hay plaza asignada", async () => {
     setupSupabaseMock({ spotData: null });
 
-    const result = await getManagementSpotInfo(USER_ID);
+    const result = await getAssignedSpotInfo(USER_ID);
 
     expect(result.spot).toBeNull();
     expect(result.statusToday).toBe("unknown");
@@ -279,53 +291,51 @@ describe("getManagementSpotInfo", () => {
 
   it("devuelve statusToday='occupied' si hay plaza pero sin cesión hoy", async () => {
     setupSupabaseMock({
-      spotData: { id: "spot-mgmt", label: "D-01", type: "management" },
+      spotData: { id: "spot-mgmt", label: "D-01", type: "standard" },
       cessionData: null,
     });
 
-    const result = await getManagementSpotInfo(USER_ID);
+    const result = await getAssignedSpotInfo(USER_ID);
 
     expect(result.statusToday).toBe("occupied");
   });
 
   it("devuelve statusToday='ceded' si hay cesión available hoy", async () => {
     setupSupabaseMock({
-      spotData: { id: "spot-mgmt", label: "D-01", type: "management" },
+      spotData: { id: "spot-mgmt", label: "D-01", type: "standard" },
       cessionData: { id: "ces-1", status: "available", date: "2025-03-15" },
     });
 
-    const result = await getManagementSpotInfo(USER_ID);
+    const result = await getAssignedSpotInfo(USER_ID);
 
     expect(result.statusToday).toBe("ceded");
   });
 
   it("devuelve statusToday='reserved' si la cesión está reservada", async () => {
     setupSupabaseMock({
-      spotData: { id: "spot-mgmt", label: "D-01", type: "management" },
+      spotData: { id: "spot-mgmt", label: "D-01", type: "standard" },
       cessionData: { id: "ces-1", status: "reserved", date: "2025-03-15" },
     });
 
-    const result = await getManagementSpotInfo(USER_ID);
+    const result = await getAssignedSpotInfo(USER_ID);
 
     expect(result.statusToday).toBe("reserved");
   });
 
   it("incluye la info de la plaza en el resultado", async () => {
     setupSupabaseMock({
-      spotData: { id: "spot-mgmt", label: "D-01", type: "management" },
+      spotData: { id: "spot-mgmt", label: "D-01", type: "standard" },
     });
 
-    const result = await getManagementSpotInfo(USER_ID);
+    const result = await getAssignedSpotInfo(USER_ID);
 
     expect(result.spot).toMatchObject({
       id: "spot-mgmt",
       label: "D-01",
-      type: "management",
+      type: "standard",
     });
   });
 });
-
-// ─── getUserProfileWithPreferences ────────────────────────────────────────────
 
 describe("getUserProfileWithPreferences", () => {
   beforeEach(() => {
@@ -349,7 +359,7 @@ describe("getUserProfileWithPreferences", () => {
     setupSupabaseMock({
       profileData: profile,
       preferencesData: prefs,
-      tokenError: { message: "Not found" },
+      tokenError: { code: "PGRST116", message: "Not found" },
     });
 
     const result = await getUserProfileWithPreferences(USER_ID);
@@ -357,49 +367,48 @@ describe("getUserProfileWithPreferences", () => {
     expect(result).not.toBeNull();
     expect(result?.profile.role).toBe("employee");
     expect(result?.preferences).not.toBeNull();
-    expect(result?.managementSpot).toBeNull(); // empleados no tienen plaza
+    expect(result?.assignedSpots.parking).toBeNull(); // sin plaza asignada
   });
 
-  it("incluye managementSpot para usuarios con rol 'management'", async () => {
-    const profile = createMockProfile({ role: "management" });
+  it("incluye assignedSpots.parking cuando el empleado tiene plaza asignada", async () => {
+    const profile = createMockProfile({ role: "employee" });
     setupSupabaseMock({
       profileData: profile,
       preferencesData: createMockUserPreferencesRow(),
-      tokenError: { message: "Not found" },
-      spotData: { id: "spot-mgmt", label: "D-01", type: "management" },
+      tokenError: { code: "PGRST116", message: "Not found" },
+      spotData: { id: "spot-mgmt", label: "P-15", type: "standard" },
     });
 
     const result = await getUserProfileWithPreferences(USER_ID);
 
-    expect(result?.managementSpot).not.toBeNull();
-    expect(result?.managementSpot?.spot?.label).toBe("D-01");
+    expect(result?.assignedSpots.parking).not.toBeNull();
+    expect(result?.assignedSpots.parking?.spot?.label).toBe("P-15");
   });
 
-  it("incluye managementSpot para usuarios con rol 'admin'", async () => {
+  it("assignedSpots.parking es null cuando no hay plaza asignada", async () => {
     const profile = createMockProfile({ role: "admin" });
     setupSupabaseMock({
       profileData: profile,
       preferencesData: createMockUserPreferencesRow(),
-      tokenError: { message: "Not found" },
-      spotData: null, // sin plaza asignada al admin
+      tokenError: { code: "PGRST116", message: "Not found" },
+      spotData: null, // sin plaza asignada
     });
 
     const result = await getUserProfileWithPreferences(USER_ID);
 
-    // managementSpot se obtiene pero la plaza es null
-    expect(result?.managementSpot).not.toBeNull();
-    expect(result?.managementSpot?.spot).toBeNull();
+    expect(result?.assignedSpots.parking).toBeNull();
+    expect(result?.assignedSpots.office).toBeNull();
   });
 
-  it("devuelve microsoftStatus desconectado si no hay token", async () => {
+  it("devuelve microsoftStatus desconectado si no hay token (PGRST116)", async () => {
     setupSupabaseMock({
       profileData: createMockProfile(),
-      tokenError: { message: "Not found" },
+      tokenError: { code: "PGRST116", message: "Not found" },
     });
 
     const result = await getUserProfileWithPreferences(USER_ID);
 
-    expect(result?.microsoftStatus.connected).toBe(false);
+    expect(result?.microsoftStatus?.connected).toBe(false);
   });
 
   it("devuelve microsoftStatus conectado si hay token válido", async () => {
@@ -412,6 +421,6 @@ describe("getUserProfileWithPreferences", () => {
 
     const result = await getUserProfileWithPreferences(USER_ID);
 
-    expect(result?.microsoftStatus.connected).toBe(true);
+    expect(result?.microsoftStatus?.connected).toBe(true);
   });
 });

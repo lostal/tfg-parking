@@ -53,3 +53,7 @@ next-env.d.ts
 
 # coverage
 /coverage/
+
+# Ignore Claude file
+CLAUDE.md
+claude.md

@@ -15,7 +15,6 @@ import {
   ChevronsUpDown,
   LogOut,
   Loader2,
-  Repeat2,
   User,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
@@ -61,19 +60,15 @@ export function NavUser() {
 
   const role = profile?.role;
 
-  // Second menu item depends on role:
-  // - employee/management: quick link to their reservations/cessions
-  // - admin: no personal reservation link
+  // Empleados ven acceso rápido a sus reservas; admins no tienen reservas personales
   const reservationLink =
-    role === "management"
-      ? { href: ROUTES.MIS_RESERVAS, label: "Mis Cesiones", icon: Repeat2 }
-      : role === "employee"
-        ? {
-            href: ROUTES.MIS_RESERVAS,
-            label: "Mis Reservas",
-            icon: CalendarCheck,
-          }
-        : null;
+    role === "employee"
+      ? {
+          href: ROUTES.MIS_RESERVAS,
+          label: "Mi Actividad",
+          icon: CalendarCheck,
+        }
+      : null;
 
   if (loading) {
     return (

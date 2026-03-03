@@ -1,8 +1,10 @@
 /**
- * Parking Calendar – Vista unificada de calendario
+ * Resource Calendar – Rejilla de calendario unificada
  *
- * Empleado: días coloreados por disponibilidad → click → sheet con plazas
- * Directivo: días coloreados por estado cesión → click/shift+click/drag → ceder
+ * Componente unificado que reemplaza ParkingCalendar y OfficeCalendar.
+ * Soporta ambos modos (booking / cession) y ambos recursos (parking / oficina).
+ * Diseño visual idéntico al parking-calendar.tsx original: celdas grandes,
+ * colores sólidos con texto blanco y animación popLayout.
  */
 
 "use client";
@@ -26,35 +28,30 @@ import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type {
-  CalendarDayData,
-  EmployeeDayStatus,
-  ManagementDayStatus,
-} from "../calendar-actions";
+  CalendarMode,
+  ResourceDayData,
+  ResourceDayStatus,
+  ResourceCessionDayStatus,
+} from "@/lib/calendar/resource-types";
 
-// ─── Tipos públicos ──────────────────────────────────────────
+// ─── Props ────────────────────────────────────────────────────
 
-export type CalendarRole = "employee" | "management";
-
-export interface ParkingCalendarProps {
-  role: CalendarRole;
-  /** Datos del mes actual, indexados por fecha "yyyy-MM-dd" */
-  dayData: Map<string, CalendarDayData>;
-  /** Mes visible (primer día del mes) */
+export interface ResourceCalendarProps {
+  mode: CalendarMode;
+  /** Datos del mes actual indexados por "yyyy-MM-dd" */
+  dayData: Map<string, ResourceDayData>;
   currentMonth: Date;
   onMonthChange: (newMonth: Date) => void;
-  /** Dirección de la navegación: 1 → siguiente mes, -1 → mes anterior, 0 → inicial */
+  /** 1 → siguiente mes | -1 → mes anterior | 0 → inicial */
   slideDirection?: number;
-  /** Fechas seleccionadas por el directivo (multi-selección) */
+  /** Fechas seleccionadas en modo cesión */
   selectedDates?: Set<string>;
-  /** Tap/click en un día */
   onDayClick: (date: string) => void;
+  /** Muestra el número de plazas disponibles en cada celda. True para parking. */
+  showAvailableCount?: boolean;
 }
 
-// ─── Variantes de animación del mes ──────────────────────────
-//
-// Se definen como funciones que reciben el valor `custom` de AnimatePresence.
-// Esto garantiza que las animaciones de salida (exit) usen siempre la dirección
-// actual, no la capturada en el momento de montar el componente.
+// ─── Variantes de animación ───────────────────────────────────
 
 const EASE_OUT = [0.0, 0.0, 0.2, 1] as const;
 const EASE_IN = [0.4, 0.0, 1, 1] as const;
@@ -93,49 +90,48 @@ const monthTitleVariants = {
   }),
 };
 
-// ─── Colores por estado ──────────────────────────────────────
+// ─── Colores por estado ───────────────────────────────────────
 
-const EMPLOYEE_COLORS: Record<EmployeeDayStatus, string> = {
+const BOOKING_COLORS: Record<ResourceDayStatus, string> = {
   plenty: "bg-emerald-500 text-white hover:bg-emerald-600",
   few: "bg-amber-400 text-white hover:bg-amber-500",
   none: "bg-rose-500 text-white hover:bg-rose-600",
   reserved: "bg-blue-500 text-white hover:bg-blue-600",
   past: "bg-muted text-muted-foreground cursor-default",
-  weekend: "bg-transparent text-muted-foreground/60 cursor-default",
+  unavailable: "bg-transparent text-muted-foreground/60 cursor-default",
 };
 
-const MANAGEMENT_COLORS: Record<ManagementDayStatus, string> = {
+const CESSION_COLORS: Record<ResourceCessionDayStatus, string> = {
   "can-cede": "bg-emerald-500 text-white hover:bg-emerald-600",
   "ceded-free": "bg-orange-400 text-white hover:bg-orange-500",
   "ceded-taken": "bg-blue-500 text-white hover:bg-blue-600",
   "in-use": "bg-muted text-muted-foreground cursor-default",
   past: "bg-muted text-muted-foreground cursor-default",
-  weekend: "bg-transparent text-muted-foreground/60 cursor-default",
+  unavailable: "bg-transparent text-muted-foreground/60 cursor-default",
 };
 
-// Tooltip/aria-label por estado
-const EMPLOYEE_LABELS: Record<EmployeeDayStatus, string> = {
+const BOOKING_LABELS: Record<ResourceDayStatus, string> = {
   plenty: "Plazas disponibles",
   few: "Pocas plazas",
   none: "Sin plazas",
   reserved: "Ya tienes reserva",
   past: "Pasado",
-  weekend: "Fin de semana",
+  unavailable: "No disponible",
 };
 
-const MANAGEMENT_LABELS: Record<ManagementDayStatus, string> = {
+const CESSION_LABELS: Record<ResourceCessionDayStatus, string> = {
   "can-cede": "Puedes ceder",
-  "ceded-free": "Cedida – sin reservar",
-  "ceded-taken": "Cedida y reservada",
+  "ceded-free": "Cedido – sin reservar",
+  "ceded-taken": "Cedido y reservado",
   "in-use": "En uso",
   past: "Pasado",
-  weekend: "Fin de semana",
+  unavailable: "No disponible",
 };
 
 // ─── Leyenda ─────────────────────────────────────────────────
 
-function CalendarLegend({ role }: { role: CalendarRole }) {
-  if (role === "employee") {
+function CalendarLegend({ mode }: { mode: CalendarMode }) {
+  if (mode === "booking") {
     return (
       <div className="flex flex-wrap gap-3 text-xs">
         <LegendItem color="bg-emerald-500" label="Hay plazas" />
@@ -176,9 +172,10 @@ interface DayCellProps {
   dayNumber: number;
   isCurrentMonth: boolean;
   isToday: boolean;
-  role: CalendarRole;
-  data?: CalendarDayData;
+  mode: CalendarMode;
+  data?: ResourceDayData;
   isSelected?: boolean;
+  showAvailableCount?: boolean;
   onClick: (dateStr: string) => void;
 }
 
@@ -187,45 +184,48 @@ function DayCell({
   dayNumber,
   isCurrentMonth,
   isToday: isTodayFlag,
-  role,
+  mode,
   data,
   isSelected,
+  showAvailableCount,
   onClick,
 }: DayCellProps) {
   if (!isCurrentMonth) {
     return <div className="aspect-square min-h-11 rounded-xl" aria-hidden />;
   }
 
-  const status =
-    role === "employee"
-      ? (data?.employeeStatus ?? "past")
-      : (data?.managementStatus ?? "past");
+  let colorClass: string;
+  let ariaLabel: string;
+  let canInteract: boolean;
 
-  const colorClass =
-    role === "employee"
-      ? EMPLOYEE_COLORS[status as EmployeeDayStatus]
-      : MANAGEMENT_COLORS[status as ManagementDayStatus];
+  if (mode === "booking") {
+    const status = data?.bookingStatus ?? "past";
+    colorClass = BOOKING_COLORS[status];
+    ariaLabel = `${dayNumber} – ${BOOKING_LABELS[status]}`;
+    // "none" es interactivo: permite abrir el sheet para ver el mensaje "sin plazas"
+    canInteract = status !== "past" && status !== "unavailable";
+  } else {
+    const status = data?.cessionStatus_day ?? "past";
+    colorClass = CESSION_COLORS[status];
+    ariaLabel = `${dayNumber} – ${CESSION_LABELS[status]}`;
+    canInteract = status === "can-cede" || status === "ceded-free";
+  }
 
-  const label =
-    role === "employee"
-      ? EMPLOYEE_LABELS[status as EmployeeDayStatus]
-      : MANAGEMENT_LABELS[status as ManagementDayStatus];
-
-  const isInteractive =
-    role === "employee"
-      ? !["past", "weekend"].includes(status)
-      : status === "can-cede";
-
-  // Para directivo: también seleccionable si ya está cedida (para cancelar)
-  const isManagementCancellable =
-    role === "management" && status === "ceded-free";
-
-  const canInteract = isInteractive || isManagementCancellable;
+  const availCount =
+    showAvailableCount &&
+    mode === "booking" &&
+    data?.availableCount !== undefined &&
+    data.availableCount > 0 &&
+    data.bookingStatus !== "reserved" &&
+    data.bookingStatus !== "unavailable" &&
+    data.bookingStatus !== "past"
+      ? data.availableCount
+      : null;
 
   return (
     <button
       type="button"
-      aria-label={`${dayNumber} – ${label}`}
+      aria-label={ariaLabel}
       aria-pressed={isSelected}
       disabled={!canInteract}
       className={cn(
@@ -235,40 +235,36 @@ function DayCell({
         colorClass,
         isTodayFlag && "ring-2 ring-white/50 ring-inset",
         isSelected && "ring-foreground scale-95 ring-2 ring-offset-1"
-        // Tamaño touch-friendly en móvil garantizado por min-h + aspect-square
       )}
       onClick={() => onClick(dateStr)}
     >
       <span className="relative z-10">{dayNumber}</span>
-      {/* Indicador de disponibilidad para empleado — nunca en fines de semana ni pasados */}
-      {role === "employee" &&
-        data?.availableCount !== undefined &&
-        data.availableCount > 0 &&
-        status !== "reserved" &&
-        status !== "weekend" &&
-        status !== "past" && (
-          <span className="absolute bottom-[14%] left-1/2 -translate-x-1/2 text-[9px] leading-none opacity-80">
-            {data.availableCount}
-          </span>
-        )}
+      {availCount !== null && (
+        <span className="absolute bottom-[14%] left-1/2 -translate-x-1/2 text-[9px] leading-none opacity-80">
+          {availCount}
+        </span>
+      )}
+      {isSelected && (
+        <span className="bg-primary absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full" />
+      )}
     </button>
   );
 }
 
-// ─── Componente Principal ─────────────────────────────────────
+// ─── Componente Principal ────────────────────────────────────
 
-export function ParkingCalendar({
-  role,
+export function ResourceCalendar({
+  mode,
   dayData,
   currentMonth,
-  slideDirection = 0,
   onMonthChange,
+  slideDirection = 0,
   selectedDates = new Set(),
   onDayClick,
-}: ParkingCalendarProps) {
+  showAvailableCount = false,
+}: ResourceCalendarProps) {
   const monthKey = format(currentMonth, "yyyy-MM");
 
-  // Construir las semanas del mes (siempre 6 semanas visuales para estabilidad)
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 1 }); // Lunes
@@ -327,7 +323,7 @@ export function ParkingCalendar({
         </Button>
       </div>
 
-      {/* Días de la semana — estáticos, no cambian */}
+      {/* Días de la semana — estáticos */}
       <div className="grid grid-cols-7 gap-1">
         {weekDays.map((wd) => (
           <div
@@ -339,10 +335,7 @@ export function ParkingCalendar({
         ))}
       </div>
 
-      {/* Grid del mes — ambas animaciones ocurren en paralelo (popLayout).
-          Sin overflow-hidden: el ring del día actual no queda recortado en esquinas.
-          El overflow horizontal queda tapado por opacity:0 en los extremos y por
-          el html{overflow-x:hidden} global. */}
+      {/* Grid del mes con animación popLayout */}
       <AnimatePresence mode="popLayout" custom={slideDirection}>
         <motion.div
           key={monthKey}
@@ -368,9 +361,10 @@ export function ParkingCalendar({
                   dayNumber={date.getDate()}
                   isCurrentMonth={inCurrentMonth}
                   isToday={today}
-                  role={role}
+                  mode={mode}
                   data={data}
                   isSelected={isSelected}
+                  showAvailableCount={showAvailableCount}
                   onClick={onDayClick}
                 />
               );
@@ -379,15 +373,15 @@ export function ParkingCalendar({
         </motion.div>
       </AnimatePresence>
 
-      {/* Leyenda — se desliza suavemente cuando el grid de arriba cambia de altura */}
+      {/* Leyenda */}
       <motion.div
         layout
         transition={{ layout: { type: "spring", stiffness: 350, damping: 30 } }}
       >
-        <CalendarLegend role={role} />
+        <CalendarLegend mode={mode} />
       </motion.div>
 
-      {role === "management" && (
+      {mode === "cession" && (
         <motion.p
           layout
           transition={{
@@ -395,7 +389,7 @@ export function ParkingCalendar({
           }}
           className="text-muted-foreground text-xs"
         >
-          Toca varios días para seleccionarlos y ceder tu plaza.
+          Toca varios días para seleccionarlos y ceder tu espacio.
         </motion.p>
       )}
     </div>

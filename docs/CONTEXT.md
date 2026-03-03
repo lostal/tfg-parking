@@ -2,7 +2,14 @@
 
 ## Qué es
 
-Aplicación web para la gestión de reservas de plazas de aparcamiento en GRUPOSIETE (sector materiales de construcción, sede en Madrid). Integrada en el ecosistema Microsoft 365 de la empresa.
+ERP modular de gestión de espacios corporativos para GRUPOSIETE (sector materiales de construcción, sede en Madrid). Integrado en el ecosistema Microsoft 365 de la empresa.
+
+La plataforma arrancó como un sistema de reservas de parking y ha evolucionado a un ERP con módulos independientes:
+
+- **Módulo Parking** — cesión y reserva de plazas de aparcamiento.
+- **Módulo Oficinas** — reserva de puestos de trabajo, con soporte de franjas horarias.
+
+Ambos módulos comparten el mismo núcleo (autenticación, notificaciones, configuración por recurso, panel admin) y pueden habilitarse/deshabilitarse de forma independiente desde el panel de administración.
 
 ## El problema
 

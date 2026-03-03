@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/tooltip";
 
 import type { SpotWithStatus } from "@/types";
-import type { ReservationWithDetails } from "@/lib/queries/reservations";
+import type { ParkingReservationRow } from "@/lib/queries/reservations";
 import {
   getAvailableSpotsForDate,
   getMyReservations,
@@ -74,13 +74,11 @@ function SpotCard({
           </Badge>
         </div>
         <CardDescription>
-          {spot.type === "management"
-            ? "Plaza de dirección (cedida)"
-            : spot.type === "disabled"
-              ? "Plaza PMR"
-              : spot.type === "visitor"
-                ? "Plaza visitantes"
-                : "Plaza estándar"}
+          {spot.type === "visitor"
+            ? "Plaza visitantes"
+            : spot.assigned_to
+              ? "Plaza con propietario (cedida)"
+              : "Plaza estándar"}
         </CardDescription>
       </CardHeader>
       <CardFooter className="pt-2">
@@ -114,7 +112,7 @@ function MyReservationsSection({
   onCancel,
   cancellingId,
 }: {
-  reservations: ReservationWithDetails[];
+  reservations: ParkingReservationRow[];
   onCancel: (id: string) => void;
   cancellingId: string | null;
 }) {
@@ -216,7 +214,7 @@ export function ListView() {
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
   const [spots, setSpots] = React.useState<SpotWithStatus[]>([]);
   const [myReservations, setMyReservations] = React.useState<
-    ReservationWithDetails[]
+    ParkingReservationRow[]
   >([]);
   const [loading, setLoading] = React.useState(true);
   const [bookingSpotId, setBookingSpotId] = React.useState<string | null>(null);

@@ -34,7 +34,7 @@ export function OccupancyAreaChart({ data }: OccupancyAreaChartProps) {
     return index % step === 0 ? value : "";
   }
 
-  if (!mounted) return <div className="h-[300px]" />;
+  if (!mounted) return <div className="h-75" />;
 
   return (
     <ResponsiveContainer width="100%" height={300}>

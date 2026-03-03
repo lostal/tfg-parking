@@ -8,9 +8,9 @@
 export const DEFAULT_MAX_ADVANCE_DAYS = 14;
 
 /** Application metadata */
-export const APP_NAME = "GRUPOSIETE Parking";
+export const APP_NAME = "GRUPOSIETE Reservas";
 export const APP_DESCRIPTION =
-  "Sistema de gestión de reservas de parking corporativo";
+  "Sistema de gestión de reservas de espacios corporativos";
 
 /** Route paths */
 export const ROUTES = {
@@ -19,7 +19,6 @@ export const ROUTES = {
   CALLBACK: "/auth/callback",
   DASHBOARD: "/panel",
   /** Home page for non-admin roles (management & employee) */
-  INICIO: "/inicio",
   PARKING: "/parking",
   MIS_RESERVAS: "/mis-reservas",
   PARKING_CESSATIONS: "/parking/cesiones",
@@ -28,6 +27,12 @@ export const ROUTES = {
   VISITORS: "/visitantes",
   ADMIN: "/administracion",
   ADMIN_USERS: "/administracion/usuarios",
+  ADMIN_SETTINGS: "/administracion/ajustes",
+  ADMIN_SETTINGS_PARKING: "/administracion/ajustes/parking",
+  ADMIN_SETTINGS_OFFICES: "/administracion/ajustes/oficinas",
+  ADMIN_SETTINGS_ADVANCED: "/administracion/ajustes/avanzado",
+  OFFICES: "/oficinas",
+  OFFICES_CESSIONS: "/oficinas/cesiones",
   SETTINGS: "/ajustes",
   SETTINGS_NOTIFICATIONS: "/ajustes/notificaciones",
   SETTINGS_PREFERENCES: "/ajustes/preferencias",
@@ -40,7 +45,7 @@ export const ROUTES = {
  * mirroring the order of items in the sidebar (first visible item per role).
  */
 export function getHomeRouteForRole(
-  role: "admin" | "management" | "employee" | string | undefined | null
+  role: "admin" | "employee" | string | undefined | null
 ): string {
   if (role === "admin") return ROUTES.DASHBOARD;
   return ROUTES.PARKING;

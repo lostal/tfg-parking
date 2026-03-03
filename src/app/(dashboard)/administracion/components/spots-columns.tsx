@@ -1,7 +1,14 @@
 "use client";
 
 import { type ColumnDef } from "@tanstack/react-table";
-import { Building2, ConciergeBell, CheckCircle2, XCircle } from "lucide-react";
+import {
+  Building2,
+  ConciergeBell,
+  CheckCircle2,
+  XCircle,
+  Circle,
+  Car,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table";
@@ -11,15 +18,27 @@ import { SpotRowActions } from "./spot-row-actions";
 // ─── Type configuration ────────────────────────────────────────────────────────
 
 export const spotTypeOptions = [
-  { label: "Dirección", value: "management", icon: Building2 },
+  { label: "Estándar", value: "standard", icon: Circle },
   { label: "Visitas", value: "visitor", icon: ConciergeBell },
 ] as const;
 
+export const resourceTypeOptions = [
+  { label: "Parking", value: "parking", icon: Car },
+  { label: "Oficina", value: "office", icon: Building2 },
+] as const;
+
 const typeColors: Record<string, string> = {
-  management:
-    "bg-blue-100/30 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700",
+  standard:
+    "bg-zinc-100/30 dark:bg-zinc-800/30 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-600",
   visitor:
     "bg-green-100/30 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700",
+};
+
+const resourceColors: Record<string, string> = {
+  parking:
+    "bg-orange-100/30 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700",
+  office:
+    "bg-purple-100/30 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700",
 };
 
 // ─── Column factory ────────────────────────────────────────────────────────────
@@ -62,6 +81,26 @@ export function buildSpotsColumns(profiles: Profile[]): ColumnDef<Spot>[] {
       filterFn: (row, _id, value: string[]) =>
         value.length === 0 || value.includes(row.getValue("type")),
       enableSorting: false,
+    },
+    {
+      accessorKey: "resource_type",
+      header: "Recurso",
+      cell: ({ row }) => {
+        const rt = row.getValue<string>("resource_type");
+        const config = resourceTypeOptions.find((o) => o.value === rt);
+        return (
+          <Badge
+            variant="outline"
+            className={cn("capitalize", resourceColors[rt] ?? "")}
+          >
+            {config?.label ?? rt}
+          </Badge>
+        );
+      },
+      filterFn: (row, _id, value: string[]) =>
+        value.length === 0 || value.includes(row.getValue("resource_type")),
+      enableSorting: false,
+      meta: { className: "hidden @md/content:table-cell" },
     },
     {
       id: "assigned_to",
