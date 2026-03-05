@@ -6,21 +6,24 @@ import {
   ConciergeBell,
   CheckCircle2,
   XCircle,
-  Circle,
+  Pin,
   Car,
+  Shuffle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table";
 import type { Profile, Spot } from "@/lib/supabase/types";
+import { getSpotTypeLabel } from "@/lib/constants";
 import { SpotRowActions } from "./spot-row-actions";
 import { InlineUserSelect } from "./inline-user-select";
 
 // ─── Type configuration ────────────────────────────────────────────────────────
 
 export const spotTypeOptions = [
-  { label: "Estándar", value: "standard", icon: Circle },
-  { label: "Visitas", value: "visitor", icon: ConciergeBell },
+  { label: "Fija", value: "standard", icon: Pin },
+  // El label genérico "Visitas / Flexible" cubre ambos módulos en el filtro
+  { label: "Visitas / Flexible", value: "visitor", icon: ConciergeBell },
 ] as const;
 
 export const resourceTypeOptions = [
@@ -33,7 +36,22 @@ const typeColors: Record<string, string> = {
     "bg-zinc-100/30 dark:bg-zinc-800/30 text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-zinc-600",
   visitor:
     "bg-green-100/30 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700",
+  office_visitor:
+    "bg-sky-100/30 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-700",
 };
+
+function getSpotTypeIcon(type: string, resourceType: string) {
+  if (type === "visitor") {
+    return resourceType === "office" ? Shuffle : ConciergeBell;
+  }
+  return Pin;
+}
+
+function getSpotTypeColor(type: string, resourceType: string): string {
+  if (type === "visitor" && resourceType === "office")
+    return typeColors.office_visitor ?? "";
+  return typeColors[type] ?? "";
+}
 
 const resourceColors: Record<string, string> = {
   parking:
@@ -63,21 +81,17 @@ export function buildSpotsColumns(
       accessorKey: "type",
       header: "Tipo",
       cell: ({ row }) => {
-        const type = row.getValue<string>("type");
-        const config = spotTypeOptions.find((o) => o.value === type);
+        const spot = row.original;
+        const type = spot.type;
+        const resourceType = spot.resource_type as "parking" | "office";
+        const label = getSpotTypeLabel(type, resourceType);
+        const Icon = getSpotTypeIcon(type, resourceType);
+        const colorClass = getSpotTypeColor(type, resourceType);
         return (
           <div className="flex items-center gap-x-2">
-            {config?.icon && (
-              <config.icon
-                size={15}
-                className="text-muted-foreground shrink-0"
-              />
-            )}
-            <Badge
-              variant="outline"
-              className={cn("capitalize", typeColors[type] ?? "")}
-            >
-              {config?.label ?? type}
+            <Icon size={15} className="text-muted-foreground shrink-0" />
+            <Badge variant="outline" className={cn(colorClass)}>
+              {label}
             </Badge>
           </div>
         );

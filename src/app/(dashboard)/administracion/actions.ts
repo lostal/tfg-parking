@@ -217,6 +217,9 @@ export const assignSpotToUser = actionClient
         resourceType: spot.resource_type,
         error: cleanupError.message,
       });
+      throw new Error(
+        `Error al limpiar la plaza anterior: ${cleanupError.message}`
+      );
     }
 
     revalidatePath("/parking/asignaciones");
@@ -255,20 +258,25 @@ export const assignUserToSpot = actionClient
       return { assigned: false };
     }
 
-    // Clear previous spot of same resource_type for this user
-    await supabase
-      .from("spots")
-      .update({ assigned_to: null })
-      .eq("assigned_to", user_id)
-      .eq("resource_type", resource_type);
-
-    // Assign user to this spot
+    // 1. Assign user to this spot FIRST — if this fails the user's previous
+    //    assignment remains intact. Order matters: assign → clear avoids
+    //    leaving the user with zero spots if the second step fails.
     const { error } = await supabase
       .from("spots")
       .update({ assigned_to: user_id })
       .eq("id", spot_id);
 
     if (error) throw new Error(`Error al asignar usuario: ${error.message}`);
+
+    // 2. Clear previous spot of same resource_type for this user (except
+    //    the one we just assigned). Worst case on failure: user has two spots,
+    //    not zero — a recoverable state.
+    await supabase
+      .from("spots")
+      .update({ assigned_to: null })
+      .eq("assigned_to", user_id)
+      .eq("resource_type", resource_type)
+      .neq("id", spot_id);
 
     revalidatePath("/parking/asignaciones");
     revalidatePath("/oficinas/asignaciones");

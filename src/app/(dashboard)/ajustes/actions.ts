@@ -29,13 +29,17 @@ export const updateProfile = actionClient
     const user = await requireAuth();
     const supabase = await createClient();
 
+    const updates: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (parsedInput.full_name !== undefined)
+      updates.full_name = parsedInput.full_name;
+    if (parsedInput.avatar_url !== undefined)
+      updates.avatar_url = parsedInput.avatar_url;
+
     const { error } = await supabase
       .from("profiles")
-      .update({
-        full_name: parsedInput.full_name,
-        avatar_url: parsedInput.avatar_url,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updates)
       .eq("id", user.id);
 
     if (error) throw new Error("No se pudo actualizar el perfil");
@@ -87,7 +91,7 @@ export const updateOutlookPreferences = actionClient
         outlook_create_events: parsedInput.outlook_create_events,
         outlook_calendar_name: parsedInput.outlook_calendar_name || "Reservas",
         outlook_sync_enabled: parsedInput.outlook_sync_enabled,
-        outlook_sync_interval: parsedInput.outlook_sync_interval || 15,
+        outlook_sync_interval: parsedInput.outlook_sync_interval ?? 15,
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", user.id);

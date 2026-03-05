@@ -50,11 +50,17 @@ export async function getCessionsByDate(
   if (error) throw new Error(`Error al obtener cesiones: ${error.message}`);
 
   return data
-    .filter(
-      (c) =>
-        c.spots !== null &&
-        (!resourceType || c.spots.resource_type === resourceType)
-    )
+    .filter((c) => {
+      if (c.spots === null) return false;
+      if (resourceType && c.spots.resource_type !== resourceType) {
+        console.warn(
+          "[cessions] getCessionsByDate: fila descartada por resource_type incorrecto",
+          { id: c.id, expected: resourceType, got: c.spots.resource_type }
+        );
+        return false;
+      }
+      return true;
+    })
     .map(
       (c): CessionWithDetails => ({
         id: c.id,

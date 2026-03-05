@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
     const csp = [
       "default-src 'self'",
       // Scripts: propios + inline necesarios para Next.js (nonce no viable en Edge sin middleware)
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "script-src 'self' 'unsafe-inline'",
       // Estilos: propios + inline (Tailwind, shadcn, framer-motion inyectan estilos en runtime)
       "style-src 'self' 'unsafe-inline'",
       // Imágenes: propio dominio + Supabase Storage + data URIs

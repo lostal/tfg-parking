@@ -131,8 +131,11 @@ export const getOfficeCalendarMonthData = actionClient
         ]);
 
       const allOfficeSpots = spotsData.data ?? [];
-      // Bajo el nuevo modelo, TODAS las plazas reservables vienen de cesiones activas.
-      // No existe el concepto de puesto "libre" sin propietario.
+      // Plazas flexible (visitor): siempre disponibles sin necesidad de cesión.
+      const flexibleSpotIds = new Set(
+        allOfficeSpots.filter((s) => s.type === "visitor").map((s) => s.id)
+      );
+      const flexibleCount = flexibleSpotIds.size;
       const officeSpotsSet = new Set(allOfficeSpots.map((s) => s.id));
 
       // Reservas confirmadas por fecha (filtradas a puestos de oficina)
@@ -143,10 +146,14 @@ export const getOfficeCalendarMonthData = actionClient
         reservedByDate.get(r.date)!.add(r.spot_id);
       }
 
-      // Cesiones disponibles de puestos asignados = el pool de puestos reservables
+      // Cesiones disponibles de puestos fijos asignados.
       const cededAvailableByDate = new Map<string, number>();
       for (const c of cessionsData.data ?? []) {
-        if (officeSpotsSet.has(c.spot_id) && c.status === "available") {
+        if (
+          officeSpotsSet.has(c.spot_id) &&
+          !flexibleSpotIds.has(c.spot_id) &&
+          c.status === "available"
+        ) {
           cededAvailableByDate.set(
             c.date,
             (cededAvailableByDate.get(c.date) ?? 0) + 1
@@ -178,12 +185,17 @@ export const getOfficeCalendarMonthData = actionClient
         const dow = getDayOfWeek(dateStr);
         const myRes = myReservationByDate.get(dateStr);
         const cededAvail = cededAvailableByDate.get(dateStr) ?? 0;
-        // Reservas confirmadas sobre puestos cedidos ese día
+        // Reservas confirmadas sobre puestos cedidos/flexibles ese día
         const reserved = reservedByDate.get(dateStr) ?? new Set();
-        const reservedOnCeded = [...reserved].filter((id) =>
-          officeSpotsSet.has(id)
+        const reservedOnCeded = [...reserved].filter(
+          (id) => officeSpotsSet.has(id) && !flexibleSpotIds.has(id)
         ).length;
-        const totalAvailable = Math.max(0, cededAvail - reservedOnCeded);
+        const reservedFlexible = [...reserved].filter((id) =>
+          flexibleSpotIds.has(id)
+        ).length;
+        const totalAvailable =
+          Math.max(0, cededAvail - reservedOnCeded) +
+          Math.max(0, flexibleCount - reservedFlexible);
 
         let status: ResourceDayStatus;
 

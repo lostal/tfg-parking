@@ -131,11 +131,13 @@ export const getCalendarMonthData = actionClient
         ]);
 
       const allSpots = spotsData.data ?? [];
-
-      // Bajo el nuevo modelo, TODAS las plazas reservables vienen de cesiones activas
-      // (solo plazas con propietario asignado que las liberan explícitamente).
-      // No existe el concepto de plaza 'libre' sin propietario.
       const allParkingIds = new Set(allSpots.map((s) => s.id));
+
+      // Plazas visitor: siempre disponibles sin necesidad de cesión.
+      const visitorSpotIds = new Set(
+        allSpots.filter((s) => s.type === "visitor").map((s) => s.id)
+      );
+      const visitorCount = visitorSpotIds.size;
 
       // Agrupa reservas por fecha (filtradas a IDs de parking)
       const reservedByDate = new Map<string, Set<string>>();
@@ -145,10 +147,14 @@ export const getCalendarMonthData = actionClient
         reservedByDate.get(r.date)!.add(r.spot_id);
       }
 
-      // Cesiones disponibles de plazas con propietario = el pool de plazas reservables.
+      // Cesiones disponibles de plazas fijas con propietario.
       const cededAvailableByDate = new Map<string, number>();
       for (const c of cessionsData.data ?? []) {
-        if (allParkingIds.has(c.spot_id) && c.status === "available") {
+        if (
+          allParkingIds.has(c.spot_id) &&
+          !visitorSpotIds.has(c.spot_id) &&
+          c.status === "available"
+        ) {
           cededAvailableByDate.set(
             c.date,
             (cededAvailableByDate.get(c.date) ?? 0) + 1
@@ -174,10 +180,15 @@ export const getCalendarMonthData = actionClient
         const cededAvail = cededAvailableByDate.get(dateStr) ?? 0;
         // Reservas confirmadas sobre plazas cedidas ese día
         const reserved = reservedByDate.get(dateStr) ?? new Set();
-        const reservedOnCeded = [...reserved].filter((id) =>
-          allParkingIds.has(id)
+        const reservedOnCeded = [...reserved].filter(
+          (id) => allParkingIds.has(id) && !visitorSpotIds.has(id)
         ).length;
-        const totalAvailable = Math.max(0, cededAvail - reservedOnCeded);
+        const reservedVisitor = [...reserved].filter((id) =>
+          visitorSpotIds.has(id)
+        ).length;
+        const totalAvailable =
+          Math.max(0, cededAvail - reservedOnCeded) +
+          Math.max(0, visitorCount - reservedVisitor);
 
         let status: ResourceDayStatus;
 

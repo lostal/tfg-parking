@@ -129,8 +129,12 @@ export async function getSpotsByDate(
       status = "reserved";
       reservation_id = reservation.id;
       reserved_by_name = reservation.profiles?.full_name ?? undefined;
+    } else if (spot.type === "visitor") {
+      // Plazas de visitas (parking) y flexibles (oficina) siempre disponibles
+      // salvo reserva activa — no requieren cesión ni dueño.
+      status = "free";
     } else if (spot.assigned_to !== null) {
-      // Plaza con propietario: solo entra en el pool si tiene cesión activa
+      // Plaza fija con propietario: solo entra en el pool si tiene cesión activa
       if (cession) {
         status = cession.status === "reserved" ? "reserved" : "ceded";
         reservation_id = cession.id;
@@ -139,8 +143,7 @@ export async function getSpotsByDate(
         status = "occupied";
       }
     } else {
-      // Plaza sin propietario: en parking es libre para reservar directamente;
-      // en oficinas todas las plazas deben tener dueño, así que se muestra ocupada.
+      // Plaza fija sin propietario asignado todavía
       status = resourceType === "office" ? "occupied" : "free";
     }
 

@@ -264,6 +264,70 @@ describe("getSpotsByDate", () => {
     });
   });
 
+  // ── Plaza visitor sin reservas ────────────────────────────────────────────
+  // Las plazas de visitas (parking) y flexibles (oficina) deben ser siempre
+  // "free" independientemente de assigned_to, salvo reserva activa.
+
+  it("devuelve 'free' para plaza visitor sin reservas (parking)", async () => {
+    const spot = createMockSpot({
+      id: "spot-visitor",
+      type: "visitor",
+      assigned_to: null,
+    });
+    setupSupabaseMock({ spots: [spot] });
+
+    const result = await getSpotsByDate(DATE);
+
+    expect(result[0]).toMatchObject({ id: "spot-visitor", status: "free" });
+  });
+
+  it("devuelve 'free' para plaza visitor/flexible en oficina sin reservas", async () => {
+    const spot = createMockSpot({
+      id: "spot-flex",
+      type: "visitor",
+      assigned_to: null,
+    });
+    setupSupabaseMock({ spots: [spot] });
+
+    const result = await getSpotsByDate(DATE, "office");
+
+    expect(result[0]).toMatchObject({ id: "spot-flex", status: "free" });
+  });
+
+  it("devuelve 'reserved' para plaza visitor con reserva confirmada", async () => {
+    const spot = createMockSpot({ id: "spot-visitor", type: "visitor" });
+    const reservation = createMockReservationWithProfile({
+      id: "res-v",
+      spot_id: "spot-visitor",
+    });
+    setupSupabaseMock({ spots: [spot], reservations: [reservation] });
+
+    const result = await getSpotsByDate(DATE);
+
+    expect(result[0]).toMatchObject({
+      status: "reserved",
+      reservation_id: "res-v",
+    });
+  });
+
+  it("devuelve 'visitor-blocked' para plaza visitor con reserva de visitante externo", async () => {
+    const spot = createMockSpot({ id: "spot-visitor", type: "visitor" });
+    const visitor = createMockVisitorReservation({
+      id: "vis-ext",
+      spot_id: "spot-visitor",
+      visitor_name: "Carlos Externo",
+    });
+    setupSupabaseMock({ spots: [spot], visitor_reservations: [visitor] });
+
+    const result = await getSpotsByDate(DATE);
+
+    expect(result[0]).toMatchObject({
+      status: "visitor-blocked",
+      reservation_id: "vis-ext",
+      reserved_by_name: "Carlos Externo",
+    });
+  });
+
   // ── Visitante en plaza asignada ──────────────────────────────────────────────────
 
   it("visitante en plaza asignada tiene prioridad sobre la lógica de cesión", async () => {

@@ -7,6 +7,7 @@
  * en fechas específicas.
  */
 
+import { revalidatePath } from "next/cache";
 import { actionClient, success, error, type ActionResult } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/auth";
@@ -96,6 +97,8 @@ export const createCession = actionClient
       throw new Error(`Error al crear cesión: ${error.message}`);
     }
 
+    revalidatePath("/parking");
+    revalidatePath("/parking/cesiones");
     return { count: data.length };
   });
 
@@ -185,6 +188,8 @@ export const cancelCession = actionClient
       throw new Error(`Error al cancelar cesión: ${cancelError.message}`);
     }
 
+    revalidatePath("/parking");
+    revalidatePath("/parking/cesiones");
     return { cancelled: true, reservationAlsoCancelled: !!activeReservation };
   });
 

@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v4";
 import {
@@ -31,10 +31,17 @@ import { useSpots } from "./spots-provider";
 
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
-const spotTypeItems = [
-  { label: "Estándar", value: "standard" },
-  { label: "Visitas", value: "visitor" },
-];
+// Los labels dependen del resource_type seleccionado; estas listas se usan
+// en getSpotTypeItems() que recibe el recurso activo.
+function getSpotTypeItems(resourceType: "parking" | "office") {
+  return [
+    { label: "Fija", value: "standard" },
+    {
+      label: resourceType === "office" ? "Flexible" : "Visitas",
+      value: "visitor",
+    },
+  ];
+}
 
 const resourceTypeItems = [
   { label: "Parking", value: "parking" },
@@ -62,6 +69,11 @@ function AddSpotDialog() {
       type: "standard",
       resource_type: activeResourceType,
     },
+  });
+
+  const addResourceType = useWatch({
+    control: form.control,
+    name: "resource_type",
   });
 
   const closeDialog = () => {
@@ -151,7 +163,7 @@ function AddSpotDialog() {
                       <SelectDropdown
                         defaultValue={field.value}
                         onValueChange={field.onChange}
-                        items={spotTypeItems}
+                        items={getSpotTypeItems(addResourceType)}
                       />
                     </FormControl>
                     <FormMessage />
@@ -202,6 +214,11 @@ function EditSpotDialog() {
         (currentRow?.resource_type as EditForm["resource_type"]) ?? "parking",
       is_active: currentRow?.is_active ?? true,
     },
+  });
+
+  const editResourceType = useWatch({
+    control: form.control,
+    name: "resource_type",
   });
 
   const closeDialog = () => {
@@ -277,7 +294,7 @@ function EditSpotDialog() {
                       <SelectDropdown
                         defaultValue={field.value}
                         onValueChange={field.onChange}
-                        items={spotTypeItems}
+                        items={getSpotTypeItems(editResourceType)}
                         isControlled
                       />
                     </FormControl>

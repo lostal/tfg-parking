@@ -171,20 +171,20 @@ function SpotCard({
   const getSpotTypeInfo = () => {
     if (spot.type === "visitor") {
       return {
-        label: "Plaza visitantes",
+        label: "Plaza de visitas",
         description: "Uso temporal",
         variant: "outline" as const,
       };
     }
     if (spot.assigned_to) {
       return {
-        label: "Plaza con propietario",
+        label: "Plaza fija",
         description: "Cedida temporalmente",
         variant: "secondary" as const,
       };
     }
     return {
-      label: "Plaza estándar",
+      label: "Plaza fija",
       description: "Disponible para reservar",
       variant: "outline" as const,
     };

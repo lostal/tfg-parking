@@ -1,4 +1,5 @@
-import { getCurrentUser } from "@/lib/supabase/auth";
+import { requireAuth } from "@/lib/supabase/auth";
+import { createClient } from "@/lib/supabase/server";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
@@ -7,11 +8,26 @@ import { DirectorioProvider } from "./_components/directorio-provider";
 import { DirectorioTable } from "./_components/directorio-table";
 import { DirectorioPrimaryButtons } from "./_components/directorio-primary-buttons";
 import { DirectorioDialogs } from "./_components/directorio-dialogs";
-import { directorioData } from "./_components/directorio-data";
+import { type DirectorioUser } from "./_components/directorio-schema";
 
 export default async function DirectorioPage() {
-  const user = await getCurrentUser();
-  const isAdmin = user?.profile?.role === "admin";
+  const user = await requireAuth();
+  const isAdmin = user.profile?.role === "admin";
+  const supabase = await createClient();
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, role")
+    .order("full_name");
+
+  const directorioData: DirectorioUser[] = (profiles ?? []).map((p) => ({
+    id: p.id,
+    nombre: p.full_name,
+    puesto: p.role === "admin" ? "Administrador" : "Empleado",
+    ubicacion: "",
+    correo: p.email,
+    telefono: "",
+  }));
 
   return (
     <DirectorioProvider isAdmin={isAdmin}>

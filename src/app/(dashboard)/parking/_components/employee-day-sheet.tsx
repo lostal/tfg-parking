@@ -264,7 +264,7 @@ function SpotRow({
         <div>
           <p className="text-sm font-semibold">{spot.label}</p>
           <p className="text-muted-foreground text-xs">
-            {isCeded ? "Plaza cedida por un directivo" : "Plaza estándar"}
+            {isCeded ? "Plaza cedida por un directivo" : "Plaza fija"}
           </p>
         </div>
       </div>

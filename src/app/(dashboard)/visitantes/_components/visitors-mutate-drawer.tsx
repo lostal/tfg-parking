@@ -60,7 +60,7 @@ import {
   createVisitorReservation,
   updateVisitorReservation,
   getAvailableVisitorSpotsAction,
-} from "../actions";
+} from "../../parking/visitantes/actions";
 import { useVisitantes } from "./visitors-provider";
 
 interface VisitorsMutateDrawerProps {

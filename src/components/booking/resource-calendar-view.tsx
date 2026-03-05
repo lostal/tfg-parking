@@ -144,7 +144,13 @@ export function ResourceCalendarView({
           const map = new Map<string, ResourceDayData>(
             result.data.map((d) => [d.date, d])
           );
-          monthCache.current.set(monthKey, { data: map, loadedAt: Date.now() });
+          // LRU eviction: keep at most 24 months to prevent unbounded memory growth
+          const cache = monthCache.current;
+          if (cache.size >= 24) {
+            const oldestKey = cache.keys().next().value;
+            if (oldestKey !== undefined) cache.delete(oldestKey);
+          }
+          cache.set(monthKey, { data: map, loadedAt: Date.now() });
           if (format(currentMonthRef.current, "yyyy-MM") === monthKey) {
             setDayData(map);
           }

@@ -14,7 +14,7 @@ import { es } from "date-fns/locale";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { VisitorReservationWithDetails } from "@/lib/queries/visitor-reservations";
 
-import { cancelVisitorReservation } from "../actions";
+import { cancelVisitorReservation } from "../../parking/visitantes/actions";
 import { useVisitantes } from "./visitors-provider";
 
 interface VisitorsDeleteDialogProps {

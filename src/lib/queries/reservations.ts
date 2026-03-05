@@ -56,7 +56,16 @@ export async function getReservationsByDate(
   // Guarda JS: el filtro `.eq("spots.resource_type")` en PostgREST actúa sobre el
   // join (no como WHERE), por lo que puede devolver filas con spots = null.
   const rows = resourceType
-    ? data.filter((r) => r.spots?.resource_type === resourceType)
+    ? data.filter((r) => {
+        const match = r.spots?.resource_type === resourceType;
+        if (!match && r.spots !== null) {
+          console.warn(
+            "[reservations] getReservations: fila descartada por resource_type incorrecto",
+            { id: r.id, expected: resourceType, got: r.spots?.resource_type }
+          );
+        }
+        return match;
+      })
     : data;
 
   return rows
@@ -115,7 +124,16 @@ export async function getUserReservations(
   // Guarda JS: el filtro `.eq("spots.resource_type")` en PostgREST actúa sobre el
   // join (no como WHERE), por lo que puede devolver filas con spots = null.
   const rows = resourceType
-    ? data.filter((r) => r.spots?.resource_type === resourceType)
+    ? data.filter((r) => {
+        const match = r.spots?.resource_type === resourceType;
+        if (!match && r.spots !== null) {
+          console.warn(
+            "[reservations] getUserReservations: fila descartada por resource_type incorrecto",
+            { id: r.id, expected: resourceType, got: r.spots?.resource_type }
+          );
+        }
+        return match;
+      })
     : data;
 
   return rows

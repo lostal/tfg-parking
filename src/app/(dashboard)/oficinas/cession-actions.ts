@@ -7,6 +7,7 @@
  * puedan cederlo al pool general en fechas específicas.
  */
 
+import { revalidatePath } from "next/cache";
 import { actionClient, success, error, type ActionResult } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/auth";
@@ -86,6 +87,8 @@ export const createOfficeCession = actionClient
       throw new Error(`Error al crear cesión: ${error.message}`);
     }
 
+    revalidatePath("/oficinas");
+    revalidatePath("/oficinas/cesiones");
     return { count: data.length };
   });
 
@@ -153,6 +156,8 @@ export const cancelOfficeCession = actionClient
       throw new Error(`Error al cancelar cesión: ${updateError.message}`);
     }
 
+    revalidatePath("/oficinas");
+    revalidatePath("/oficinas/cesiones");
     return { cancelled: true, reservationAlsoCancelled: !!activeReservation };
   });
 

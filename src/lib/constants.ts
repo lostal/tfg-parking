@@ -57,3 +57,21 @@ export function getHomeRouteForRole(
 export const EXTERNAL = {
   SEDE_ADDRESS: "Sede GRUPOSIETE, Madrid",
 } as const;
+
+// ─── Spot type labels ─────────────────────────────────────────────────────────
+//
+// Los valores del enum en BD (`standard`, `visitor`) son identificadores
+// técnicos internos. Esta función traduce esos valores a etiquetas de negocio
+// según el módulo, ya que el mismo valor `visitor` tiene connotaciones
+// distintas según el recurso:
+//   • parking / visitor  → "Visitas"    (plaza para visitantes externos)
+//   • office  / visitor  → "Flexible"   (plaza sin propietario fijo)
+//   • */standard         → "Fija"       (plaza asignada a un usuario)
+
+export function getSpotTypeLabel(
+  type: "standard" | "visitor",
+  resourceType: "parking" | "office"
+): string {
+  if (type === "standard") return "Fija";
+  return resourceType === "office" ? "Flexible" : "Visitas";
+}

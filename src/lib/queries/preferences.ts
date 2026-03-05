@@ -77,8 +77,9 @@ export async function getMicrosoftConnectionStatus(
     return null;
   }
 
-  // Comprobar si el token ha expirado
-  const isExpired = new Date(data.token_expires_at) < new Date();
+  // Comprobar si el token ha expirado — guard contra null y fechas malformadas
+  const expiry = data.token_expires_at ? new Date(data.token_expires_at) : null;
+  const isExpired = !expiry || isNaN(expiry.getTime()) || expiry < new Date();
 
   return {
     connected: !isExpired,

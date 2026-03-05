@@ -128,6 +128,21 @@ export async function getOfficeAvailabilityForDate(
       continue;
     }
 
+    if (spot.type === "visitor") {
+      // Plazas flexibles: siempre disponibles salvo reserva activa — no requieren cesión.
+      result.push({
+        id: spot.id,
+        label: spot.label,
+        type: spot.type as SpotWithStatus["type"],
+        resource_type: "office",
+        assigned_to: spot.assigned_to,
+        position_x: spot.position_x,
+        position_y: spot.position_y,
+        status: "free",
+      });
+      continue;
+    }
+
     if (spot.assigned_to !== null) {
       // Puesto con propietario: solo disponible si el dueño lo ha cedido activamente
       const cession = cessionBySpot.get(spot.id);
@@ -203,7 +218,12 @@ export async function getAvailableTimeSlots(
 
   if (error) throw new Error(`Error al obtener franjas: ${error.message}`);
 
-  const bookedSlots = (reservations ?? []).filter(
+  const allReservations = reservations ?? [];
+  // All-day reservations (null start/end) block the entire day: every slot is taken.
+  const hasAllDayBooking = allReservations.some(
+    (r) => !r.start_time || !r.end_time
+  );
+  const bookedSlots = allReservations.filter(
     (r) => r.start_time && r.end_time
   ) as { start_time: string; end_time: string }[];
 
@@ -226,9 +246,11 @@ export async function getAvailableTimeSlots(
     const slotStart = toHHMM(startMinutes);
     const slotEnd = toHHMM(endMinutes);
 
-    const isBooked = bookedSlots.some(
-      (r) => !(r.end_time <= slotStart || r.start_time >= slotEnd)
-    );
+    const isBooked =
+      hasAllDayBooking ||
+      bookedSlots.some(
+        (r) => !(r.end_time <= slotStart || r.start_time >= slotEnd)
+      );
 
     slots.push({
       start_time: slotStart,

@@ -75,10 +75,10 @@ function SpotCard({
         </div>
         <CardDescription>
           {spot.type === "visitor"
-            ? "Plaza visitantes"
+            ? "Plaza de visitas"
             : spot.assigned_to
-              ? "Plaza con propietario (cedida)"
-              : "Plaza estándar"}
+              ? "Plaza fija (cedida)"
+              : "Plaza fija"}
         </CardDescription>
       </CardHeader>
       <CardFooter className="pt-2">

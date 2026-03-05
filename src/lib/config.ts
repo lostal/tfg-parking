@@ -160,7 +160,7 @@ const fetchRawConfigs = unstable_cache(
   ["system-config-all"],
   {
     tags: [CONFIG_CACHE_TAG],
-    revalidate: 300, // 5 minutos como máximo aunque no se invalide explícitamente
+    revalidate: 60, // 1 minuto como máximo aunque no se invalide explícitamente
   }
 );
 
