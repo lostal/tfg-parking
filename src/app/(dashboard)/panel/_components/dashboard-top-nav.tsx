@@ -21,8 +21,8 @@ const linksByRole: Record<string, { title: string; href: string }[]> = {
   admin: [
     { title: "Dashboard", href: ROUTES.DASHBOARD },
     { title: "Visitantes", href: ROUTES.VISITORS },
-    { title: "Plazas", href: ROUTES.ADMIN },
-    { title: "Usuarios", href: ROUTES.ADMIN_USERS },
+    { title: "Asignaciones", href: ROUTES.ADMIN_PARKING },
+    { title: "Configuración", href: ROUTES.ADMIN_SETTINGS },
   ],
 };
 

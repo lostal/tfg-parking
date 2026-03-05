@@ -1,17 +1,14 @@
 /**
- * Admin Settings — Configuración Global
- *
- * Página principal del panel de administración del sistema.
- * Controla los toggles de notificaciones y funcionalidades globales.
+ * Configuración del sistema — General
  */
 
 export const dynamic = "force-dynamic";
 
 import { getGlobalConfigs } from "@/lib/config";
 import { ContentSection } from "@/components/content-section";
-import { GlobalConfigForm } from "./_components/global-config-form";
+import { GlobalConfigForm } from "../_components/global-config-form";
 
-export default async function AdminSettingsPage() {
+export default async function ConfiguracionGeneralPage() {
   const config = await getGlobalConfigs();
 
   return (

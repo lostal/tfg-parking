@@ -12,7 +12,7 @@ import {
   updateGlobalConfig,
   updateParkingConfig,
   updateOfficeConfig,
-} from "@/app/(dashboard)/administracion/ajustes/actions";
+} from "@/app/(dashboard)/configuracion/actions";
 import { createQueryChain } from "../../mocks/supabase";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────

@@ -24,6 +24,7 @@ import {
   ParkingCircle,
   ArrowLeftRight,
   CalendarCheck,
+  Globe,
 } from "lucide-react";
 import { ROUTES } from "@/lib/constants";
 import { type SidebarData } from "../types";
@@ -71,6 +72,17 @@ export function getSidebarData({
     { title: "Mapa", url: ROUTES.OFFICES_MAP, icon: MapPin },
   ];
 
+  const adminParkingItems = [
+    ...(visitorBookingEnabled
+      ? [{ title: "Visitantes", url: ROUTES.VISITORS, icon: Users }]
+      : []),
+    { title: "Asignaciones", url: ROUTES.ADMIN_PARKING, icon: LayoutGrid },
+  ];
+
+  const adminOficinaItems = [
+    { title: "Asignaciones", url: ROUTES.ADMIN_OFFICES, icon: LayoutGrid },
+  ];
+
   return {
     navGroups: [
       {
@@ -90,6 +102,12 @@ export function getSidebarData({
             items: parkingSubItems,
           },
           {
+            title: "Parking",
+            icon: ParkingCircle,
+            roles: ["admin"],
+            items: adminParkingItems,
+          },
+          {
             title: "Oficinas",
             url: ROUTES.OFFICES,
             icon: Building2,
@@ -97,10 +115,10 @@ export function getSidebarData({
             items: oficinasSubItems,
           },
           {
-            title: "Visitantes",
-            url: ROUTES.VISITORS,
-            icon: Users,
+            title: "Oficinas",
+            icon: Building2,
             roles: ["admin"],
+            items: adminOficinaItems,
           },
         ],
       },
@@ -108,22 +126,22 @@ export function getSidebarData({
         title: "Administración",
         items: [
           {
-            title: "Plazas",
-            url: ROUTES.ADMIN,
-            icon: LayoutGrid,
-            roles: ["admin"],
-          },
-          {
-            title: "Usuarios",
-            url: ROUTES.ADMIN_USERS,
-            icon: Users,
-            roles: ["admin"],
-          },
-          {
             title: "Configuración",
-            url: ROUTES.ADMIN_SETTINGS,
             icon: SlidersHorizontal,
             roles: ["admin"],
+            items: [
+              { title: "General", url: ROUTES.ADMIN_SETTINGS, icon: Globe },
+              {
+                title: "Parking",
+                url: ROUTES.ADMIN_SETTINGS_PARKING,
+                icon: ParkingCircle,
+              },
+              {
+                title: "Oficinas",
+                url: ROUTES.ADMIN_SETTINGS_OFFICES,
+                icon: Building2,
+              },
+            ],
           },
           {
             title: "Ajustes",

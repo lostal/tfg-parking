@@ -1,0 +1,47 @@
+import { requireAdmin } from "@/lib/supabase/auth";
+import { Header, Main } from "@/components/layout";
+import { Search } from "@/components/search";
+import { ThemeSwitch } from "@/components/layout/theme-switch";
+import { ProfileDropdown } from "@/components/profile-dropdown";
+import { getSpots } from "@/lib/queries/spots";
+import { getProfiles } from "@/lib/queries/profiles";
+import { SpotsProvider } from "@/app/(dashboard)/administracion/components/spots-provider";
+import { SpotsDialogs } from "@/app/(dashboard)/administracion/components/spots-dialogs";
+import { SpotsPrimaryButtons } from "@/app/(dashboard)/administracion/components/spots-primary-buttons";
+import { SpotsTable } from "@/app/(dashboard)/administracion/components/spots-table";
+
+export default async function ParkingAsignacionesPage() {
+  await requireAdmin();
+
+  const [spots, profiles] = await Promise.all([
+    getSpots("parking", true),
+    getProfiles(),
+  ]);
+
+  return (
+    <SpotsProvider defaultResourceType="parking">
+      <Header fixed>
+        <Search />
+        <div className="ms-auto flex items-center space-x-4">
+          <ThemeSwitch />
+          <ProfileDropdown />
+        </div>
+      </Header>
+      <Main className="flex flex-1 flex-col gap-4 sm:gap-6">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">
+              Parking — Asignaciones
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Gestiona las plazas de parking y sus asignaciones.
+            </p>
+          </div>
+          <SpotsPrimaryButtons />
+        </div>
+        <SpotsTable spots={spots} profiles={profiles} />
+      </Main>
+      <SpotsDialogs />
+    </SpotsProvider>
+  );
+}

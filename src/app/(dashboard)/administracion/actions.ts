@@ -11,6 +11,7 @@ import { actionClient } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/supabase/auth";
 import { revalidatePath } from "next/cache";
+import { z } from "zod/v4";
 import {
   createSpotSchema,
   updateSpotSchema,
@@ -53,6 +54,8 @@ export const createSpot = actionClient
     }
 
     revalidatePath("/administracion");
+    revalidatePath("/parking/asignaciones");
+    revalidatePath("/oficinas/asignaciones");
     revalidatePath("/parking");
     revalidatePath("/oficinas");
     return { id: data.id };
@@ -79,6 +82,8 @@ export const updateSpot = actionClient
     }
 
     revalidatePath("/administracion");
+    revalidatePath("/parking/asignaciones");
+    revalidatePath("/oficinas/asignaciones");
     revalidatePath("/parking");
     revalidatePath("/oficinas");
     return { updated: true };
@@ -104,6 +109,8 @@ export const deleteSpot = actionClient
     }
 
     revalidatePath("/administracion");
+    revalidatePath("/parking/asignaciones");
+    revalidatePath("/oficinas/asignaciones");
     revalidatePath("/parking");
     revalidatePath("/oficinas");
     return { deleted: true };
@@ -129,7 +136,6 @@ export const updateUserRole = actionClient
       throw new Error(`Error al actualizar rol: ${error.message}`);
     }
 
-    revalidatePath("/administracion/usuarios");
     return { updated: true };
   });
 
@@ -213,8 +219,59 @@ export const assignSpotToUser = actionClient
       });
     }
 
-    revalidatePath("/administracion/usuarios");
-    revalidatePath("/administracion");
+    revalidatePath("/parking/asignaciones");
+    revalidatePath("/oficinas/asignaciones");
+    return { assigned: true };
+  });
+
+// ─── Assign User to Spot ──────────────────────────────────────────
+
+/**
+ * Asigna (o desasigna) un usuario a una plaza — perspectiva desde la plaza.
+ * Complementaria a `assignSpotToUser` que opera desde la perspectiva del usuario.
+ */
+export const assignUserToSpot = actionClient
+  .schema(
+    z.object({
+      spot_id: z.string().uuid(),
+      user_id: z.string().uuid().nullable(),
+      resource_type: z.enum(["parking", "office"]),
+    })
+  )
+  .action(async ({ parsedInput }) => {
+    const { spot_id, user_id, resource_type } = parsedInput;
+    await requireAdmin();
+    const supabase = await createClient();
+
+    if (!user_id) {
+      const { error } = await supabase
+        .from("spots")
+        .update({ assigned_to: null })
+        .eq("id", spot_id);
+      if (error)
+        throw new Error(`Error al desasignar usuario: ${error.message}`);
+      revalidatePath("/parking/asignaciones");
+      revalidatePath("/oficinas/asignaciones");
+      return { assigned: false };
+    }
+
+    // Clear previous spot of same resource_type for this user
+    await supabase
+      .from("spots")
+      .update({ assigned_to: null })
+      .eq("assigned_to", user_id)
+      .eq("resource_type", resource_type);
+
+    // Assign user to this spot
+    const { error } = await supabase
+      .from("spots")
+      .update({ assigned_to: user_id })
+      .eq("id", spot_id);
+
+    if (error) throw new Error(`Error al asignar usuario: ${error.message}`);
+
+    revalidatePath("/parking/asignaciones");
+    revalidatePath("/oficinas/asignaciones");
     return { assigned: true };
   });
 
@@ -235,6 +292,5 @@ export const deleteUser = actionClient
       throw new Error(`Error al eliminar cuenta: ${error.message}`);
     }
 
-    revalidatePath("/administracion/usuarios");
     return { deleted: true };
   });

@@ -1,5 +1,5 @@
 /**
- * Admin Settings — Configuración de Oficinas
+ * Configuración del sistema — Oficinas
  */
 
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ import { ContentSection } from "@/components/content-section";
 import { ResourceConfigForm } from "../_components/resource-config-form";
 import { updateOfficeConfig } from "../actions";
 
-export default async function AdminSettingsOfficesPage() {
+export default async function ConfiguracionOficinaPage() {
   const config = await getAllResourceConfigs("office");
 
   return (

@@ -75,7 +75,7 @@ export const updateGlobalConfig = actionClient
 
     await upsertConfigs(entries, adminUser.id);
     await invalidateConfigCache();
-    revalidatePath("/administracion/ajustes");
+    revalidatePath("/configuracion/general");
 
     return { updated: true };
   });
@@ -90,7 +90,7 @@ export const updateParkingConfig = actionClient
     const entries = resourceConfigToEntries("parking", parsedInput);
     await upsertConfigs(entries, adminUser.id);
     await invalidateConfigCache();
-    revalidatePath("/administracion/ajustes/parking");
+    revalidatePath("/configuracion/parking");
     revalidatePath("/parking");
 
     return { updated: true };
@@ -106,7 +106,7 @@ export const updateOfficeConfig = actionClient
     const entries = resourceConfigToEntries("office", parsedInput);
     await upsertConfigs(entries, adminUser.id);
     await invalidateConfigCache();
-    revalidatePath("/administracion/ajustes/oficinas");
+    revalidatePath("/configuracion/oficinas");
     revalidatePath("/oficinas");
 
     return { updated: true };

@@ -18,12 +18,18 @@ type SpotsContextType = {
 
 const SpotsContext = React.createContext<SpotsContextType | null>(null);
 
-export function SpotsProvider({ children }: { children: React.ReactNode }) {
+export function SpotsProvider({
+  children,
+  defaultResourceType = "parking",
+}: {
+  children: React.ReactNode;
+  defaultResourceType?: "parking" | "office";
+}) {
   const [open, setOpen] = useDialogState<SpotsDialogType>(null);
   const [currentRow, setCurrentRow] = useState<Spot | null>(null);
   const [activeResourceType, setActiveResourceType] = useState<
     "parking" | "office"
-  >("parking");
+  >(defaultResourceType);
 
   return (
     <SpotsContext

@@ -1,9 +1,9 @@
 /**
- * Admin Settings Layout
+ * Configuración del sistema — Layout
  *
  * Layout compartido para todas las páginas de configuración del sistema.
- * Replica el patrón del layout de ajustes de usuario pero con acceso
- * restringido a admin y secciones diferentes.
+ * Réplica del patrón del layout de ajustes de usuario pero con acceso
+ * restringido a admin y secciones de sistema.
  */
 
 import { requireAdmin } from "@/lib/supabase/auth";
@@ -20,7 +20,7 @@ export const metadata = {
     "Configura los parámetros del sistema: límites de reserva, disponibilidad y funcionalidades",
 };
 
-export default async function AdminSettingsLayout({
+export default async function ConfiguracionLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -37,7 +37,6 @@ export default async function AdminSettingsLayout({
         </div>
       </Header>
       <Main fixed>
-        {/* Page Header */}
         <div className="space-y-0.5">
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
             Configuración del sistema
@@ -50,14 +49,10 @@ export default async function AdminSettingsLayout({
 
         <Separator className="my-4 lg:my-6" />
 
-        {/* Settings Layout: Sidebar + Content */}
         <div className="flex flex-1 flex-col space-y-2 overflow-hidden md:space-y-2 lg:flex-row lg:space-y-0 lg:space-x-12">
-          {/* Sidebar Navigation */}
           <aside className="top-0 lg:sticky lg:w-1/5">
             <AdminSettingsSidebar />
           </aside>
-
-          {/* Main Content */}
           <div className="flex w-full overflow-y-hidden p-1">{children}</div>
         </div>
       </Main>

@@ -30,16 +30,24 @@ import { buildSpotsColumns, spotTypeOptions } from "./spots-columns";
 interface SpotsTableProps {
   spots: Spot[];
   profiles: Profile[];
+  allSpots?: Spot[];
 }
 
-export function SpotsTable({ spots, profiles }: SpotsTableProps) {
+export function SpotsTable({
+  spots,
+  profiles,
+  allSpots = spots,
+}: SpotsTableProps) {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
 
   // Columns depend on profiles — memoize to avoid recreation
-  const columns = useMemo(() => buildSpotsColumns(profiles), [profiles]);
+  const columns = useMemo(
+    () => buildSpotsColumns(profiles, allSpots),
+    [profiles, allSpots]
+  );
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({

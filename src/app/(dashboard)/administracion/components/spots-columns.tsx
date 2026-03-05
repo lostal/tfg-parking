@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table";
 import type { Profile, Spot } from "@/lib/supabase/types";
 import { SpotRowActions } from "./spot-row-actions";
+import { InlineUserSelect } from "./inline-user-select";
 
 // ─── Type configuration ────────────────────────────────────────────────────────
 
@@ -43,7 +44,10 @@ const resourceColors: Record<string, string> = {
 
 // ─── Column factory ────────────────────────────────────────────────────────────
 
-export function buildSpotsColumns(profiles: Profile[]): ColumnDef<Spot>[] {
+export function buildSpotsColumns(
+  profiles: Profile[],
+  allSpots: Spot[]
+): ColumnDef<Spot>[] {
   return [
     {
       accessorKey: "label",
@@ -106,19 +110,20 @@ export function buildSpotsColumns(profiles: Profile[]): ColumnDef<Spot>[] {
       id: "assigned_to",
       header: "Asignada a",
       cell: ({ row }) => {
-        const userId = row.original.assigned_to;
-        if (!userId) {
+        const spot = row.original;
+        if (spot.type === "visitor") {
           return (
-            <span className="text-muted-foreground text-sm italic">
-              Sin asignar
-            </span>
+            <span className="text-muted-foreground text-sm italic">N/A</span>
           );
         }
-        const profile = profiles.find((p) => p.id === userId);
         return (
-          <span className="text-sm">
-            {profile?.full_name || profile?.email || userId}
-          </span>
+          <InlineUserSelect
+            spotId={spot.id}
+            spotResourceType={spot.resource_type as "parking" | "office"}
+            currentUserId={spot.assigned_to}
+            profiles={profiles}
+            allSpots={allSpots}
+          />
         );
       },
       enableSorting: false,

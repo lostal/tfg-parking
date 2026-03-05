@@ -1,5 +1,5 @@
 /**
- * Admin Settings — Configuración de Parking
+ * Configuración del sistema — Parking
  */
 
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ import { ContentSection } from "@/components/content-section";
 import { ResourceConfigForm } from "../_components/resource-config-form";
 import { updateParkingConfig } from "../actions";
 
-export default async function AdminSettingsParkingPage() {
+export default async function ConfiguracionParkingPage() {
   const config = await getAllResourceConfigs("parking");
 
   return (
