@@ -154,7 +154,8 @@ describe("createSpot", () => {
     });
 
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error).toContain("Error al crear plaza");
+    if (!result.success)
+      expect(result.error).toContain("Error al crear la plaza");
   });
 
   it("rechaza input inválido sin llamar a la BD (validación Zod)", async () => {
@@ -232,7 +233,7 @@ describe("updateSpot", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain("Error al actualizar plaza");
+      expect(result.error).toContain("Error al actualizar la plaza");
     }
   });
 
@@ -270,7 +271,7 @@ describe("deleteSpot", () => {
 
     expect(result.success).toBe(false);
     if (!result.success)
-      expect(result.error).toContain("Error al eliminar plaza");
+      expect(result.error).toContain("Error al eliminar la plaza");
   });
 
   it("rechaza id no UUID sin llamar a BD", async () => {
@@ -307,7 +308,7 @@ describe("updateUserRole", () => {
 
     expect(result.success).toBe(false);
     if (!result.success)
-      expect(result.error).toContain("Error al actualizar rol");
+      expect(result.error).toContain("Error al actualizar el rol");
   });
 
   it("rechaza rol inválido sin llamar a BD", async () => {
@@ -491,7 +492,7 @@ describe("deleteUser", () => {
 
     expect(result.success).toBe(false);
     if (!result.success)
-      expect(result.error).toContain("Error al eliminar cuenta");
+      expect(result.error).toContain("Error al eliminar la cuenta");
   });
 
   it("rechaza user_id no UUID sin llamar al admin client", async () => {

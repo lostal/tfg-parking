@@ -29,6 +29,7 @@ import {
   AnalyticsSkeleton,
   AlertsSkeleton,
 } from "./_components/panel-skeleton";
+import { PanelSectionErrorBoundary } from "./_components/panel-error-boundary";
 
 export default async function PanelPage() {
   const user = await requireAuth();
@@ -73,26 +74,34 @@ export default async function PanelPage() {
           {/* ── Resumen ─────────────────────────────────────── */}
           <TabsContent value="overview" className="space-y-4">
             {/* Stats cards — bloqueo mínimo, solo 4 queries rápidas */}
-            <Suspense key={entityId ?? "global"} fallback={<StatsSkeleton />}>
-              <PanelStatsSection today={today} entityId={entityId} />
-            </Suspense>
+            <PanelSectionErrorBoundary>
+              <Suspense key={entityId ?? "global"} fallback={<StatsSkeleton />}>
+                <PanelStatsSection today={today} entityId={entityId} />
+              </Suspense>
+            </PanelSectionErrorBoundary>
 
             {/* Chart + Actividad reciente */}
-            <Suspense fallback={<ChartsSkeleton />}>
-              <PanelChartsSection entityId={entityId} />
-            </Suspense>
+            <PanelSectionErrorBoundary>
+              <Suspense fallback={<ChartsSkeleton />}>
+                <PanelChartsSection entityId={entityId} />
+              </Suspense>
+            </PanelSectionErrorBoundary>
 
             {/* Admin alerts */}
-            <Suspense fallback={<AlertsSkeleton />}>
-              <PanelAlertsSection today={today} entityId={entityId} />
-            </Suspense>
+            <PanelSectionErrorBoundary>
+              <Suspense fallback={<AlertsSkeleton />}>
+                <PanelAlertsSection today={today} entityId={entityId} />
+              </Suspense>
+            </PanelSectionErrorBoundary>
           </TabsContent>
 
           {/* ── Analítica ────────────────────────────────────── */}
           <TabsContent value="analytics" className="space-y-4">
-            <Suspense fallback={<AnalyticsSkeleton />}>
-              <PanelAnalyticsSection entityId={entityId} />
-            </Suspense>
+            <PanelSectionErrorBoundary>
+              <Suspense fallback={<AnalyticsSkeleton />}>
+                <PanelAnalyticsSection entityId={entityId} />
+              </Suspense>
+            </PanelSectionErrorBoundary>
           </TabsContent>
         </Tabs>
       </Main>

@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/supabase/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
+import { logAuditEvent } from "@/lib/audit";
 import {
   createSpotSchema,
   updateSpotSchema,
@@ -53,7 +54,8 @@ export const createSpot = actionClient
           `Ya existe una plaza con la etiqueta "${parsedInput.label}"`
         );
       }
-      throw new Error(`Error al crear plaza: ${error.message}`);
+      console.error("[admin] createSpot DB error:", error.message, error.code);
+      throw new Error("Error al crear la plaza");
     }
 
     revalidatePath("/administracion");
@@ -98,7 +100,8 @@ export const updateSpot = actionClient
       if (error.code === "23505") {
         throw new Error("Ya existe una plaza con esa etiqueta");
       }
-      throw new Error(`Error al actualizar plaza: ${error.message}`);
+      console.error("[admin] updateSpot DB error:", error.message, error.code);
+      throw new Error("Error al actualizar la plaza");
     }
 
     revalidatePath("/administracion");
@@ -142,7 +145,8 @@ export const deleteSpot = actionClient
       .eq("id", parsedInput.id);
 
     if (error) {
-      throw new Error(`Error al eliminar plaza: ${error.message}`);
+      console.error("[admin] deleteSpot DB error:", error.message, error.code);
+      throw new Error("Error al eliminar la plaza");
     }
 
     revalidatePath("/administracion");
@@ -161,7 +165,7 @@ export const deleteSpot = actionClient
 export const updateUserRole = actionClient
   .schema(updateUserRoleSchema)
   .action(async ({ parsedInput }) => {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
     const supabase = await createClient();
     const activeEntityId = await getActiveEntityId();
 
@@ -188,8 +192,18 @@ export const updateUserRole = actionClient
       .eq("id", parsedInput.user_id);
 
     if (error) {
-      throw new Error(`Error al actualizar rol: ${error.message}`);
+      console.error(
+        "[admin] updateUserRole DB error:",
+        error.message,
+        error.code
+      );
+      throw new Error("Error al actualizar el rol");
     }
+
+    await logAuditEvent("role.changed", "profile", parsedInput.user_id, {
+      new_role: parsedInput.role,
+      changed_by: adminUser.id,
+    });
 
     return { updated: true };
   });
@@ -214,13 +228,34 @@ export const assignSpotToUser = actionClient
 
     // 1. If unassigning: clear only the spot of the given resource_type for this user
     if (!spot_id) {
+      // Find current spot before clearing, for audit log
+      const { data: currentSpot } = await supabase
+        .from("spots")
+        .select("id")
+        .eq("assigned_to", user_id)
+        .eq("resource_type", resource_type)
+        .maybeSingle();
+
       const { error } = await supabase
         .from("spots")
         .update({ assigned_to: null })
         .eq("assigned_to", user_id)
         .eq("resource_type", resource_type);
 
-      if (error) throw new Error(`Error al desasignar plaza: ${error.message}`);
+      if (error) {
+        console.error(
+          "[admin] assignSpotToUser unassign error:",
+          error.message,
+          error.code
+        );
+        throw new Error("Error al desasignar la plaza");
+      }
+
+      if (currentSpot?.id) {
+        await logAuditEvent("spot.unassigned", "spot", currentSpot.id, {
+          user_id,
+        });
+      }
       return { assigned: false };
     }
 
@@ -278,9 +313,15 @@ export const assignSpotToUser = actionClient
         userId: user_id,
         spotId: spot_id,
         error: error.message,
+        code: error.code,
       });
-      throw new Error(`Error al asignar plaza: ${error.message}`);
+      throw new Error("Error al asignar la plaza");
     }
+
+    await logAuditEvent("spot.assigned", "spot", spot_id, {
+      user_id,
+      resource_type: spot.resource_type,
+    });
 
     // 4. Clear any previous spot of the SAME resource_type assigned to this user
     //    (preserves assignments of the other resource_type). Runs AFTER successful
@@ -297,10 +338,9 @@ export const assignSpotToUser = actionClient
         userId: user_id,
         resourceType: spot.resource_type,
         error: cleanupError.message,
+        code: cleanupError.code,
       });
-      throw new Error(
-        `Error al limpiar la plaza anterior: ${cleanupError.message}`
-      );
+      throw new Error("Error al limpiar la plaza anterior");
     }
 
     revalidatePath("/parking/asignaciones");
@@ -332,8 +372,14 @@ export const assignUserToSpot = actionClient
         .from("spots")
         .update({ assigned_to: null })
         .eq("id", spot_id);
-      if (error)
-        throw new Error(`Error al desasignar usuario: ${error.message}`);
+      if (error) {
+        console.error(
+          "[admin] assignUserToSpot unassign error:",
+          error.message,
+          error.code
+        );
+        throw new Error("Error al desasignar el usuario");
+      }
       revalidatePath("/parking/asignaciones");
       revalidatePath("/oficinas/asignaciones");
       return { assigned: false };
@@ -364,7 +410,14 @@ export const assignUserToSpot = actionClient
       .update({ assigned_to: user_id })
       .eq("id", spot_id);
 
-    if (error) throw new Error(`Error al asignar usuario: ${error.message}`);
+    if (error) {
+      console.error(
+        "[admin] assignUserToSpot assign error:",
+        error.message,
+        error.code
+      );
+      throw new Error("Error al asignar el usuario");
+    }
 
     // 2. Clear previous spot of same resource_type for this user (except
     //    the one we just assigned). Worst case on failure: user has two spots,
@@ -389,7 +442,7 @@ export const assignUserToSpot = actionClient
 export const deleteUser = actionClient
   .schema(deleteUserSchema)
   .action(async ({ parsedInput }) => {
-    await requireAdmin();
+    const adminUser = await requireAdmin();
     const supabase = await createClient();
     const activeEntityId = await getActiveEntityId();
 
@@ -416,8 +469,13 @@ export const deleteUser = actionClient
     );
 
     if (error) {
-      throw new Error(`Error al eliminar cuenta: ${error.message}`);
+      console.error("[admin] deleteUser auth error:", error.message);
+      throw new Error("Error al eliminar la cuenta");
     }
+
+    await logAuditEvent("user.deleted", "user", parsedInput.user_id, {
+      deleted_by: adminUser.id,
+    });
 
     return { deleted: true };
   });
