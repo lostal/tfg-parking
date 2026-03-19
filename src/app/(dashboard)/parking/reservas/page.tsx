@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Car } from "lucide-react";
 
-import { requireAuth } from "@/lib/supabase/auth";
+import { requireAuth } from "@/lib/auth/helpers";
 import { createClient } from "@/lib/supabase/server";
 import { getUserReservations } from "@/lib/queries/reservations";
 import { getUserCessions } from "@/lib/queries/cessions";

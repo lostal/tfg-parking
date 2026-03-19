@@ -1,20 +1,34 @@
 /**
  * Next.js Proxy
  *
- * Runs on every matched request to:
- * 1. Refresh Supabase auth tokens
- * 2. Redirect unauthenticated users to /login
- * 3. Redirect authenticated users away from /login
+ * Protects matched routes using Auth.js session state.
  *
  * @see https://nextjs.org/docs/app/api-reference/file-conventions/proxy
  */
 
-import { type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/proxy";
+import { NextResponse } from "next/server";
 
-export default async function proxy(request: NextRequest) {
-  return await updateSession(request);
-}
+import { ROUTES, getHomeRouteForRole } from "@/lib/constants";
+import { auth } from "@/lib/auth";
+
+export default auth((request) => {
+  const pathname = request.nextUrl.pathname;
+  const isAuthenticated = !!request.auth;
+
+  if (!isAuthenticated && pathname !== ROUTES.LOGIN) {
+    const loginUrl = new URL(ROUTES.LOGIN, request.nextUrl.origin);
+    loginUrl.searchParams.set("from", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (isAuthenticated && pathname === ROUTES.LOGIN) {
+    const role = request.auth?.user?.role;
+    const homeUrl = new URL(getHomeRouteForRole(role), request.nextUrl.origin);
+    return NextResponse.redirect(homeUrl);
+  }
+
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: [

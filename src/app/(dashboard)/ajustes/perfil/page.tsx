@@ -4,7 +4,7 @@
  * User profile information and settings.
  */
 
-import { requireAuth } from "@/lib/supabase/auth";
+import { requireAuth } from "@/lib/auth/helpers";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
 import { ProfileForm } from "../components/profile-form";
@@ -20,13 +20,20 @@ export default async function SettingsProfilePage() {
   }
 
   const { profile } = data;
+  const profileCompat = {
+    id: profile.id,
+    email: profile.email,
+    full_name: profile.fullName,
+    avatar_url: profile.avatarUrl,
+    role: profile.role,
+  };
 
   return (
     <ContentSection
       title="Información Personal"
       desc="Actualiza tu información de perfil y foto de usuario."
     >
-      <ProfileForm profile={profile} />
+      <ProfileForm profile={profileCompat} />
     </ContentSection>
   );
 }

@@ -9,7 +9,7 @@
 
 import { actionClient } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/supabase/auth";
+import { getCurrentUser } from "@/lib/auth/helpers";
 import { getAllResourceConfigs } from "@/lib/config";
 import type {
   ResourceDayData,

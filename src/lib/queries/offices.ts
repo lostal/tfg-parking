@@ -5,17 +5,17 @@
  * Las reservas de oficina pueden ser de día completo o por franja horaria.
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import {
+  spots as spotsTable,
+  reservations as reservationsTable,
+  cessions as cessionsTable,
+  profiles as profilesTable,
+} from "@/lib/db/schema";
+import type { Spot } from "@/lib/db/types";
 import type { SpotWithStatus, TimeSlot, ReservationWithDetails } from "@/types";
-import type { Reservation, Spot } from "@/lib/supabase/types";
 import { toServerDateStr } from "@/lib/utils";
-
-// ─── Tipos internos ───────────────────────────────────────────────
-
-type OfficeReservationJoin = Reservation & {
-  spots: { label: string; resource_type: string } | null;
-  profiles: { full_name: string } | null;
-};
+import { eq, and, gte, or, isNull, ne, inArray } from "drizzle-orm";
 
 // ─── Queries de disponibilidad ────────────────────────────────
 
@@ -26,26 +26,28 @@ type OfficeReservationJoin = Reservation & {
 export async function getOfficeSpots(
   entityId?: string | null
 ): Promise<Spot[]> {
-  const supabase = await createClient();
-
-  let query = supabase
-    .from("spots")
-    .select("*")
-    .eq("is_active", true)
-    .eq("resource_type", "office")
-    .order("label");
+  const conditions = [
+    eq(spotsTable.isActive, true),
+    eq(spotsTable.resourceType, "office"),
+  ];
 
   if (entityId) {
-    query = query.or(`entity_id.eq.${entityId},entity_id.is.null`);
+    conditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
   }
 
-  const { data, error } = await query;
-
-  if (error) {
-    console.error("[offices] getOfficeSpots query error", { code: error.code });
+  try {
+    const rows = await db
+      .select()
+      .from(spotsTable)
+      .where(and(...conditions))
+      .orderBy(spotsTable.label);
+    return rows;
+  } catch (err) {
+    console.error("[offices] getOfficeSpots query error", err);
     throw new Error("No se pudieron obtener los puestos");
   }
-  return data ?? [];
 }
 
 /**
@@ -63,75 +65,75 @@ export async function getOfficeAvailabilityForDate(
   endTime?: string,
   entityId?: string | null
 ): Promise<SpotWithStatus[]> {
-  const supabase = await createClient();
-
-  let spotsQuery = supabase
-    .from("spots")
-    .select("*")
-    .eq("is_active", true)
-    .eq("resource_type", "office")
-    .order("label");
+  const spotConditions = [
+    eq(spotsTable.isActive, true),
+    eq(spotsTable.resourceType, "office"),
+  ];
 
   if (entityId) {
-    spotsQuery = spotsQuery.or(`entity_id.eq.${entityId},entity_id.is.null`);
+    spotConditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
   }
 
-  const spotsResult = await spotsQuery;
-
-  if (spotsResult.error) {
-    console.error("[offices] getOfficeAvailabilityForDate spots query error", {
-      code: spotsResult.error.code,
-    });
-    throw new Error("No se pudieron obtener los puestos");
-  }
-
-  const spots = spotsResult.data ?? [];
+  const spots = await db
+    .select()
+    .from(spotsTable)
+    .where(and(...spotConditions))
+    .orderBy(spotsTable.label);
 
   if (spots.length === 0) return [];
 
   const spotIds = spots.map((s) => s.id);
 
-  const [reservationsResult, cessionsResult] = await Promise.all([
-    supabase
-      .from("reservations")
-      .select("id, spot_id, start_time, end_time")
-      .eq("date", date)
-      .eq("status", "confirmed")
-      .in("spot_id", spotIds)
-      .returns<
-        {
-          id: string;
-          spot_id: string;
-          start_time: string | null;
-          end_time: string | null;
-        }[]
-      >(),
-    supabase
-      .from("cessions")
-      .select("id, spot_id, status")
-      .eq("date", date)
-      .neq("status", "cancelled")
-      .in("spot_id", spotIds),
+  const [reservations, cessions] = await Promise.all([
+    db
+      .select({
+        id: reservationsTable.id,
+        spotId: reservationsTable.spotId,
+        startTime: reservationsTable.startTime,
+        endTime: reservationsTable.endTime,
+      })
+      .from(reservationsTable)
+      .where(
+        and(
+          eq(reservationsTable.date, date),
+          eq(reservationsTable.status, "confirmed"),
+          inArray(reservationsTable.spotId, spotIds)
+        )
+      ),
+    db
+      .select({
+        id: cessionsTable.id,
+        spotId: cessionsTable.spotId,
+        status: cessionsTable.status,
+      })
+      .from(cessionsTable)
+      .where(
+        and(
+          eq(cessionsTable.date, date),
+          ne(cessionsTable.status, "cancelled"),
+          inArray(cessionsTable.spotId, spotIds)
+        )
+      ),
   ]);
-  const reservations = reservationsResult.data ?? [];
-  const cessionBySpot = new Map(
-    (cessionsResult.data ?? []).map((c) => [c.spot_id, c])
-  );
+
+  const cessionBySpot = new Map(cessions.map((c) => [c.spotId, c]));
 
   const result: SpotWithStatus[] = [];
 
   for (const spot of spots) {
     // Reservas activas en este puesto para la fecha
-    const spotReservations = reservations.filter((r) => r.spot_id === spot.id);
+    const spotReservations = reservations.filter((r) => r.spotId === spot.id);
 
     let isOccupied = false;
 
     if (startTime && endTime) {
       // Reserva por franja: comprobar solapamiento
       isOccupied = spotReservations.some((r) => {
-        if (!r.start_time || !r.end_time) return true; // Día completo bloquea toda franja
-        // Solapamiento: no (r.end_time <= startTime || r.start_time >= endTime)
-        return !(r.end_time <= startTime || r.start_time >= endTime);
+        if (!r.startTime || !r.endTime) return true; // Día completo bloquea toda franja
+        // Solapamiento: no (r.endTime <= startTime || r.startTime >= endTime)
+        return !(r.endTime <= startTime || r.startTime >= endTime);
       });
     } else {
       // Sin franja: está ocupado si tiene cualquier reserva confirmada
@@ -142,11 +144,11 @@ export async function getOfficeAvailabilityForDate(
       result.push({
         id: spot.id,
         label: spot.label,
-        type: spot.type as SpotWithStatus["type"],
+        type: spot.type,
         resource_type: "office",
-        assigned_to: spot.assigned_to,
-        position_x: spot.position_x,
-        position_y: spot.position_y,
+        assigned_to: spot.assignedTo,
+        position_x: spot.positionX,
+        position_y: spot.positionY,
         status: "occupied",
         reservation_id: spotReservations[0]?.id,
       });
@@ -158,17 +160,17 @@ export async function getOfficeAvailabilityForDate(
       result.push({
         id: spot.id,
         label: spot.label,
-        type: spot.type as SpotWithStatus["type"],
+        type: spot.type,
         resource_type: "office",
-        assigned_to: spot.assigned_to,
-        position_x: spot.position_x,
-        position_y: spot.position_y,
+        assigned_to: spot.assignedTo,
+        position_x: spot.positionX,
+        position_y: spot.positionY,
         status: "free",
       });
       continue;
     }
 
-    if (spot.assigned_to !== null) {
+    if (spot.assignedTo !== null) {
       // Puesto con propietario: solo disponible si el dueño lo ha cedido activamente
       const cession = cessionBySpot.get(spot.id);
       if (!cession || cession.status !== "available") {
@@ -176,11 +178,11 @@ export async function getOfficeAvailabilityForDate(
         result.push({
           id: spot.id,
           label: spot.label,
-          type: spot.type as SpotWithStatus["type"],
+          type: spot.type,
           resource_type: "office",
-          assigned_to: spot.assigned_to,
-          position_x: spot.position_x,
-          position_y: spot.position_y,
+          assigned_to: spot.assignedTo,
+          position_x: spot.positionX,
+          position_y: spot.positionY,
           status: "occupied",
         });
         continue;
@@ -189,11 +191,11 @@ export async function getOfficeAvailabilityForDate(
       result.push({
         id: spot.id,
         label: spot.label,
-        type: spot.type as SpotWithStatus["type"],
+        type: spot.type,
         resource_type: "office",
-        assigned_to: spot.assigned_to,
-        position_x: spot.position_x,
-        position_y: spot.position_y,
+        assigned_to: spot.assignedTo,
+        position_x: spot.positionX,
+        position_y: spot.positionY,
         status: "ceded",
       });
     } else {
@@ -201,11 +203,11 @@ export async function getOfficeAvailabilityForDate(
       result.push({
         id: spot.id,
         label: spot.label,
-        type: spot.type as SpotWithStatus["type"],
+        type: spot.type,
         resource_type: "office",
-        assigned_to: spot.assigned_to,
-        position_x: spot.position_x,
-        position_y: spot.position_y,
+        assigned_to: spot.assignedTo,
+        position_x: spot.positionX,
+        position_y: spot.positionY,
         status: "occupied",
       });
     }
@@ -231,31 +233,28 @@ export async function getAvailableTimeSlots(
   endHour: number,
   slotDurationMinutes: number
 ): Promise<TimeSlot[]> {
-  const supabase = await createClient();
+  const rows = await db
+    .select({
+      startTime: reservationsTable.startTime,
+      endTime: reservationsTable.endTime,
+    })
+    .from(reservationsTable)
+    .where(
+      and(
+        eq(reservationsTable.spotId, spotId),
+        eq(reservationsTable.date, date),
+        eq(reservationsTable.status, "confirmed")
+      )
+    );
 
-  const { data: reservations, error } = await supabase
-    .from("reservations")
-    .select("start_time, end_time")
-    .eq("spot_id", spotId)
-    .eq("date", date)
-    .eq("status", "confirmed")
-    .returns<{ start_time: string | null; end_time: string | null }[]>();
-
-  if (error) {
-    console.error("[offices] getAvailableTimeSlots query error", {
-      code: error.code,
-    });
-    throw new Error("No se pudieron obtener las franjas");
-  }
-
-  const allReservations = reservations ?? [];
+  const allReservations = rows ?? [];
   // All-day reservations (null start/end) block the entire day: every slot is taken.
   const hasAllDayBooking = allReservations.some(
-    (r) => !r.start_time || !r.end_time
+    (r) => !r.startTime || !r.endTime
   );
   const bookedSlots = allReservations.filter(
-    (r) => r.start_time && r.end_time
-  ) as { start_time: string; end_time: string }[];
+    (r) => r.startTime && r.endTime
+  ) as { startTime: string; endTime: string }[];
 
   const slots: TimeSlot[] = [];
   const totalMinutes = (endHour - startHour) * 60;
@@ -279,7 +278,7 @@ export async function getAvailableTimeSlots(
     const isBooked =
       hasAllDayBooking ||
       bookedSlots.some(
-        (r) => !(r.end_time <= slotStart || r.start_time >= slotEnd)
+        (r) => !(r.endTime <= slotStart || r.startTime >= slotEnd)
       );
 
     slots.push({
@@ -300,44 +299,52 @@ export async function getAvailableTimeSlots(
 export async function getUserOfficeReservations(
   userId: string
 ): Promise<ReservationWithDetails[]> {
-  const supabase = await createClient();
   const today = toServerDateStr(new Date());
 
-  const { data, error } = await supabase
-    .from("reservations")
-    .select(
-      "*, spots!reservations_spot_id_fkey(label, resource_type), profiles!reservations_user_id_fkey(full_name)"
+  const rows = await db
+    .select({
+      id: reservationsTable.id,
+      spot_id: reservationsTable.spotId,
+      user_id: reservationsTable.userId,
+      date: reservationsTable.date,
+      status: reservationsTable.status,
+      notes: reservationsTable.notes,
+      start_time: reservationsTable.startTime,
+      end_time: reservationsTable.endTime,
+      created_at: reservationsTable.createdAt,
+      spot_label: spotsTable.label,
+      spot_resource_type: spotsTable.resourceType,
+      user_name: profilesTable.fullName,
+    })
+    .from(reservationsTable)
+    .innerJoin(spotsTable, eq(reservationsTable.spotId, spotsTable.id))
+    .innerJoin(profilesTable, eq(reservationsTable.userId, profilesTable.id))
+    .where(
+      and(
+        eq(reservationsTable.userId, userId),
+        eq(reservationsTable.status, "confirmed"),
+        eq(spotsTable.resourceType, "office"),
+        gte(reservationsTable.date, today)
+      )
     )
-    .eq("user_id", userId)
-    .eq("status", "confirmed")
-    .eq("spots.resource_type", "office")
-    .gte("date", today)
-    .order("date")
-    .returns<OfficeReservationJoin[]>();
+    .orderBy(reservationsTable.date);
 
-  if (error) {
-    console.error("[offices] getUserOfficeReservations query error", {
-      code: error.code,
-    });
-    throw new Error("No se pudieron obtener las reservas de oficina");
-  }
-
-  return (data ?? [])
-    .filter((r) => r.spots?.resource_type === "office")
+  return rows
+    .filter((r) => r.spot_resource_type === "office")
     .map(
       (r): ReservationWithDetails => ({
         id: r.id,
         spot_id: r.spot_id,
-        spot_label: r.spots?.label ?? "",
+        spot_label: r.spot_label,
         resource_type: "office",
         user_id: r.user_id,
-        user_name: r.profiles?.full_name ?? "",
+        user_name: r.user_name ?? "",
         date: r.date,
         status: r.status,
         notes: r.notes,
         start_time: r.start_time,
         end_time: r.end_time,
-        created_at: r.created_at,
+        created_at: r.created_at.toISOString(),
       })
     );
 }

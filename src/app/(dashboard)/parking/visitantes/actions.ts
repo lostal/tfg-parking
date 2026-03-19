@@ -14,7 +14,7 @@ import { es } from "date-fns/locale";
 
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/supabase/auth";
+import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   createVisitorReservationSchema,
   updateVisitorReservationSchema,

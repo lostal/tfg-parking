@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/supabase/auth";
+import { requireAuth } from "@/lib/auth/helpers";
 import { createClient } from "@/lib/supabase/server";
 import { getAllEntities } from "@/lib/queries/entities";
 import { Header, Main } from "@/components/layout";

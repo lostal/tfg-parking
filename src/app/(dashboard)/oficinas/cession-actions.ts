@@ -10,7 +10,7 @@
 import { revalidatePath } from "next/cache";
 import { actionClient, success, error, type ActionResult } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/supabase/auth";
+import { getCurrentUser } from "@/lib/auth/helpers";
 import { createCessionSchema, cancelCessionSchema } from "@/lib/validations";
 import { getAllResourceConfigs } from "@/lib/config";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";

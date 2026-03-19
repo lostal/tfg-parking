@@ -7,7 +7,7 @@
  * Usage:
  *   const { user, profile, loading } = useUser();
  *
- * Para cerrar sesión usar signOutAction() de @/lib/supabase/sign-out
+ * Para cerrar sesión usar signOutAction() de @/lib/auth/sign-out
  *
  * @see AuthUser type from lib/supabase/auth.ts
  */

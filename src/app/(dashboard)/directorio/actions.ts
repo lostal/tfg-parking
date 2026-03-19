@@ -9,7 +9,7 @@
 import { actionClient } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdmin } from "@/lib/supabase/auth";
+import { requireAdmin } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
 import {
   updateDirectorioUserSchema,

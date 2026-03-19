@@ -4,12 +4,35 @@
  * Funciones de servidor para leer datos de reservas de visitantes externos.
  */
 
-import { createClient } from "@/lib/supabase/server";
-import type { VisitorReservation } from "@/lib/supabase/types";
+import { db } from "@/lib/db";
+import {
+  visitorReservations as visitorReservationsTable,
+  spots as spotsTable,
+  profiles as profilesTable,
+} from "@/lib/db/schema";
 import { toServerDateStr } from "@/lib/utils";
+import { eq, and, gte, ne, or, isNull, asc } from "drizzle-orm";
 
 /** Fila de reserva de visitante con detalles de plaza y creador */
-export interface VisitorReservationWithDetails extends VisitorReservation {
+export interface VisitorReservationWithDetails {
+  id: string;
+  spotId: string;
+  spot_id: string;
+  reservedBy: string;
+  reserved_by: string;
+  date: string;
+  visitorName: string;
+  visitor_name: string;
+  visitorCompany: string;
+  visitor_company: string;
+  visitorEmail: string;
+  visitor_email: string;
+  status: string;
+  notificationSent: boolean;
+  notification_sent: boolean;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
   spot_label: string;
   reserved_by_name: string;
 }
@@ -24,57 +47,75 @@ export async function getUpcomingVisitorReservations(
   userId?: string,
   entityId?: string | null
 ): Promise<VisitorReservationWithDetails[]> {
-  const supabase = await createClient();
   const today = toServerDateStr(new Date());
 
-  let query = supabase
-    .from("visitor_reservations")
-    .select(
-      "*, spots!visitor_reservations_spot_id_fkey(label, entity_id), profiles!visitor_reservations_reserved_by_fkey(full_name)"
-    )
-    .eq("status", "confirmed")
-    .gte("date", today)
-    .order("date");
+  const conditions = [
+    eq(visitorReservationsTable.status, "confirmed"),
+    gte(visitorReservationsTable.date, today),
+  ];
 
   if (userId) {
-    query = query.eq("reserved_by", userId);
+    conditions.push(eq(visitorReservationsTable.reservedBy, userId));
   }
 
-  // Nota: el filtro de entidad se aplica en JS tras recibir los datos con el join,
-  // ya que .eq("spots.entity_id", entityId) en PostgREST elimina también las plazas
-  // globales (entity_id = null) del join, impidiendo incluirlas correctamente.
-
-  const { data, error } = await query.returns<
-    (VisitorReservation & {
-      spots: { label: string; entity_id: string | null } | null;
-      profiles: { full_name: string } | null;
-    })[]
-  >();
-
-  if (error) {
-    console.error(
-      "[visitor-reservations] getUpcomingVisitorReservations query error",
-      {
-        code: error.code,
-      }
-    );
-    throw new Error("No se pudieron obtener las reservas de visitantes");
-  }
+  const rows = await db
+    .select({
+      id: visitorReservationsTable.id,
+      spotId: visitorReservationsTable.spotId,
+      reservedBy: visitorReservationsTable.reservedBy,
+      date: visitorReservationsTable.date,
+      visitorName: visitorReservationsTable.visitorName,
+      visitorCompany: visitorReservationsTable.visitorCompany,
+      visitorEmail: visitorReservationsTable.visitorEmail,
+      status: visitorReservationsTable.status,
+      notificationSent: visitorReservationsTable.notificationSent,
+      notes: visitorReservationsTable.notes,
+      createdAt: visitorReservationsTable.createdAt,
+      updatedAt: visitorReservationsTable.updatedAt,
+      spot_label: spotsTable.label,
+      spot_entity_id: spotsTable.entityId,
+      reserved_by_name: profilesTable.fullName,
+    })
+    .from(visitorReservationsTable)
+    .innerJoin(spotsTable, eq(visitorReservationsTable.spotId, spotsTable.id))
+    .innerJoin(
+      profilesTable,
+      eq(visitorReservationsTable.reservedBy, profilesTable.id)
+    )
+    .where(and(...conditions))
+    .orderBy(asc(visitorReservationsTable.date));
 
   // Si se filtró por entityId, incluir también plazas sin sede asignada (entity_id = null)
   const filtered = entityId
-    ? data.filter(
-        (r) => r.spots?.entity_id === entityId || r.spots?.entity_id === null
+    ? rows.filter(
+        (r) => r.spot_entity_id === entityId || r.spot_entity_id === null
       )
-    : data;
+    : rows;
 
-  return filtered.map((r) => ({
-    ...r,
-    spots: undefined,
-    profiles: undefined,
-    spot_label: r.spots?.label ?? "",
-    reserved_by_name: r.profiles?.full_name ?? "",
-  })) as VisitorReservationWithDetails[];
+  return filtered.map(
+    (r): VisitorReservationWithDetails => ({
+      id: r.id,
+      spotId: r.spotId,
+      spot_id: r.spotId,
+      reservedBy: r.reservedBy,
+      reserved_by: r.reservedBy,
+      date: r.date,
+      visitorName: r.visitorName,
+      visitor_name: r.visitorName,
+      visitorCompany: r.visitorCompany,
+      visitor_company: r.visitorCompany,
+      visitorEmail: r.visitorEmail,
+      visitor_email: r.visitorEmail,
+      status: r.status,
+      notificationSent: r.notificationSent,
+      notification_sent: r.notificationSent,
+      notes: r.notes,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      spot_label: r.spot_label,
+      reserved_by_name: r.reserved_by_name ?? "",
+    })
+  );
 }
 
 /**
@@ -88,52 +129,41 @@ export async function getAvailableVisitorSpotsForDate(
   excludeReservationId?: string,
   entityId?: string | null
 ): Promise<{ id: string; label: string }[]> {
-  const supabase = await createClient();
-
-  let reservedQuery = supabase
-    .from("visitor_reservations")
-    .select("spot_id")
-    .eq("date", date)
-    .eq("status", "confirmed");
-
-  if (excludeReservationId) {
-    reservedQuery = reservedQuery.neq("id", excludeReservationId);
-  }
-
-  let spotsQuery = supabase
-    .from("spots")
-    .select("id, label")
-    .eq("type", "visitor")
-    .eq("is_active", true)
-    .order("label");
+  const spotConditions = [
+    eq(spotsTable.type, "visitor"),
+    eq(spotsTable.isActive, true),
+  ];
 
   if (entityId) {
-    spotsQuery = spotsQuery.or(`entity_id.eq.${entityId},entity_id.is.null`);
+    spotConditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
+  }
+
+  const reservedConditions = [
+    eq(visitorReservationsTable.date, date),
+    eq(visitorReservationsTable.status, "confirmed"),
+  ];
+
+  if (excludeReservationId) {
+    reservedConditions.push(
+      ne(visitorReservationsTable.id, excludeReservationId)
+    );
   }
 
   const [spotsResult, reservedResult] = await Promise.all([
-    spotsQuery,
-    reservedQuery,
+    db
+      .select({ id: spotsTable.id, label: spotsTable.label })
+      .from(spotsTable)
+      .where(and(...spotConditions))
+      .orderBy(asc(spotsTable.label)),
+    db
+      .select({ spotId: visitorReservationsTable.spotId })
+      .from(visitorReservationsTable)
+      .where(and(...reservedConditions)),
   ]);
 
-  if (spotsResult.error) {
-    console.error(
-      "[visitor-reservations] getAvailableVisitorSpotsForDate spots query error",
-      { code: spotsResult.error.code }
-    );
-    throw new Error("No se pudieron obtener las plazas de visitantes");
-  }
-  if (reservedResult.error) {
-    console.error(
-      "[visitor-reservations] getAvailableVisitorSpotsForDate reservations query error",
-      { code: reservedResult.error.code }
-    );
-    throw new Error("No se pudieron obtener las plazas de visitantes");
-  }
+  const reservedIds = new Set(reservedResult.map((r) => r.spotId));
 
-  const reservedIds = new Set(
-    (reservedResult.data ?? []).map((r) => r.spot_id)
-  );
-
-  return (spotsResult.data ?? []).filter((s) => !reservedIds.has(s.id));
+  return spotsResult.filter((s) => !reservedIds.has(s.id));
 }

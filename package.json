@@ -16,7 +16,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check",
+    "check:full": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "db:types": "npx supabase gen types --lang=typescript --project-id hafzatiwfcigmzjcczdu > src/lib/supabase/database.types.ts"
   },
   "dependencies": {

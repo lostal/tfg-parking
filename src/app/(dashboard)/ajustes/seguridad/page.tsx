@@ -4,7 +4,7 @@
  * Security settings and account information.
  */
 
-import { requireAuth } from "@/lib/supabase/auth";
+import { requireAuth } from "@/lib/auth/helpers";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
 import { SecuritySection } from "../components/security-section";
@@ -30,7 +30,7 @@ export default async function SettingsSecurityPage() {
       <SecuritySection
         user={{
           email: profile.email,
-          created_at: profile.created_at,
+          created_at: profile.createdAt.toISOString(),
         }}
       />
     </ContentSection>

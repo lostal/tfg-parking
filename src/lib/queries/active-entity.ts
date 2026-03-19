@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getCurrentUser } from "@/lib/supabase/auth";
+import { getCurrentUser } from "@/lib/auth/helpers";
 
 /**
  * Returns the active entity ID from the admin cookie.
@@ -22,5 +22,5 @@ export async function getEffectiveEntityId(): Promise<string | null> {
   if (user.profile?.role === "admin") {
     return getActiveEntityId();
   }
-  return user.profile?.entity_id ?? null;
+  return user.profile?.entityId ?? null;
 }

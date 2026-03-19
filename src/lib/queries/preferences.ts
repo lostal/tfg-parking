@@ -4,33 +4,39 @@
  * Consultas de servidor para preferencias de usuario y estado de la integración con Microsoft
  */
 
-import { createClient } from "@/lib/supabase/server";
-import type { Profile } from "@/lib/supabase/types";
+import { db } from "@/lib/db";
+import {
+  spots as spotsTable,
+  cessions as cessionsTable,
+  userPreferences as userPreferencesTable,
+  userMicrosoftTokens as userMicrosoftTokensTable,
+  profiles as profilesTable,
+} from "@/lib/db/schema";
+import type { Profile } from "@/lib/db/types";
 import { toServerDateStr } from "@/lib/utils";
 import {
   validateUserPreferences,
   type ValidatedUserPreferences,
-} from "@/lib/supabase/helpers";
+} from "@/lib/db/helpers";
+import { eq, and, gte, ne, asc } from "drizzle-orm";
 
 // ─── Obtener preferencias de usuario ─────────────────────────
 
 export async function getUserPreferences(
   userId: string
 ): Promise<ValidatedUserPreferences | null> {
-  const supabase = await createClient();
+  const rows = await db
+    .select()
+    .from(userPreferencesTable)
+    .where(eq(userPreferencesTable.userId, userId))
+    .limit(1);
 
-  const { data, error } = await supabase
-    .from("user_preferences")
-    .select("*")
-    .eq("user_id", userId)
-    .single();
-
-  if (error) {
-    console.error("Error al obtener las preferencias del usuario:", error);
+  const [prefs] = rows;
+  if (!prefs) {
     return null;
   }
 
-  return validateUserPreferences(data);
+  return validateUserPreferences(prefs);
 }
 
 // ─── Obtener estado de conexión con Microsoft ─────────────────
@@ -48,48 +54,42 @@ export type MicrosoftConnectionStatus = {
 export async function getMicrosoftConnectionStatus(
   userId: string
 ): Promise<MicrosoftConnectionStatus | null> {
-  const supabase = await createClient();
+  const rows = await db
+    .select()
+    .from(userMicrosoftTokensTable)
+    .where(eq(userMicrosoftTokensTable.userId, userId))
+    .limit(1);
 
-  const { data, error } = await supabase
-    .from("user_microsoft_tokens")
-    .select("*")
-    .eq("user_id", userId)
-    .single();
-
-  if (error) {
-    if (error.code === "PGRST116") {
-      // Sin filas = usuario no ha conectado su cuenta de Microsoft
-      return {
-        connected: false,
-        scopes: [],
-        lastSync: null,
-        lastOOOCheck: null,
-        currentOOOStatus: false,
-        teamsConnected: false,
-        outlookConnected: false,
-      };
-    }
-    // Error real de DB — loguearlo y retornar null para que el caller lo distinga
-    console.error("[preferences] getMicrosoftConnectionStatus DB error:", {
-      userId,
-      code: error.code,
-      message: error.message,
-    });
-    return null;
+  const [token] = rows;
+  if (!token) {
+    // Sin filas = usuario no ha conectado su cuenta de Microsoft
+    return {
+      connected: false,
+      scopes: [],
+      lastSync: null,
+      lastOOOCheck: null,
+      currentOOOStatus: false,
+      teamsConnected: false,
+      outlookConnected: false,
+    };
   }
 
   // Comprobar si el token ha expirado — guard contra null y fechas malformadas
-  const expiry = data.token_expires_at ? new Date(data.token_expires_at) : null;
+  const expiry = token.tokenExpiresAt ? new Date(token.tokenExpiresAt) : null;
   const isExpired = !expiry || isNaN(expiry.getTime()) || expiry < new Date();
 
   return {
     connected: !isExpired,
-    scopes: data.scopes || [],
-    lastSync: data.last_calendar_sync_at,
-    lastOOOCheck: data.last_ooo_check_at,
-    currentOOOStatus: data.current_ooo_status,
-    teamsConnected: !!data.teams_user_id,
-    outlookConnected: !!data.outlook_calendar_id,
+    scopes: token.scopes || [],
+    lastSync: token.lastCalendarSyncAt
+      ? token.lastCalendarSyncAt.toISOString()
+      : null,
+    lastOOOCheck: token.lastOooCheckAt
+      ? token.lastOooCheckAt.toISOString()
+      : null,
+    currentOOOStatus: token.currentOooStatus,
+    teamsConnected: !!token.teamsUserId,
+    outlookConnected: !!token.outlookCalendarId,
   };
 }
 
@@ -113,17 +113,24 @@ export async function getAssignedSpotInfo(
   userId: string,
   resourceType: "parking" | "office" = "parking"
 ): Promise<AssignedSpotInfo> {
-  const supabase = await createClient();
-
   // Obtener la plaza asignada al usuario para el tipo de recurso solicitado
-  const { data: spot, error: spotError } = await supabase
-    .from("spots")
-    .select("id, label, type")
-    .eq("assigned_to", userId)
-    .eq("resource_type", resourceType)
-    .maybeSingle();
+  const spotRows = await db
+    .select({
+      id: spotsTable.id,
+      label: spotsTable.label,
+      type: spotsTable.type,
+    })
+    .from(spotsTable)
+    .where(
+      and(
+        eq(spotsTable.assignedTo, userId),
+        eq(spotsTable.resourceType, resourceType)
+      )
+    )
+    .limit(1);
 
-  if (spotError || !spot) {
+  const [spot] = spotRows;
+  if (!spot) {
     return {
       spot: null,
       statusToday: "unknown",
@@ -131,28 +138,41 @@ export async function getAssignedSpotInfo(
     };
   }
 
-  // Obtener la fecha de hoy
   const today = toServerDateStr(new Date());
 
   // Paralelizar: cesión de hoy + próxima cesión futura en una sola ronda
-  const [{ data: todayCession }, { data: nextCession }] = await Promise.all([
-    supabase
-      .from("cessions")
-      .select("id, status")
-      .eq("spot_id", spot.id)
-      .eq("date", today)
-      .neq("status", "cancelled")
-      .maybeSingle(),
-    supabase
-      .from("cessions")
-      .select("id, date, status")
-      .eq("spot_id", spot.id)
-      .gte("date", today)
-      .neq("status", "cancelled")
-      .order("date", { ascending: true })
-      .limit(1)
-      .maybeSingle(),
+  const [todayCessions, nextCessions] = await Promise.all([
+    db
+      .select({ id: cessionsTable.id, status: cessionsTable.status })
+      .from(cessionsTable)
+      .where(
+        and(
+          eq(cessionsTable.spotId, spot.id),
+          eq(cessionsTable.date, today),
+          ne(cessionsTable.status, "cancelled")
+        )
+      )
+      .limit(1),
+    db
+      .select({
+        id: cessionsTable.id,
+        date: cessionsTable.date,
+        status: cessionsTable.status,
+      })
+      .from(cessionsTable)
+      .where(
+        and(
+          eq(cessionsTable.spotId, spot.id),
+          gte(cessionsTable.date, today),
+          ne(cessionsTable.status, "cancelled")
+        )
+      )
+      .orderBy(asc(cessionsTable.date))
+      .limit(1),
   ]);
+
+  const todayCession = todayCessions[0] ?? null;
+  const nextCession = nextCessions[0] ?? null;
 
   // Determinar el estado
   let statusToday: "occupied" | "ceded" | "reserved" | "unknown" = "occupied";
@@ -168,7 +188,13 @@ export async function getAssignedSpotInfo(
       type: spot.type,
     },
     statusToday,
-    nextCession: nextCession ?? null,
+    nextCession: nextCession
+      ? {
+          id: nextCession.id,
+          date: nextCession.date,
+          status: nextCession.status,
+        }
+      : null,
   };
 }
 
@@ -191,22 +217,16 @@ export interface UserProfileWithPreferences {
 export async function getUserProfileWithPreferences(
   userId: string
 ): Promise<UserProfileWithPreferences | null> {
-  const supabase = await createClient();
-
   // Obtener perfil
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .single();
+  const profileRows = await db
+    .select()
+    .from(profilesTable)
+    .where(eq(profilesTable.id, userId))
+    .limit(1);
 
-  if (profileError) {
-    console.error("Error al obtener el perfil:", {
-      message: profileError.message,
-      code: profileError.code,
-      details: profileError.details,
-      hint: profileError.hint,
-    });
+  const [profile] = profileRows;
+  if (!profile) {
+    console.error("Error al obtener el perfil:", { userId });
     return null;
   }
 

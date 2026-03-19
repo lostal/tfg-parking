@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/supabase/auth";
+import { requireAdmin } from "@/lib/auth/helpers";
 import { getAllEntities } from "@/lib/queries/entities";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
@@ -22,7 +22,14 @@ export default async function EntidadesPage() {
   let tableError: string | null = null;
 
   try {
-    entidades = await getAllEntities();
+    const rows = await getAllEntities();
+    entidades = rows.map((entity) => ({
+      id: entity.id,
+      name: entity.name,
+      short_code: entity.shortCode,
+      is_active: entity.isActive,
+      created_at: entity.createdAt.toISOString(),
+    }));
   } catch {
     tableError =
       "La tabla de sedes no está disponible todavía. Aplica las migraciones 00002+00005 en Supabase y ejecuta pnpm db:types.";

@@ -5,17 +5,17 @@
  * Solo para Server Components — NO usar en componentes cliente.
  */
 
-import { createClient } from "@/lib/supabase/server";
-import type { Spot } from "@/lib/supabase/types";
+import { db } from "@/lib/db";
+import {
+  spots as spotsTable,
+  reservations as reservationsTable,
+  cessions as cessionsTable,
+  visitorReservations as visitorReservationsTable,
+  profiles as profilesTable,
+} from "@/lib/db/schema";
+import type { Spot } from "@/lib/db/types";
 import type { SpotWithStatus, SpotStatus } from "@/types";
-
-/** Tipo interno para la query de reservas con perfil del usuario */
-type ReservationConPerfil = {
-  id: string;
-  spot_id: string;
-  user_id: string;
-  profiles: { full_name: string } | null;
-};
+import { eq, and, or, isNull, ne } from "drizzle-orm";
 
 /**
  * Obtiene plazas (sin estado por fecha).
@@ -31,28 +31,34 @@ export async function getSpots(
   includeInactive = false,
   entityId?: string | null
 ): Promise<Spot[]> {
-  const supabase = await createClient();
-
-  let query = supabase.from("spots").select("*").order("label");
+  const conditions = [];
 
   if (!includeInactive) {
-    query = query.eq("is_active", true);
+    conditions.push(eq(spotsTable.isActive, true));
   }
 
   if (resourceType) {
-    query = query.eq("resource_type", resourceType);
+    conditions.push(eq(spotsTable.resourceType, resourceType));
   }
 
   if (entityId) {
-    query = query.or(`entity_id.eq.${entityId},entity_id.is.null`);
+    conditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
   }
 
-  const { data, error } = await query;
-  if (error) {
-    console.error("[spots] getSpots query error", { code: error.code });
+  try {
+    const rows = await db
+      .select()
+      .from(spotsTable)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(spotsTable.label);
+
+    return rows;
+  } catch (err) {
+    console.error("[spots] getSpots query error", err);
     throw new Error("No se pudieron obtener las plazas");
   }
-  return data;
 }
 
 /**
@@ -74,60 +80,76 @@ export async function getSpotsByDate(
   resourceType?: "parking" | "office",
   entityId?: string | null
 ): Promise<SpotWithStatus[]> {
-  const supabase = await createClient();
+  const spotConditions = [eq(spotsTable.isActive, true)];
+
+  if (resourceType) {
+    spotConditions.push(eq(spotsTable.resourceType, resourceType));
+  }
+
+  if (entityId) {
+    spotConditions.push(
+      or(eq(spotsTable.entityId, entityId), isNull(spotsTable.entityId))!
+    );
+  }
 
   // Obtener todos los datos en paralelo
-  let spotsQuery = supabase
-    .from("spots")
-    .select("*")
-    .eq("is_active", true)
-    .order("label");
-  if (resourceType) {
-    spotsQuery = spotsQuery.eq("resource_type", resourceType);
-  }
-  if (entityId) {
-    spotsQuery = spotsQuery.or(`entity_id.eq.${entityId},entity_id.is.null`);
-  }
-
-  const [spotsResult, reservationsResult, cessionsResult, visitorResult] =
+  const [spots, reservations, cessions, visitorReservations] =
     await Promise.all([
-      spotsQuery,
-      supabase
-        .from("reservations")
-        .select(
-          "id, spot_id, user_id, profiles!reservations_user_id_fkey(full_name)"
+      db
+        .select()
+        .from(spotsTable)
+        .where(and(...spotConditions))
+        .orderBy(spotsTable.label),
+      db
+        .select({
+          id: reservationsTable.id,
+          spotId: reservationsTable.spotId,
+          userId: reservationsTable.userId,
+          fullName: profilesTable.fullName,
+        })
+        .from(reservationsTable)
+        .innerJoin(
+          profilesTable,
+          eq(reservationsTable.userId, profilesTable.id)
         )
-        .eq("date", date)
-        .eq("status", "confirmed")
-        .returns<ReservationConPerfil[]>(),
-      supabase
-        .from("cessions")
-        .select("id, spot_id, status")
-        .eq("date", date)
-        .neq("status", "cancelled"),
-      supabase
-        .from("visitor_reservations")
-        .select("id, spot_id, visitor_name")
-        .eq("date", date)
-        .eq("status", "confirmed"),
+        .where(
+          and(
+            eq(reservationsTable.date, date),
+            eq(reservationsTable.status, "confirmed")
+          )
+        ),
+      db
+        .select({
+          id: cessionsTable.id,
+          spotId: cessionsTable.spotId,
+          status: cessionsTable.status,
+        })
+        .from(cessionsTable)
+        .where(
+          and(
+            eq(cessionsTable.date, date),
+            ne(cessionsTable.status, "cancelled")
+          )
+        ),
+      db
+        .select({
+          id: visitorReservationsTable.id,
+          spotId: visitorReservationsTable.spotId,
+          visitorName: visitorReservationsTable.visitorName,
+        })
+        .from(visitorReservationsTable)
+        .where(
+          and(
+            eq(visitorReservationsTable.date, date),
+            eq(visitorReservationsTable.status, "confirmed")
+          )
+        ),
     ]);
 
-  if (spotsResult.error) {
-    console.error("[spots] getSpotsByDate spots query error", {
-      code: spotsResult.error.code,
-    });
-    throw new Error("No se pudieron obtener las plazas");
-  }
-
-  const spots = spotsResult.data;
-  const reservations = reservationsResult.data ?? [];
-  const cessions = cessionsResult.data ?? [];
-  const visitorReservations = visitorResult.data ?? [];
-
   // Construir mapas de búsqueda O(1)
-  const reservationBySpot = new Map(reservations.map((r) => [r.spot_id, r]));
-  const cessionBySpot = new Map(cessions.map((c) => [c.spot_id, c]));
-  const visitorBySpot = new Map(visitorReservations.map((v) => [v.spot_id, v]));
+  const reservationBySpot = new Map(reservations.map((r) => [r.spotId, r]));
+  const cessionBySpot = new Map(cessions.map((c) => [c.spotId, c]));
+  const visitorBySpot = new Map(visitorReservations.map((v) => [v.spotId, v]));
 
   return spots.map((spot): SpotWithStatus => {
     let status: SpotStatus = "occupied";
@@ -142,16 +164,16 @@ export async function getSpotsByDate(
       // La reserva de visitante tiene prioridad
       status = "visitor-blocked";
       reservation_id = visitor.id;
-      reserved_by_name = visitor.visitor_name;
+      reserved_by_name = visitor.visitorName;
     } else if (reservation) {
       status = "reserved";
       reservation_id = reservation.id;
-      reserved_by_name = reservation.profiles?.full_name ?? undefined;
+      reserved_by_name = reservation.fullName ?? undefined;
     } else if (spot.type === "visitor") {
       // Plazas de visitas (parking) y flexibles (oficina) siempre disponibles
       // salvo reserva activa — no requieren cesión ni dueño.
       status = "free";
-    } else if (spot.assigned_to !== null) {
+    } else if (spot.assignedTo !== null) {
       // Plaza fija con propietario: solo entra en el pool si tiene cesión activa
       if (cession) {
         status = cession.status === "reserved" ? "reserved" : "ceded";
@@ -169,10 +191,10 @@ export async function getSpotsByDate(
       id: spot.id,
       label: spot.label,
       type: spot.type,
-      resource_type: spot.resource_type,
-      assigned_to: spot.assigned_to,
-      position_x: spot.position_x,
-      position_y: spot.position_y,
+      resource_type: spot.resourceType,
+      assigned_to: spot.assignedTo,
+      position_x: spot.positionX,
+      position_y: spot.positionY,
       status,
       reservation_id,
       reserved_by_name,

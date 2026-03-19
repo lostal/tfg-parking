@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { signOutAction, signOutAllAction } from "@/lib/supabase/sign-out";
+import { signOutAction, signOutAllAction } from "@/lib/auth/sign-out";
 import { deleteSelfAccount } from "../actions";
 import { ROUTES } from "@/lib/constants";
 import { toast } from "sonner";

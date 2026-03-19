@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { ROUTES, getHomeRouteForRole } from "@/lib/constants";
-import { getCurrentUser } from "@/lib/supabase/auth";
+import { getCurrentUser } from "@/lib/auth/helpers";
 
 /**
  * Root Page

@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { ROUTES } from "@/lib/constants";
+import { signInAction, signUpAction } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,8 +34,6 @@ export function LoginForm({ entities }: LoginFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"login" | "signup">("login");
-
-  const supabase = createClient();
   const router = useRouter();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -46,30 +43,35 @@ export function LoginForm({ entities }: LoginFormProps) {
 
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const result = await signUpAction({
           email,
           password,
-          options: {
-            emailRedirectTo: `${window.location.origin}${ROUTES.CALLBACK}`,
-            data: {
-              full_name: fullName,
-              entity_id: entityId || null,
-              phone: phone || null,
-              has_fixed_parking: hasFixedParking,
-              has_fixed_office: hasFixedOffice,
-            },
-          },
+          fullName,
+          entityId,
+          phone,
+          hasFixedParking,
+          hasFixedOffice,
         });
-        if (error) throw error;
-        setError("Revisa tu email para confirmar la cuenta");
+
+        if (!result.success) {
+          throw new Error(result.error ?? "Error al crear la cuenta");
+        }
+
+        setError("Cuenta creada correctamente. Ya puedes iniciar sesión.");
+        setMode("login");
+        setPassword("");
         setLoading(false);
         return;
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const result = await signInAction({
           email,
           password,
         });
-        if (error) throw error;
+
+        if (!result.success) {
+          throw new Error(result.error ?? "Error al autenticar");
+        }
+
         router.push("/");
         router.refresh();
       }

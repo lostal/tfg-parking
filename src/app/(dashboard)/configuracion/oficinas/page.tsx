@@ -4,7 +4,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { requireAdmin } from "@/lib/supabase/auth";
+import { requireAdmin } from "@/lib/auth/helpers";
 import { getAllResourceConfigs } from "@/lib/config";
 import { getActiveEntityId } from "@/lib/queries/active-entity";
 import { ContentSection } from "@/components/content-section";
