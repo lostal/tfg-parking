@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signInAction, signUpAction } from "@/lib/auth";
+import { signInAction } from "@/lib/auth/sign-in";
+import { signUpAction } from "@/lib/auth/sign-up";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

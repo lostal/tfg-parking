@@ -8,6 +8,10 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/__tests__/setup.ts"],
+    env: {
+      DATABASE_URL:
+        "postgresql://seven_suite:seven_suite_dev@localhost:5432/seven_suite_test",
+    },
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["node_modules", ".next", "e2e"],
     // Limpiar mocks automáticamente antes de cada test (best practice)
