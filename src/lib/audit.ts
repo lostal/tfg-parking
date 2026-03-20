@@ -13,9 +13,9 @@
  * No usar como middleware — siempre llamar explícitamente.
  */
 
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/supabase/auth";
-import type { Json } from "@/lib/supabase/database.types";
+import { db } from "@/lib/db";
+import { auditEvents } from "@/lib/db/schema";
+import { getCurrentUser } from "@/lib/auth/helpers";
 
 export type AuditEventType =
   | "payslip.viewed"
@@ -42,19 +42,18 @@ export async function logAuditEvent(
   eventType: AuditEventType,
   entityType: AuditEntityType,
   entityId: string | null,
-  metadata: Json = {}
+  metadata: Record<string, unknown> = {}
 ): Promise<void> {
   try {
     const user = await getCurrentUser();
     if (!user) return;
 
-    const supabase = await createClient();
-    await supabase.from("audit_events").insert({
-      actor_id: user.id,
-      actor_email: user.email,
-      event_type: eventType,
-      entity_type: entityType,
-      entity_id: entityId ?? undefined,
+    await db.insert(auditEvents).values({
+      actorId: user.id,
+      actorEmail: user.email,
+      eventType,
+      entityType,
+      entityId: entityId ?? undefined,
       metadata,
     });
   } catch (err) {

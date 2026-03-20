@@ -7,66 +7,57 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getUserCessions } from "@/lib/queries/cessions";
-import { createQueryChain } from "../../mocks/supabase";
 
-// ─── Mock de Supabase ─────────────────────────────────────────────────────────
+// ─── Mock de Drizzle db ───────────────────────────────────────────────────────
 
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn(),
-}));
+vi.mock("@/lib/db", async () => {
+  const { mockDb } = await import("../../mocks/db");
+  return { db: mockDb };
+});
 
-import { createClient } from "@/lib/supabase/server";
+import { resetDbMocks, setupSelectMock } from "../../mocks/db";
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 const USER_ID = "550e8400-e29b-41d4-a716-446655440010";
 const CESSION_ID = "550e8400-e29b-41d4-a716-446655440011";
 
-function makeCessionJoin(overrides: {
-  spots?: { label: string; resource_type: string } | null;
+function makeCessionRow(overrides?: {
+  spotResourceType?: string;
+  userFullName?: string;
 }) {
   return {
     id: CESSION_ID,
     spot_id: "550e8400-e29b-41d4-a716-446655440012",
     user_id: USER_ID,
     date: "2026-06-01",
-    status: "pending" as const,
-    created_at: "2026-05-01T00:00:00Z",
-    spots:
-      overrides.spots === undefined
-        ? { label: "P-01", resource_type: "parking" }
-        : overrides.spots,
-    profiles: { full_name: "Test User" },
+    status: "available",
+    created_at: new Date("2026-05-01T00:00:00Z"),
+    spot_label: "P-01",
+    spot_resource_type: overrides?.spotResourceType ?? "parking",
+    user_name: overrides?.userFullName ?? "Test User",
   };
-}
-
-function setupMock(data: unknown[]) {
-  const chain = createQueryChain({ data, error: null });
-  vi.mocked(createClient).mockResolvedValue({
-    from: vi.fn().mockReturnValue(chain),
-  } as never);
 }
 
 // ─── getUserCessions ───────────────────────────────────────────────────────────
 
 describe("getUserCessions", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
-  it("filtra filas donde spots es null", async () => {
-    setupMock([makeCessionJoin({ spots: null })]);
+  it("filtra filas con resource_type incorrecto (no devuelve filas con resource_type erróneo)", async () => {
+    // With Drizzle INNER JOIN, rows with incorrect resource_type are filtered by JS guard.
+    setupSelectMock([makeCessionRow({ spotResourceType: "office" })]);
 
-    const result = await getUserCessions(USER_ID);
+    const result = await getUserCessions(USER_ID, "parking");
 
     expect(result).toHaveLength(0);
   });
 
   it("filtra filas con resource_type incorrecto y emite console.warn", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    setupMock([
-      makeCessionJoin({ spots: { label: "OF-01", resource_type: "office" } }),
-    ]);
+    setupSelectMock([makeCessionRow({ spotResourceType: "office" })]);
 
     const result = await getUserCessions(USER_ID, "parking");
 
@@ -80,9 +71,7 @@ describe("getUserCessions", () => {
   });
 
   it("happy path: devuelve cesión con resource_type correcto", async () => {
-    setupMock([
-      makeCessionJoin({ spots: { label: "P-01", resource_type: "parking" } }),
-    ]);
+    setupSelectMock([makeCessionRow({ spotResourceType: "parking" })]);
 
     const result = await getUserCessions(USER_ID, "parking");
 
@@ -95,11 +84,10 @@ describe("getUserCessions", () => {
     });
   });
 
-  it("sin resourceType devuelve todas las cesiones con spots no nulos", async () => {
-    setupMock([
-      makeCessionJoin({ spots: { label: "P-01", resource_type: "parking" } }),
-      makeCessionJoin({ spots: { label: "OF-01", resource_type: "office" } }),
-      makeCessionJoin({ spots: null }),
+  it("sin resourceType devuelve todas las cesiones", async () => {
+    setupSelectMock([
+      makeCessionRow({ spotResourceType: "parking" }),
+      makeCessionRow({ spotResourceType: "office" }),
     ]);
 
     const result = await getUserCessions(USER_ID);

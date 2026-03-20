@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/supabase/auth";
+import { requireAdmin } from "@/lib/auth/helpers";
 
 /**
  * Admin Layout

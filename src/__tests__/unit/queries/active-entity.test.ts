@@ -3,13 +3,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("next/headers", () => ({
   cookies: vi.fn(),
 }));
-vi.mock("@/lib/supabase/auth", () => ({
+vi.mock("@/lib/auth/helpers", () => ({
   getCurrentUser: vi.fn(),
 }));
 
 import { cookies } from "next/headers";
-import { getCurrentUser } from "@/lib/supabase/auth";
-import { createMockProfile } from "../../mocks/factories";
+import { getCurrentUser } from "@/lib/auth/helpers";
 import {
   getActiveEntityId,
   getEffectiveEntityId,
@@ -73,11 +72,10 @@ describe("getEffectiveEntityId", () => {
   });
 
   it("admin with cookie → returns cookie value", async () => {
-    const adminProfile = createMockProfile({ role: "admin", entity_id: null });
     vi.mocked(getCurrentUser).mockResolvedValue({
       id: "admin-1",
       email: "admin@test.com",
-      profile: adminProfile,
+      profile: { role: "admin", entityId: null } as never,
     });
     vi.mocked(cookies).mockResolvedValue(mockCookieStore("entity-456"));
 
@@ -86,11 +84,10 @@ describe("getEffectiveEntityId", () => {
   });
 
   it("admin without cookie → returns null", async () => {
-    const adminProfile = createMockProfile({ role: "admin", entity_id: null });
     vi.mocked(getCurrentUser).mockResolvedValue({
       id: "admin-1",
       email: "admin@test.com",
-      profile: adminProfile,
+      profile: { role: "admin", entityId: null } as never,
     });
     vi.mocked(cookies).mockResolvedValue(mockCookieStore(undefined));
 
@@ -98,15 +95,11 @@ describe("getEffectiveEntityId", () => {
     expect(result).toBeNull();
   });
 
-  it("employee with entity_id → returns entity_id from profile", async () => {
-    const employeeProfile = createMockProfile({
-      role: "employee",
-      entity_id: "ent-789",
-    });
+  it("employee with entityId → returns entityId from profile", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       id: "user-1",
       email: "emp@test.com",
-      profile: employeeProfile,
+      profile: { role: "employee", entityId: "ent-789" } as never,
     });
     vi.mocked(cookies).mockResolvedValue(mockCookieStore(undefined));
 
@@ -114,15 +107,11 @@ describe("getEffectiveEntityId", () => {
     expect(result).toBe("ent-789");
   });
 
-  it("employee without entity_id → returns null", async () => {
-    const employeeProfile = createMockProfile({
-      role: "employee",
-      entity_id: null,
-    });
+  it("employee without entityId → returns null", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       id: "user-1",
       email: "emp@test.com",
-      profile: employeeProfile,
+      profile: { role: "employee", entityId: null } as never,
     });
     vi.mocked(cookies).mockResolvedValue(mockCookieStore(undefined));
 
@@ -130,15 +119,11 @@ describe("getEffectiveEntityId", () => {
     expect(result).toBeNull();
   });
 
-  it("employee ignores cookie, uses profile entity_id instead", async () => {
-    const employeeProfile = createMockProfile({
-      role: "employee",
-      entity_id: "ent-from-profile",
-    });
+  it("employee ignores cookie, uses profile entityId instead", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       id: "user-1",
       email: "emp@test.com",
-      profile: employeeProfile,
+      profile: { role: "employee", entityId: "ent-from-profile" } as never,
     });
     // Cookie is set but should be ignored for non-admin users
     vi.mocked(cookies).mockResolvedValue(mockCookieStore("ent-from-cookie"));
@@ -159,15 +144,11 @@ describe("getEffectiveEntityId", () => {
     expect(result).toBeNull();
   });
 
-  it("hr role with entity_id → returns entity_id from profile (non-admin path)", async () => {
-    const hrProfile = createMockProfile({
-      role: "hr",
-      entity_id: "ent-hr",
-    });
+  it("hr role with entityId → returns entityId from profile (non-admin path)", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       id: "hr-1",
       email: "hr@test.com",
-      profile: hrProfile,
+      profile: { role: "hr", entityId: "ent-hr" } as never,
     });
     vi.mocked(cookies).mockResolvedValue(mockCookieStore(undefined));
 

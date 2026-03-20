@@ -9,7 +9,7 @@
  * forzar un remount completo (y re-fetch de datos) al cambiar de sede.
  */
 
-import { requireAuth } from "@/lib/supabase/auth";
+import { requireAuth } from "@/lib/auth/helpers";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
 import { VisitantesClient } from "./_components/visitantes-client";
 

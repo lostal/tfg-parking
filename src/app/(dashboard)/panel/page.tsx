@@ -10,7 +10,7 @@
 
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { requireAuth } from "@/lib/supabase/auth";
+import { requireAuth } from "@/lib/auth/helpers";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";

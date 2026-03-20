@@ -4,7 +4,7 @@
  * App preferences: theme and parking view settings.
  */
 
-import { requireAuth } from "@/lib/supabase/auth";
+import { requireAuth } from "@/lib/auth/helpers";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
 import { PreferencesForm } from "../components/preferences-form";

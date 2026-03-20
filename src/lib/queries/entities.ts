@@ -4,42 +4,46 @@
  * Server-side queries for entities (sedes) and their modules.
  */
 
-import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/lib/supabase/database.types";
+import { db } from "@/lib/db";
+import {
+  entities as entitiesTable,
+  entityModules as entityModulesTable,
+} from "@/lib/db/schema";
+import type { Entity, EntityModule } from "@/lib/db/types";
+import { eq, asc } from "drizzle-orm";
 
-export type Entity = Database["public"]["Tables"]["entities"]["Row"];
-export type EntityModule =
-  Database["public"]["Tables"]["entity_modules"]["Row"];
+export type { Entity, EntityModule };
 export type EntityWithModules = Entity & { modules: EntityModule[] };
 
 export async function getAllEntities(): Promise<Entity[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("entities")
-    .select("id, name, short_code, is_active, created_at")
-    .order("name");
-  return data ?? [];
+  const rows = await db
+    .select()
+    .from(entitiesTable)
+    .orderBy(asc(entitiesTable.name));
+  return rows;
 }
 
 export async function getEntityWithModules(
   entityId: string
 ): Promise<EntityWithModules | null> {
-  const supabase = await createClient();
-  const [entityRes, modulesRes] = await Promise.all([
-    supabase
-      .from("entities")
-      .select("id, name, short_code, is_active, created_at")
-      .eq("id", entityId)
-      .maybeSingle(),
-    supabase
-      .from("entity_modules")
-      .select("entity_id, module, enabled")
-      .eq("entity_id", entityId),
+  const [entityRows, moduleRows] = await Promise.all([
+    db
+      .select()
+      .from(entitiesTable)
+      .where(eq(entitiesTable.id, entityId))
+      .limit(1),
+    db
+      .select()
+      .from(entityModulesTable)
+      .where(eq(entityModulesTable.entityId, entityId)),
   ]);
-  if (!entityRes.data) return null;
+
+  const [entity] = entityRows;
+  if (!entity) return null;
+
   return {
-    ...entityRes.data,
-    modules: modulesRes.data ?? [],
+    ...entity,
+    modules: moduleRows,
   };
 }
 
@@ -50,7 +54,6 @@ export async function getEntityWithModules(
 export async function getEntityEnabledModules(
   entityId: string
 ): Promise<string[]> {
-  const supabase = await createClient();
   const ALL_MODULES = [
     "parking",
     "office",
@@ -60,12 +63,16 @@ export async function getEntityEnabledModules(
     "tablon",
   ];
   try {
-    const { data } = await supabase
-      .from("entity_modules")
-      .select("module, enabled")
-      .eq("entity_id", entityId);
+    const rows = await db
+      .select({
+        module: entityModulesTable.module,
+        enabled: entityModulesTable.enabled,
+      })
+      .from(entityModulesTable)
+      .where(eq(entityModulesTable.entityId, entityId));
+
     const disabledSet = new Set(
-      (data ?? []).filter((m) => !m.enabled).map((m) => m.module)
+      rows.filter((m) => !m.enabled).map((m) => m.module)
     );
     return ALL_MODULES.filter((m) => !disabledSet.has(m));
   } catch (err) {

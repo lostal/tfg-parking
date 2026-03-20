@@ -5,7 +5,7 @@
  * Cualquier empleado con plaza asignada puede acceder a sus cesiones.
  */
 
-import { requireSpotOwner } from "@/lib/supabase/auth";
+import { requireSpotOwner } from "@/lib/auth/helpers";
 
 export default async function CessationsLayout({
   children,

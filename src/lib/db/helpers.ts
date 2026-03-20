@@ -1,34 +1,29 @@
 /**
- * Supabase Type Helpers
+ * Database Type Helpers
  *
  * Provides validated types and helper functions to bridge between
  * database types (generic strings) and application types (literal unions)
  */
 
-import type { Database } from "./database.types";
-
-// ─── Base Types ──────────────────────────────────────────────
-
-type UserPreferencesRow =
-  Database["public"]["Tables"]["user_preferences"]["Row"];
+import type { UserPreferences } from "./types";
 
 // ─── Validated Preferences Type ──────────────────────────────
 
 export type ValidatedUserPreferences = Omit<
-  UserPreferencesRow,
+  UserPreferences,
   | "theme"
   | "locale"
-  | "default_view"
-  | "notification_channel"
-  | "favorite_spot_ids"
-  | "auto_cede_days"
+  | "defaultView"
+  | "notificationChannel"
+  | "favoriteSpotIds"
+  | "autoCedeDays"
 > & {
   theme: "light" | "dark" | "system";
   locale: "es" | "en";
-  default_view: "map" | "list" | "calendar";
-  notification_channel: "teams" | "email" | "both";
-  favorite_spot_ids: string[];
-  auto_cede_days: number[];
+  defaultView: "map" | "list" | "calendar";
+  notificationChannel: "teams" | "email" | "both";
+  favoriteSpotIds: string[];
+  autoCedeDays: number[];
 };
 
 // ─── Validation Helpers ──────────────────────────────────────
@@ -52,33 +47,31 @@ function isValidChannel(
 }
 
 /**
- * Validates and converts database user preferences to application types
- * Provides safe defaults for nullable fields
+ * Validates and converts database user preferences to application types.
+ * Provides safe defaults for nullable fields.
  */
 export function validateUserPreferences(
-  prefs: UserPreferencesRow
+  prefs: UserPreferences
 ): ValidatedUserPreferences {
-  // Validate literal types with fallbacks
   const theme = isValidTheme(prefs.theme) ? prefs.theme : "system";
   const locale = isValidLocale(prefs.locale) ? prefs.locale : "es";
-  const default_view = isValidView(prefs.default_view)
-    ? prefs.default_view
+  const defaultView = isValidView(prefs.defaultView)
+    ? prefs.defaultView
     : "map";
-  const notification_channel = isValidChannel(prefs.notification_channel)
-    ? prefs.notification_channel
+  const notificationChannel = isValidChannel(prefs.notificationChannel)
+    ? prefs.notificationChannel
     : "teams";
 
-  // Handle nullable arrays
-  const favorite_spot_ids = prefs.favorite_spot_ids || [];
-  const auto_cede_days = prefs.auto_cede_days || [];
+  const favoriteSpotIds = prefs.favoriteSpotIds || [];
+  const autoCedeDays = prefs.autoCedeDays || [];
 
   return {
     ...prefs,
     theme,
     locale,
-    default_view,
-    notification_channel,
-    favorite_spot_ids,
-    auto_cede_days,
+    defaultView,
+    notificationChannel,
+    favoriteSpotIds,
+    autoCedeDays,
   };
 }

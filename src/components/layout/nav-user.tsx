@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useTransition } from "react";
 import { ChevronsUpDown, LogOut, Loader2, User } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
-import { signOutAction } from "@/lib/supabase/sign-out";
+import { signOutAction } from "@/lib/auth/sign-out";
 import { ROUTES } from "@/lib/constants";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,7 +43,7 @@ export function NavUser() {
     });
   };
 
-  const displayName = profile?.full_name ?? "";
+  const displayName = profile?.fullName ?? "";
   const displayEmail = profile?.email || "";
   const initials = displayName
     .split(" ")

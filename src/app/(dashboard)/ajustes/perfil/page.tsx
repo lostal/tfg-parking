@@ -4,7 +4,7 @@
  * User profile information and settings.
  */
 
-import { requireAuth } from "@/lib/supabase/auth";
+import { requireAuth } from "@/lib/auth/helpers";
 import { getUserProfileWithPreferences } from "@/lib/queries/preferences";
 import { redirect } from "next/navigation";
 import { ProfileForm } from "../components/profile-form";
@@ -20,7 +20,6 @@ export default async function SettingsProfilePage() {
   }
 
   const { profile } = data;
-
   return (
     <ContentSection
       title="Información Personal"

@@ -8,6 +8,10 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/__tests__/setup.ts"],
+    env: {
+      DATABASE_URL:
+        "postgresql://seven_suite:seven_suite_dev@localhost:5432/seven_suite_test",
+    },
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["node_modules", ".next", "e2e"],
     // Limpiar mocks automáticamente antes de cada test (best practice)
@@ -27,10 +31,6 @@ export default defineConfig({
         "src/**/*.test.{ts,tsx}",
         "src/**/*.spec.{ts,tsx}",
         "src/__tests__/**",
-        // Archivo auto-generado por Supabase CLI
-        "src/lib/supabase/database.types.ts",
-        // Tipos re-exportados sin lógica
-        "src/lib/supabase/types.ts",
       ],
       // Umbrales de cobertura — calibrados contra cobertura real (46% líneas, 38% ramas, 47% funciones)
       // Objetivo: detectar regresiones. Subir progresivamente al añadir tests.
