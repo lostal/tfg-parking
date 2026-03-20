@@ -16,7 +16,7 @@ const linksByRole: Record<string, { title: string; href: string }[]> = {
   employee: [
     { title: "Dashboard", href: ROUTES.DASHBOARD },
     { title: "Reservas", href: ROUTES.PARKING },
-    { title: "Mapa", href: ROUTES.PARKING_MAP },
+    { title: "Mapa", href: ROUTES.OFFICES_MAP },
     { title: "Visitantes", href: ROUTES.VISITORS },
   ],
   admin: [

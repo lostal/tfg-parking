@@ -18,8 +18,6 @@ export const ROUTES = {
   PARKING: "/parking",
   MIS_RESERVAS: "/mis-reservas",
   PARKING_CESSIONS: "/parking/cesiones",
-  /** @deprecated La ruta del mapa se ha movido a /oficinas/mapa; mantener para redirect */
-  PARKING_MAP: "/parking/mapa",
   OFFICES_MAP: "/oficinas/mapa",
   PARKING_RESERVAS: "/parking/reservas",
   OFFICES_RESERVAS: "/oficinas/reservas",

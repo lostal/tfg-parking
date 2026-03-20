@@ -25,6 +25,9 @@
 *.pem
 .claude
 
+# shadcn-admin (referencia local, no forma parte del proyecto)
+/shadcn-admin/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

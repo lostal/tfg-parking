@@ -106,7 +106,7 @@ export const actionClient: ActionBuilder = {
               console.error("[action] error inesperado no estándar");
             }
             return error(
-              err instanceof Error
+              process.env.NODE_ENV !== "production" && err instanceof Error
                 ? err.message
                 : "Ha ocurrido un error inesperado"
             );
