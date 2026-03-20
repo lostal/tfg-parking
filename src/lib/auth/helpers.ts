@@ -3,18 +3,17 @@
  *
  * Utilidades de servidor para verificación y autorización de usuarios.
  * Estas funciones se ejecutan en el servidor y gestionan redirecciones automáticamente.
- *
- * Uso:
- *   - getCurrentUser() - Devuelve usuario + perfil o null si no está autenticado
- *   - requireAuth() - Devuelve usuario + perfil o redirige a /login
- *   - requireAdmin() - Devuelve usuario admin o redirige al dashboard
- *   - requireSpotOwner(resourceType) - Requiere tener plaza asignada del tipo indicado
  */
 
+import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { createClient } from "./server";
+
 import { ROUTES } from "@/lib/constants";
-import type { Profile } from "./types";
+import { db } from "@/lib/db";
+import { profiles, spots } from "@/lib/db/schema";
+import type { Profile } from "@/lib/db/types";
+
+import { auth } from "./config";
 
 export interface AuthUser {
   id: string;
@@ -27,35 +26,27 @@ export interface AuthUser {
  * @returns Objeto de usuario con perfil o null si no está autenticado
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const supabase = await createClient();
+  const session = await auth();
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
+  if (!session?.user?.id) {
     return null;
   }
 
-  // Fetch user profile with role
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [profile] = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.id, session.user.id))
+    .limit(1);
 
   return {
-    id: user.id,
-    email: user.email ?? "",
+    id: session.user.id,
+    email: session.user.email ?? "",
     profile: profile ?? null,
   };
 }
 
 /**
  * Requiere autenticación — redirige a /login si no está autenticado.
- * Usar en layouts/páginas protegidas.
- * @returns Usuario autenticado con perfil
  */
 export async function requireAuth(): Promise<AuthUser> {
   const user = await getCurrentUser();
@@ -69,8 +60,6 @@ export async function requireAuth(): Promise<AuthUser> {
 
 /**
  * Requiere rol de administrador — redirige al dashboard si no es admin.
- * Usar en páginas/layouts exclusivos de administración.
- * @returns Usuario admin con perfil
  */
 export async function requireAdmin(): Promise<AuthUser> {
   const user = await requireAuth();
@@ -83,9 +72,7 @@ export async function requireAdmin(): Promise<AuthUser> {
 }
 
 /**
- * Requiere rol HR o superior (hr | admin) — redirige al dashboard en caso contrario.
- * Usar en páginas de nóminas, documentos y gestión de personal.
- * @returns Usuario HR o admin con perfil
+ * Requiere rol HR o superior (hr | admin).
  */
 export async function requireHR(): Promise<AuthUser> {
   const user = await requireAuth();
@@ -99,8 +86,6 @@ export async function requireHR(): Promise<AuthUser> {
 
 /**
  * Requiere rol manager o superior (manager | hr | admin).
- * Usar en páginas de aprobación de vacaciones y reportes de equipo.
- * @returns Usuario manager, HR o admin con perfil
  */
 export async function requireManagerOrAbove(): Promise<AuthUser> {
   const user = await requireAuth();
@@ -115,9 +100,6 @@ export async function requireManagerOrAbove(): Promise<AuthUser> {
 
 /**
  * Requiere tener una plaza asignada del tipo indicado.
- * Cualquier empleado (o admin) con plaza asignada puede gestionar cesiones.
- * @param resourceType "parking" | "office"
- * @returns Usuario autenticado con perfil
  */
 export async function requireSpotOwner(
   resourceType: "parking" | "office"
@@ -127,13 +109,13 @@ export async function requireSpotOwner(
   // Los admins siempre tienen acceso
   if (user.profile?.role === "admin") return user;
 
-  const supabase = await createClient();
-  const { data: spot } = await supabase
-    .from("spots")
-    .select("id")
-    .eq("assigned_to", user.id)
-    .eq("resource_type", resourceType)
-    .maybeSingle();
+  const [spot] = await db
+    .select({ id: spots.id })
+    .from(spots)
+    .where(
+      and(eq(spots.assignedTo, user.id), eq(spots.resourceType, resourceType))
+    )
+    .limit(1);
 
   if (!spot) {
     redirect(resourceType === "parking" ? ROUTES.PARKING : ROUTES.OFFICES);

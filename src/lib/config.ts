@@ -12,7 +12,12 @@
  */
 
 import { unstable_cache, revalidateTag } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { db } from "@/lib/db";
+import {
+  systemConfig as systemConfigTable,
+  entityConfig as entityConfigTable,
+} from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 // Los tipos públicos están en config-types.ts para que los componentes cliente
 // puedan importarlos sin arrastrar las dependencias server-only de este fichero.
@@ -29,7 +34,7 @@ import type {
   ResourceConfigValues,
   GlobalConfigValues,
 } from "./config-types";
-import type { ResourceType } from "@/lib/supabase/types";
+import type { ResourceType } from "@/lib/db/types";
 
 // ─── Valores por defecto ──────────────────────────────────────
 
@@ -95,18 +100,16 @@ export const CONFIG_CACHE_TAG = "system-config";
  */
 const fetchRawConfigs = unstable_cache(
   async (): Promise<Record<string, unknown>> => {
-    // createAdminClient no usa cookies() y el service role bypassa RLS → compatible con unstable_cache
-    const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("system_config")
-      .select("key, value");
+    try {
+      const rows = await db
+        .select({ key: systemConfigTable.key, value: systemConfigTable.value })
+        .from(systemConfigTable);
 
-    if (error) {
-      console.error("[config] Error fetching system_config:", error.message);
+      return Object.fromEntries(rows.map((row) => [row.key, row.value]));
+    } catch (error) {
+      console.error("[config] Error fetching system_config:", error);
       return {};
     }
-
-    return Object.fromEntries((data ?? []).map((row) => [row.key, row.value]));
   },
   ["system-config-all"],
   {
@@ -234,16 +237,15 @@ export async function invalidateConfigCache(): Promise<void> {
 async function fetchEntityConfigs(
   entityId: string
 ): Promise<Record<string, unknown>> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("entity_config")
-    .select("key, value")
-    .eq("entity_id", entityId);
+  try {
+    const rows = await db
+      .select({ key: entityConfigTable.key, value: entityConfigTable.value })
+      .from(entityConfigTable)
+      .where(eq(entityConfigTable.entityId, entityId));
 
-  if (error) {
-    console.error("[config] Error fetching entity_config:", error.message);
+    return Object.fromEntries(rows.map((row) => [row.key, row.value]));
+  } catch (error) {
+    console.error("[config] Error fetching entity_config:", error);
     return {};
   }
-
-  return Object.fromEntries((data ?? []).map((row) => [row.key, row.value]));
 }

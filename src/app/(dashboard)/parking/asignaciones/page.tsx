@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/supabase/auth";
+import { requireAdmin } from "@/lib/auth/helpers";
 import { Header, Main } from "@/components/layout";
 import { Search } from "@/components/search";
 import { ThemeSwitch } from "@/components/layout/theme-switch";
@@ -10,13 +10,12 @@ import { SpotsProvider } from "@/app/(dashboard)/administracion/components/spots
 import { SpotsDialogs } from "@/app/(dashboard)/administracion/components/spots-dialogs";
 import { SpotsPrimaryButtons } from "@/app/(dashboard)/administracion/components/spots-primary-buttons";
 import { SpotsTable } from "@/app/(dashboard)/administracion/components/spots-table";
-
 export default async function ParkingAsignacionesPage() {
   await requireAdmin();
 
   const entityId = await getEffectiveEntityId();
 
-  const [spots, profiles] = await Promise.all([
+  const [spotsData, profilesData] = await Promise.all([
     getSpots("parking", true, entityId),
     getProfiles(entityId),
   ]);
@@ -42,7 +41,7 @@ export default async function ParkingAsignacionesPage() {
           </div>
           <SpotsPrimaryButtons />
         </div>
-        <SpotsTable spots={spots} profiles={profiles} />
+        <SpotsTable spots={spotsData} profiles={profilesData} />
       </Main>
       <SpotsDialogs />
     </SpotsProvider>

@@ -6,7 +6,7 @@
  */
 
 import { redirect } from "next/navigation";
-import { requireAuth } from "@/lib/supabase/auth";
+import { requireAuth } from "@/lib/auth/helpers";
 import { ROUTES } from "@/lib/constants";
 
 export default async function MisReservasPage() {

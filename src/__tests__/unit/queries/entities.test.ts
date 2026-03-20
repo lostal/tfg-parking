@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
+vi.mock("@/lib/db", async () => {
+  const { mockDb } = await import("../../mocks/db");
+  return { db: mockDb };
+});
 
-import { createClient } from "@/lib/supabase/server";
-import { createQueryChain } from "../../mocks/supabase";
-import { createMockEntity } from "../../mocks/factories";
+import { mockDb, resetDbMocks, setupSelectMock } from "../../mocks/db";
+
 import {
   getAllEntities,
   getEntityWithModules,
@@ -20,39 +22,33 @@ const ALL_MODULES = [
   "tablon",
 ];
 
-function buildClient(tableMap: Record<string, unknown>) {
-  return {
-    from: vi.fn((table: string) => {
-      const response = tableMap[table] ?? { data: [], error: null };
-      return createQueryChain(response as { data: unknown; error: null });
-    }),
-  };
-}
-
 describe("getAllEntities", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("empty DB → returns []", async () => {
-    const client = buildClient({ entities: { data: [], error: null } });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
-
+    setupSelectMock([]);
     const result = await getAllEntities();
     expect(result).toEqual([]);
   });
 
   it("DB returns 2 entities → returns both", async () => {
-    const entity1 = createMockEntity({ id: "ent-1", name: "Sede A" });
-    const entity2 = createMockEntity({ id: "ent-2", name: "Sede B" });
-    const client = buildClient({
-      entities: { data: [entity1, entity2], error: null },
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    const entity1 = {
+      id: "ent-1",
+      name: "Sede A",
+      shortCode: "SA",
+      isActive: true,
+      createdAt: new Date("2025-01-01T00:00:00Z"),
+    };
+    const entity2 = {
+      id: "ent-2",
+      name: "Sede B",
+      shortCode: "SB",
+      isActive: true,
+      createdAt: new Date("2025-01-01T00:00:00Z"),
+    };
+    setupSelectMock([entity1, entity2]);
 
     const result = await getAllEntities();
     expect(result).toHaveLength(2);
@@ -61,13 +57,8 @@ describe("getAllEntities", () => {
   });
 
   it("DB error → returns [] (graceful — data is null)", async () => {
-    const client = buildClient({
-      entities: { data: null, error: { message: "DB error" } },
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
-
+    setupSelectMock(null);
+    // The Drizzle implementation returns [] when rows is null/empty
     const result = await getAllEntities();
     expect(result).toEqual([]);
   });
@@ -75,43 +66,31 @@ describe("getAllEntities", () => {
 
 describe("getEntityWithModules", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("entity not found → returns null", async () => {
-    const entityChain = createQueryChain({ data: null, error: null });
-    const modulesChain = createQueryChain({ data: [], error: null });
-
-    const mockClient = {
-      from: vi.fn((table: string) => {
-        if (table === "entities") return entityChain;
-        if (table === "entity_modules") return modulesChain;
-        return createQueryChain({ data: null, error: null });
-      }),
-    };
-    vi.mocked(createClient).mockResolvedValue(
-      mockClient as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    // First select: entities (empty)
+    setupSelectMock([]);
+    // Second select: entity_modules
+    setupSelectMock([]);
 
     const result = await getEntityWithModules("non-existent-id");
     expect(result).toBeNull();
   });
 
   it("entity found with no modules → returns entity with modules=[]", async () => {
-    const mockEntity = createMockEntity({ id: "ent-1" });
-    const entityChain = createQueryChain({ data: mockEntity, error: null });
-    const modulesChain = createQueryChain({ data: [], error: null });
-
-    const mockClient = {
-      from: vi.fn((table: string) => {
-        if (table === "entities") return entityChain;
-        if (table === "entity_modules") return modulesChain;
-        return createQueryChain({ data: null, error: null });
-      }),
+    const mockEntity = {
+      id: "ent-1",
+      name: "Empresa Test S.L.",
+      shortCode: "TST",
+      isActive: true,
+      createdAt: new Date("2025-01-01T00:00:00Z"),
     };
-    vi.mocked(createClient).mockResolvedValue(
-      mockClient as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    // First select: entities
+    setupSelectMock([mockEntity]);
+    // Second select: entity_modules
+    setupSelectMock([]);
 
     const result = await getEntityWithModules("ent-1");
     expect(result).not.toBeNull();
@@ -120,24 +99,19 @@ describe("getEntityWithModules", () => {
   });
 
   it("entity found with 2 modules → returns entity with modules array", async () => {
-    const mockEntity = createMockEntity({ id: "ent-1" });
-    const mockModules = [
-      { entity_id: "ent-1", module: "parking", enabled: true },
-      { entity_id: "ent-1", module: "office", enabled: false },
-    ];
-    const entityChain = createQueryChain({ data: mockEntity, error: null });
-    const modulesChain = createQueryChain({ data: mockModules, error: null });
-
-    const mockClient = {
-      from: vi.fn((table: string) => {
-        if (table === "entities") return entityChain;
-        if (table === "entity_modules") return modulesChain;
-        return createQueryChain({ data: null, error: null });
-      }),
+    const mockEntity = {
+      id: "ent-1",
+      name: "Empresa Test S.L.",
+      shortCode: "TST",
+      isActive: true,
+      createdAt: new Date("2025-01-01T00:00:00Z"),
     };
-    vi.mocked(createClient).mockResolvedValue(
-      mockClient as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    const mockModules = [
+      { entityId: "ent-1", module: "parking", enabled: true },
+      { entityId: "ent-1", module: "office", enabled: false },
+    ];
+    setupSelectMock([mockEntity]);
+    setupSelectMock(mockModules);
 
     const result = await getEntityWithModules("ent-1");
     expect(result?.modules).toHaveLength(2);
@@ -148,14 +122,11 @@ describe("getEntityWithModules", () => {
 
 describe("getEntityEnabledModules", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    resetDbMocks();
   });
 
   it("no rows in entity_modules → returns all 6 modules (opt-out model)", async () => {
-    const client = buildClient({ entity_modules: { data: [], error: null } });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock([]);
 
     const result = await getEntityEnabledModules("ent-1");
     expect(result).toHaveLength(6);
@@ -164,12 +135,7 @@ describe("getEntityEnabledModules", () => {
 
   it("parking disabled → returns 5 modules without parking", async () => {
     const modules = [{ module: "parking", enabled: false }];
-    const client = buildClient({
-      entity_modules: { data: modules, error: null },
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock(modules);
 
     const result = await getEntityEnabledModules("ent-1");
     expect(result).toHaveLength(5);
@@ -180,12 +146,7 @@ describe("getEntityEnabledModules", () => {
 
   it("all modules disabled → returns []", async () => {
     const modules = ALL_MODULES.map((m) => ({ module: m, enabled: false }));
-    const client = buildClient({
-      entity_modules: { data: modules, error: null },
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock(modules);
 
     const result = await getEntityEnabledModules("ent-1");
     expect(result).toHaveLength(0);
@@ -196,12 +157,7 @@ describe("getEntityEnabledModules", () => {
       { module: "parking", enabled: true },
       { module: "office", enabled: false },
     ];
-    const client = buildClient({
-      entity_modules: { data: modules, error: null },
-    });
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    setupSelectMock(modules);
 
     const result = await getEntityEnabledModules("ent-1");
     expect(result).toContain("parking");
@@ -209,20 +165,10 @@ describe("getEntityEnabledModules", () => {
   });
 
   it("DB throws (e.g. migration pending) → returns all 6 modules as fallback", async () => {
-    // createClient() is called before the try/catch, so we need the Supabase chain
-    // to throw during the actual query (inside try/catch), not during createClient()
-    const chain = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockImplementation(() => {
-        throw new Error("relation does not exist");
-      }),
-    };
-    const client = {
-      from: vi.fn().mockReturnValue(chain),
-    };
-    vi.mocked(createClient).mockResolvedValue(
-      client as unknown as Awaited<ReturnType<typeof createClient>>
-    );
+    // Simulate DB error by making the select mock throw
+    vi.spyOn(mockDb, "select").mockImplementationOnce(() => {
+      throw new Error("relation does not exist");
+    });
 
     const result = await getEntityEnabledModules("ent-1");
     expect(result).toHaveLength(6);

@@ -4,7 +4,7 @@
  * Placeholder until Microsoft 365 integration is implemented.
  */
 
-import { requireAuth } from "@/lib/supabase/auth";
+import { requireAuth } from "@/lib/auth/helpers";
 import { ContentSection } from "../components/content-section";
 import {
   Card,

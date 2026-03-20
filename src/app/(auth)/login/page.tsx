@@ -10,7 +10,7 @@ import { LoginForm } from "./_components/login-form";
 export default async function LoginPage() {
   let entities = await getAllEntities().catch(() => []);
   // Filter only active entities for the signup selector
-  entities = entities.filter((e) => e.is_active);
+  entities = entities.filter((e) => e.isActive);
 
   return <LoginForm entities={entities} />;
 }

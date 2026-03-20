@@ -4,18 +4,26 @@
  * Funciones de servidor para leer datos de cesiones.
  */
 
-import { createClient } from "@/lib/supabase/server";
-import type { Cession, ResourceType } from "@/lib/supabase/types";
+import { db } from "@/lib/db";
+import {
+  cessions as cessionsTable,
+  spots as spotsTable,
+  profiles as profilesTable,
+} from "@/lib/db/schema";
+import type { ResourceType } from "@/lib/db/types";
 import { toServerDateStr } from "@/lib/utils";
+import { eq, and, gte, ne, asc, desc } from "drizzle-orm";
 
-/** Tipo interno para la query con joins de plaza y perfil */
-type CessionJoin = Cession & {
-  spots: { label: string; resource_type: string } | null;
-  profiles: { full_name: string } | null;
-};
-
-/** Fila de cesión con etiqueta de plaza, nombre de usuario y tipo de recurso */
-export interface CessionWithDetails extends Cession {
+/**
+ * Fila de cesión — tipo compatible con los callers existentes (snake_case).
+ */
+export interface CessionWithDetails {
+  id: string;
+  spot_id: string;
+  user_id: string;
+  date: string;
+  status: string;
+  created_at: Date;
   spot_label: string;
   user_name: string;
   resource_type: ResourceType;
@@ -31,32 +39,39 @@ export async function getCessionsByDate(
   date: string,
   resourceType?: "parking" | "office"
 ): Promise<CessionWithDetails[]> {
-  const supabase = await createClient();
-
-  let query = supabase
-    .from("cessions")
-    .select(
-      "*, spots!cessions_spot_id_fkey(label, resource_type), profiles!cessions_user_id_fkey(full_name)"
-    )
-    .eq("date", date)
-    .neq("status", "cancelled")
-    .order("created_at", { ascending: false });
+  const conditions = [
+    eq(cessionsTable.date, date),
+    ne(cessionsTable.status, "cancelled"),
+  ];
 
   if (resourceType) {
-    query = query.eq("spots.resource_type", resourceType);
+    conditions.push(eq(spotsTable.resourceType, resourceType));
   }
 
-  const { data, error } = await query.returns<CessionJoin[]>();
+  const rows = await db
+    .select({
+      id: cessionsTable.id,
+      spot_id: cessionsTable.spotId,
+      user_id: cessionsTable.userId,
+      date: cessionsTable.date,
+      status: cessionsTable.status,
+      created_at: cessionsTable.createdAt,
+      spot_label: spotsTable.label,
+      spot_resource_type: spotsTable.resourceType,
+      user_name: profilesTable.fullName,
+    })
+    .from(cessionsTable)
+    .innerJoin(spotsTable, eq(cessionsTable.spotId, spotsTable.id))
+    .innerJoin(profilesTable, eq(cessionsTable.userId, profilesTable.id))
+    .where(and(...conditions))
+    .orderBy(desc(cessionsTable.createdAt));
 
-  if (error) throw new Error(`Error al obtener cesiones: ${error.message}`);
-
-  return data
+  return rows
     .filter((c) => {
-      if (c.spots === null) return false;
-      if (resourceType && c.spots.resource_type !== resourceType) {
+      if (resourceType && c.spot_resource_type !== resourceType) {
         console.warn(
           "[cessions] getCessionsByDate: fila descartada por resource_type incorrecto",
-          { id: c.id, expected: resourceType, got: c.spots.resource_type }
+          { id: c.id, expected: resourceType, got: c.spot_resource_type }
         );
         return false;
       }
@@ -70,9 +85,9 @@ export async function getCessionsByDate(
         date: c.date,
         status: c.status,
         created_at: c.created_at,
-        spot_label: c.spots!.label,
-        user_name: c.profiles?.full_name ?? "",
-        resource_type: c.spots!.resource_type as ResourceType,
+        spot_label: c.spot_label,
+        user_name: c.user_name ?? "",
+        resource_type: c.spot_resource_type as ResourceType,
       })
     );
 }
@@ -86,35 +101,42 @@ export async function getUserCessions(
   userId: string,
   resourceType?: "parking" | "office"
 ): Promise<CessionWithDetails[]> {
-  const supabase = await createClient();
   const today = toServerDateStr(new Date());
 
-  let query = supabase
-    .from("cessions")
-    .select(
-      "*, spots!cessions_spot_id_fkey(label, resource_type), profiles!cessions_user_id_fkey(full_name)"
-    )
-    .eq("user_id", userId)
-    .neq("status", "cancelled")
-    .gte("date", today)
-    .order("date");
+  const conditions = [
+    eq(cessionsTable.userId, userId),
+    ne(cessionsTable.status, "cancelled"),
+    gte(cessionsTable.date, today),
+  ];
 
   if (resourceType) {
-    query = query.eq("spots.resource_type", resourceType);
+    conditions.push(eq(spotsTable.resourceType, resourceType));
   }
 
-  const { data, error } = await query.returns<CessionJoin[]>();
+  const rows = await db
+    .select({
+      id: cessionsTable.id,
+      spot_id: cessionsTable.spotId,
+      user_id: cessionsTable.userId,
+      date: cessionsTable.date,
+      status: cessionsTable.status,
+      created_at: cessionsTable.createdAt,
+      spot_label: spotsTable.label,
+      spot_resource_type: spotsTable.resourceType,
+      user_name: profilesTable.fullName,
+    })
+    .from(cessionsTable)
+    .innerJoin(spotsTable, eq(cessionsTable.spotId, spotsTable.id))
+    .innerJoin(profilesTable, eq(cessionsTable.userId, profilesTable.id))
+    .where(and(...conditions))
+    .orderBy(asc(cessionsTable.date));
 
-  if (error)
-    throw new Error(`Error al obtener cesiones del usuario: ${error.message}`);
-
-  return data
+  return rows
     .filter((c) => {
-      if (c.spots === null) return false;
-      if (resourceType && c.spots.resource_type !== resourceType) {
+      if (resourceType && c.spot_resource_type !== resourceType) {
         console.warn(
           "[cessions] getUserCessions: fila descartada por resource_type incorrecto",
-          { id: c.id, expected: resourceType, got: c.spots.resource_type }
+          { id: c.id, expected: resourceType, got: c.spot_resource_type }
         );
         return false;
       }
@@ -128,9 +150,9 @@ export async function getUserCessions(
         date: c.date,
         status: c.status,
         created_at: c.created_at,
-        spot_label: c.spots!.label,
-        user_name: c.profiles?.full_name ?? "",
-        resource_type: c.spots!.resource_type as ResourceType,
+        spot_label: c.spot_label,
+        user_name: c.user_name ?? "",
+        resource_type: c.spot_resource_type as ResourceType,
       })
     );
 }

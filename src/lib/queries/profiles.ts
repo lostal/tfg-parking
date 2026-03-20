@@ -4,8 +4,10 @@
  * Server-side functions for reading user profile data.
  */
 
-import { createClient } from "@/lib/supabase/server";
-import type { Profile } from "@/lib/supabase/types";
+import { db } from "@/lib/db";
+import { profiles as profilesTable } from "@/lib/db/schema";
+import type { Profile } from "@/lib/db/types";
+import { eq, asc } from "drizzle-orm";
 
 /**
  * Get user profiles, ordered by full name.
@@ -14,17 +16,11 @@ import type { Profile } from "@/lib/supabase/types";
 export async function getProfiles(
   entityId?: string | null
 ): Promise<Profile[]> {
-  const supabase = await createClient();
+  const rows = await db
+    .select()
+    .from(profilesTable)
+    .where(entityId ? eq(profilesTable.entityId, entityId) : undefined)
+    .orderBy(asc(profilesTable.fullName));
 
-  let query = supabase.from("profiles").select("*").order("full_name");
-
-  if (entityId) {
-    query = query.eq("entity_id", entityId);
-  }
-
-  const { data, error } = await query;
-
-  if (error) throw new Error(`Error fetching profiles: ${error.message}`);
-
-  return data;
+  return rows;
 }

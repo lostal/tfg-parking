@@ -126,7 +126,7 @@ export function EntitySwitcher({
                   className="gap-2 p-2"
                 >
                   <div className="bg-sidebar-primary text-sidebar-primary-foreground flex size-6 items-center justify-center rounded-sm text-xs font-bold">
-                    {entity.short_code.slice(0, 3)}
+                    {entity.shortCode.slice(0, 3)}
                   </div>
                   <span className="flex-1 truncate">{entity.name}</span>
                   {entity.id === activeEntity?.id && (

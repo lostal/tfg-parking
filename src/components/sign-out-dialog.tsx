@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { signOutAction } from "@/lib/supabase/sign-out";
+import { signOutAction } from "@/lib/auth/sign-out";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Loader2 } from "lucide-react";
 
