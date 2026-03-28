@@ -1,0 +1,51 @@
+@startuml cuRegistrarVisitante
+
+skinparam linetype polyline
+hide empty description
+
+state "PARKING" as Parking
+
+Parking -[#green]-> registrarVisitante
+
+state registrarVisitante as "registrarVisitante()" {
+  state " " as IntroduciendoDatos
+  state " " as SeleccionandoPlaza
+  state " " as VisitanteRegistrado
+
+  [*] -[#green]-> IntroduciendoDatos
+  note on link
+    <b>Empleado</b> accede al módulo de visitantes
+  end note
+
+  IntroduciendoDatos -[#green]-> SeleccionandoPlaza
+  note on link
+    <b>Sistema</b> presenta el formulario de registro
+    <b>Empleado</b> introduce los datos del visitante
+    • Nombre, empresa, email
+    • Fecha de la visita
+  end note
+
+  SeleccionandoPlaza -[#green]-> VisitanteRegistrado
+  note on link
+    <b>Sistema</b> muestra plazas de visitante disponibles para la fecha
+    <b>Empleado</b> selecciona una plaza y confirma el registro
+  end note
+
+  VisitanteRegistrado -[#green]-> [*]
+  note on link
+    <b>Sistema</b> crea la reserva de visitante
+    <b>Sistema</b> envía email de confirmación al visitante
+  end note
+}
+
+registrarVisitante -[#green]-> Parking
+note on link
+  visitante registrado
+end note
+
+registrarVisitante -[#blue]-> Parking
+note on link
+  cancelar
+end note
+
+@enduml

@@ -1,0 +1,51 @@
+@startuml cuCederPlaza
+
+skinparam linetype polyline
+hide empty description
+
+state "PARKING" as Parking
+
+Parking -[#green]-> cederPlaza
+
+state cederPlaza as "cederPlaza()" {
+  state " " as VisualizandoPlaza
+  state " " as SeleccionandoFecha
+  state " " as CesionRegistrada
+
+  [*] -[#green]-> VisualizandoPlaza
+  note on link
+    <b>Manager</b> accede a su plaza asignada
+  end note
+
+  VisualizandoPlaza -[#green]-> SeleccionandoFecha
+  note on link
+    <b>Sistema</b> muestra el estado de la plaza asignada
+    • Reservas propias existentes
+    • Cesiones ya registradas
+    <b>Manager</b> solicita ceder la plaza en una fecha
+  end note
+
+  SeleccionandoFecha -[#green]-> CesionRegistrada
+  note on link
+    <b>Manager</b> selecciona la fecha de cesión
+    <b>Sistema</b> valida que no exista ya una reserva o cesión
+  end note
+
+  CesionRegistrada -[#green]-> [*]
+  note on link
+    <b>Sistema</b> registra la cesión en estado //disponible//
+    <b>Sistema</b> notifica a empleados con alertas para esa fecha
+  end note
+}
+
+cederPlaza -[#green]-> Parking
+note on link
+  cesión registrada
+end note
+
+cederPlaza -[#blue]-> Parking
+note on link
+  cancelar
+end note
+
+@enduml

@@ -1,0 +1,40 @@
+@startuml estadosSolicitudAusencia
+
+hide empty description
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam stateBorderThickness 1.5
+skinparam arrowThickness 1.2
+skinparam arrowColor #444444
+skinparam state {
+  BackgroundColor            #fde8cc
+  BorderColor                #c45e0a
+  BackgroundColor<<aprobado>> #d5ecd4
+  BorderColor<<aprobado>>    #2e7d32
+  BackgroundColor<<terminal>> #eeeeee
+  BorderColor<<terminal>>    #888888
+}
+
+title Estados de <b>SolicitudAusencia</b>
+
+state "Aprobada\n(Manager)" as AprobadaManager <<aprobado>>
+state "Aprobada\n(RRHH)"    as AprobadaRRHH   <<aprobado>>
+state "Rechazada"           as Rechazada      <<terminal>>
+state "Cancelada"           as Cancelada      <<terminal>>
+
+[*] --> Pendiente : solicitar ausencia\n(empleado)
+
+Pendiente       --> AprobadaManager : Manager aprueba
+Pendiente       --> Rechazada       : Manager rechaza
+Pendiente       --> Cancelada       : Empleado cancela
+
+AprobadaManager --> AprobadaRRHH   : RRHH valida
+AprobadaManager --> Rechazada      : RRHH rechaza
+AprobadaManager --> Cancelada      : Empleado cancela
+
+AprobadaRRHH    --> [*]
+Rechazada       --> [*]
+Cancelada       --> [*]
+
+@enduml

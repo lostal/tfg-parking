@@ -1,0 +1,50 @@
+@startuml cuReservarPlaza
+
+skinparam linetype polyline
+hide empty description
+
+state "PARKING" as Parking
+
+Parking -[#green]-> reservarPlaza
+
+state reservarPlaza as "reservarPlaza()" {
+  state " " as SeleccionandoFecha
+  state " " as SeleccionandoPlaza
+  state " " as ConfirmandoReserva
+
+  [*] -[#green]-> SeleccionandoFecha
+  note on link
+    <b>Empleado</b> accede al calendario de parking
+  end note
+
+  SeleccionandoFecha -[#green]-> SeleccionandoPlaza
+  note on link
+    <b>Sistema</b> presenta el calendario con disponibilidad por fecha
+    <b>Empleado</b> selecciona una fecha disponible
+  end note
+
+  SeleccionandoPlaza -[#green]-> ConfirmandoReserva
+  note on link
+    <b>Sistema</b> muestra las plazas libres para esa fecha
+    • Plazas estándar disponibles
+    • Cesiones disponibles del día
+    <b>Empleado</b> selecciona una plaza y solicita confirmar
+  end note
+
+  ConfirmandoReserva -[#green]-> [*]
+  note on link
+    <b>Sistema</b> crea la reserva y confirma al empleado
+  end note
+}
+
+reservarPlaza -[#green]-> Parking
+note on link
+  reserva confirmada
+end note
+
+reservarPlaza -[#blue]-> Parking
+note on link
+  cancelar
+end note
+
+@enduml

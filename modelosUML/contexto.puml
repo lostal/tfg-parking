@@ -1,0 +1,80 @@
+@startuml contexto
+
+left to right direction
+skinparam linetype polyline
+hide empty description
+
+state "SIN_AUTENTICAR" as SinAuth
+
+state "PORTAL" as Portal
+
+state "PARKING" as Parking {
+  Parking : reservarPlaza()
+  Parking : cancelarReservaParking()
+  Parking : cederPlaza()
+  Parking : cancelarCesion()
+  Parking : configurarReglaCesion()
+  Parking : registrarVisitante()
+  Parking : cancelarVisitante()
+}
+
+state "OFICINAS" as Oficinas {
+  Oficinas : reservarPuesto()
+  Oficinas : cancelarReservaPuesto()
+}
+
+state "VACACIONES" as Vacaciones {
+  Vacaciones : solicitarAusencia()
+  Vacaciones : cancelarSolicitudAusencia()
+  Vacaciones : aprobarSolicitudAusencia()
+  Vacaciones : rechazarSolicitudAusencia()
+  Vacaciones : validarSolicitudAusencia()
+  Vacaciones : rechazarValidacionAusencia()
+}
+
+state "TABLÓN" as Tablon {
+  Tablon : consultarTablon()
+  Tablon : publicarAnuncio()
+}
+
+state "DIRECTORIO" as Directorio {
+  Directorio : consultarDirectorio()
+}
+
+state "AJUSTES" as Ajustes {
+  Ajustes : editarPerfil()
+  Ajustes : configurarPreferencias()
+  Ajustes : conectarMicrosoft365()
+}
+
+state "ADMINISTRACIÓN" as Admin {
+  Admin : gestionarEntidades()
+  Admin : gestionarPlazas()
+  Admin : gestionarUsuarios()
+  Admin : configurarModulos()
+  Admin : configurarSistema()
+  Admin : consultarAnalytics()
+}
+
+[*]        --> SinAuth
+
+SinAuth    --> Portal      : autenticarse()
+Portal     --> SinAuth     : cerrarSesion()
+
+Portal     --> Parking
+Portal     --> Oficinas
+Portal     --> Vacaciones
+Portal     --> Tablon
+Portal     --> Directorio
+Portal     --> Ajustes
+Portal     --> Admin
+
+Parking    --> Portal
+Oficinas   --> Portal
+Vacaciones --> Portal
+Tablon     --> Portal
+Directorio --> Portal
+Ajustes    --> Portal
+Admin      --> Portal
+
+@enduml

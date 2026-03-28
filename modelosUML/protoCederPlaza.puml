@@ -1,0 +1,19 @@
+@startsalt
+{+
+  <b>Parking · Ceder mi plaza</b>
+  ==
+  Plaza asignada: <b>A-03</b>
+  --
+  {^" Seleccionar fecha de cesión "
+    < | <b>marzo 2026</b> | >
+    . | L  | M  | X  | J  | V
+    . | 2  | 3  | 4  | 5  | 6
+    . | 9  | 10 | 11 | 12 | 13
+    . | <color:blue><b>16</b> | 17 | 18 | 19 | 20
+    . | 23 | 24 | 25 | 26 | 27
+  }
+  Fecha seleccionada: <b>16/03/2026</b>
+  --
+  [ Ceder plaza ] | [ Cancelar ]
+}
+@endsalt

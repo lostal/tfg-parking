@@ -1,0 +1,18 @@
+@startsalt
+{+
+  <b>Parking · Registrar visitante</b>
+  ==
+  {^" Datos del visitante "
+    Nombre    | "                         "
+    Empresa   | "                         "
+    Email     | "                         "
+  }
+  --
+  {^" Detalles de la visita "
+    Fecha     | "DD/MM/AAAA               "
+    Plaza     | ^Seleccionar^A-V1^A-V2^A-V3^
+  }
+  --
+  [ Registrar ] | [ Cancelar ]
+}
+@endsalt

@@ -1,0 +1,144 @@
+@startuml dominioClases
+
+hide circle
+hide empty members
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam classBorderThickness 1.5
+skinparam arrowThickness 1.2
+skinparam arrowColor #444444
+skinparam class {
+  BackgroundColor<<organización>> #dce8f5
+  BorderColor<<organización>>     #2d6a9f
+  BackgroundColor<<espacios>>     #d5ecd4
+  BorderColor<<espacios>>         #2e7d32
+  BackgroundColor<<rrhh>>         #fde8cc
+  BorderColor<<rrhh>>             #c45e0a
+  BackgroundColor<<comunicación>> #f5f0d5
+  BorderColor<<comunicación>>     #9c8c10
+}
+
+' ── Organización ─────────────────────────────────────────────────────────────
+
+class "**Entidad**" as Entidad <<organización>> {
+  nombre
+  codigoCorto
+  activa
+}
+
+class "**Empleado**" as Empleado <<organización>> {
+  nombre
+  email
+  cargo
+  dni
+}
+
+class "**Manager**" as Manager <<organización>> {
+}
+
+class "**RRHH**" as RRHH <<organización>> {
+}
+
+class "**Administrador**" as Administrador <<organización>> {
+}
+
+' ── Espacios ─────────────────────────────────────────────────────────────────
+
+class "**Plaza**" as Plaza <<espacios>> {
+  etiqueta
+  recurso
+  tipo
+  activa
+}
+
+class "**Reserva**" as Reserva <<espacios>> {
+  fecha
+  horaInicio
+  horaFin
+  estado
+}
+
+class "**Cesión**" as Cesion <<espacios>> {
+  fecha
+  estado
+}
+
+class "**ReglaAutoCesión**" as ReglaAutoCesion <<espacios>> {
+  recurso
+  tipo
+  díaSemana
+}
+
+class "**ReservaVisitante**" as ReservaVisitante <<espacios>> {
+  fecha
+  nombreVisitante
+  empresaVisitante
+  emailVisitante
+  estado
+}
+
+' ── RRHH ─────────────────────────────────────────────────────────────────────
+
+class "**SolicitudAusencia**" as SolicitudAusencia <<rrhh>> {
+  tipo
+  fechaInicio
+  fechaFin
+  diasLaborables
+  estado
+}
+
+' ── Comunicación ─────────────────────────────────────────────────────────────
+
+class "**Anuncio**" as Anuncio <<comunicación>> {
+  título
+  cuerpo
+  publicadoEn
+  expiraEn
+}
+
+class "**CalendarioFestivos**" as CalendarioFestivos <<comunicación>> {
+  nombre
+  comunidad
+  año
+}
+
+class "**Festivo**" as Festivo <<comunicación>> {
+  fecha
+  nombre
+  esOpcional
+}
+
+' ── Herencia ─────────────────────────────────────────────────────────────────
+
+Empleado    <|-- Manager
+Manager     <|-- RRHH
+RRHH        <|-- Administrador
+
+' ── Asociaciones ─────────────────────────────────────────────────────────────
+
+Entidad  "1"    --  "N"   Empleado         : pertenece a >
+Entidad  "1"    --  "N"   Plaza            : dispone de >
+
+Empleado "0..1" --  "0..N" Plaza           : < plaza asignada
+
+Empleado "1"    --  "N"   Reserva          : realiza >
+Plaza    "1"    --  "N"   Reserva          : es objeto de >
+
+Manager  "1"    --  "N"   Cesion           : cede >
+Manager  "1"    --  "N"   ReglaAutoCesion  : configura >
+Cesion   "1"    --  "0..1" Reserva         : < reserva de cesión
+
+Empleado "1"    --  "N"   ReservaVisitante : gestiona >
+Plaza    "1"    --  "N"   ReservaVisitante : es objeto de >
+
+Empleado "1"    --  "N"   SolicitudAusencia : solicita >
+Manager  "1"    --  "N"   SolicitudAusencia : aprueba >
+RRHH     "1"    --  "N"   SolicitudAusencia : valida >
+
+Entidad  "1"    --  "N"   Anuncio           : publica >
+Entidad  "N"    --  "N"   CalendarioFestivos : sigue >
+CalendarioFestivos "1" *-- "N" Festivo
+
+@enduml
