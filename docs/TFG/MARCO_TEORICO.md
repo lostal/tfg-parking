@@ -184,7 +184,7 @@ core con puntos de extensión donde los módulos se conectan de forma independie
 funcionalidades activables o desactivables desde el panel de administración sin modificar código
 base.
 
-### 2.2.6. Stack tecnológico: Next.js, Supabase y Row Level Security
+### 2.2.6. Stack tecnológico: Next.js, PostgreSQL y Drizzle ORM
 
 Next.js, el meta-framework React más adoptado según el State of JavaScript 2024,
 introduce con su App Router (estable desde la versión 13.4) un sistema que unifica frontend y
@@ -195,14 +195,14 @@ separada para mutaciones. Para un proyecto de equipo de desarrollo pequeño, est
 reduce drásticamente la complejidad: un único lenguaje (TypeScript) para todo el stack y un
 único despliegue.
 
-Supabase, la plataforma Backend-as-a-Service (BaaS) elegida para el proyecto, se
-posiciona como alternativa open-source a Firebase (Google). Su principal diferenciador es el uso
-de PostgreSQL como motor de base de datos junto con Row Level Security (RLS) como
-mecanismo de autorización nativo. El RLS permite restringir a nivel de fila qué datos puede ver,
-insertar o modificar cada usuario autenticado, funcionando como un filtro implícito aplicado
-antes de cualquier consulta e independientemente de la capa de aplicación. Su ventaja
-fundamental es la defensa en profundidad: añade una capa de seguridad extra directamente en
-la base de datos.
+La capa de persistencia se apoya en PostgreSQL autoalojado mediante Docker Compose, lo
+que elimina la dependencia de proveedores externos y permite gestionar el ciclo de vida de la
+base de datos como parte del propio proyecto. El acceso a los datos se realiza a través de
+Drizzle ORM, un ORM de TypeScript con inferencia de tipos estricta: el esquema de la base de
+datos es la única fuente de verdad y los tipos de la aplicación se derivan directamente de él sin
+necesidad de generación de código adicional. La autorización se gestiona de forma explícita en
+la capa de aplicación mediante guardas de rol, con Auth.js v5 como solución de autenticación
+y DrizzleAdapter como puente entre la sesión y la base de datos.
 
 ## 2.3. Justificación de la propuesta
 
@@ -228,18 +228,18 @@ La integración nativa con Microsoft 365 es una gran ventaja ya que GRUPOSIETE
 utiliza el ecosistema de Microsoft como columna vertebral de su actividad diaria. Una
 herramienta que no esté integrada con este ecosistema generará en los empleados una negativa a
 la hora de adoptarlo en su flujo de trabajo normal por lo que terminarían ignorándolo (como
-ocurre ahora). La integración con Microsoft Entra ID como proveedor de identidad único (fácil
-de integrar con Supabase), con Microsoft Graph API para sincronización de calendarios y con
-Teams para notificaciones, es por tanto una condición necesaria y no una ventaja diferencial.
+ocurre ahora). La integración con Microsoft Entra ID como proveedor de identidad único, con Microsoft
+Graph API para sincronización de calendarios y con Teams para notificaciones, es por tanto una
+condición necesaria y no una ventaja diferencial.
 
 Por todo lo anterior, el desarrollo a medida de un portal del empleado modular,
-construido sobre Next.js, TypeScript y Supabase, integrado nativamente en Microsoft 365, se
-presenta como la única alternativa que responde simultáneamente a la totalidad de los requisitos
+construido sobre Next.js, TypeScript y PostgreSQL autoalojado, integrado nativamente en
+Microsoft 365, se presenta como la única alternativa que responde simultáneamente a la totalidad de los requisitos
 de GRUPOSIETE: cobertura funcional completa para el MVP, integración real con M365,
 arquitectura extensible a módulos futuros y coste operativo cero en licencias.
 
 Hipótesis: la implementación de un portal del empleado modular basado en Next.js,
-Supabase y Microsoft 365 Graph resolverá la fragmentación entre sedes de GRUPOSIETE,
+PostgreSQL y Microsoft 365 Graph resolverá la fragmentación entre sedes de GRUPOSIETE,
 optimizando el uso de espacios corporativos sin inversiones adicionales en licencias de software
 o cambios de sede, y proporcionando diversos módulos de panel del empleado y una base
 arquitectónica extensible a módulos futuros más complejos de gestión avanzada de RRHH y
@@ -260,7 +260,7 @@ extensible a módulos futuros de gestión de recursos humanos.
   información con personas clave de GRUPOSIETE, elaborar el modelo del dominio y definir y
   priorizar los casos de uso que delimitan el alcance del MVP (Capítulo 3).
 - **OS2:** Realizar el análisis y diseño del sistema: definir la arquitectura (Next.js con App
-  Router, Supabase como backend, Microsoft Entra ID como proveedor de identidad), el modelo
+  Router, PostgreSQL autoalojado con Drizzle ORM, Microsoft Entra ID como proveedor de identidad), el modelo
   lógico y físico de datos en PostgreSQL, y los diagramas de despliegue y paquetes (Capítulo 4).
 - **OS3:** Implementar y validar el MVP funcional con pruebas unitarias (Vitest) y pruebas
   end-to-end (Playwright), desplegando en Vercel mediante pipeline CI/CD con GitHub Actions
@@ -298,8 +298,8 @@ mismo autor, con supervisión iterativa semanal por parte de la tutora académic
 4. **Cuarta iteración - Evaluación y conclusiones (Capítulo 6):** se evalúa la solución
    mediante métricas de cobertura de tests, rendimiento (Core Web Vitals) y usabilidad (SUS), se
    verifica la trazabilidad entre requisitos y entrega, y se propone un roadmap de evolución que
-   contemple módulos adicionales como gestión de vacaciones, integración con Personio para
-   nóminas y gestión de visitas externas.
+   contemple módulos adicionales como la integración con Personio para nóminas y la gestión
+   avanzada de documentación laboral.
 
 Las herramientas de soporte empleadas a lo largo del proyecto son: GitHub para control
 de versiones y trazabilidad de commits, el repositorio de código abierto

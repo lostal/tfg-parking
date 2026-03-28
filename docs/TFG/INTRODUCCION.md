@@ -20,8 +20,8 @@ utiliza en promedio. Los viernes, esto cae un 70%. Esto muestra que es important
 espacios de forma dinámica en las empresas actuales.
 
 Este trabajo de fin de grado busca implementar un portal del empleado para
-GRUPOSIETE. El portal está construido con Next.js, TypeScript y Supabase. El portal cubre
+GRUPOSIETE. El portal está construido con Next.js, TypeScript y PostgreSQL autoalojado. El portal cubre
 varios módulos principales: gestión de parking con visitantes, reserva de puestos de oficina y
-rescata módulos sin usar del antiguo panel de empleado (a3innuva) como un directorio de
-usuarios y reserva de vacaciones. La arquitectura del portal se puede extender a módulos futuros
-más enfocados a la gestión de la contabilidad.
+incorpora un directorio de empleados, gestión de vacaciones con flujo de aprobación y un
+tablón de anuncios interno. La arquitectura modular permite incorporar en el futuro módulos
+adicionales de gestión de RRHH como nóminas y documentación laboral.

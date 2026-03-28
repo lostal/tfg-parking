@@ -40,8 +40,8 @@ de todo el proyecto.
 El diagrama organiza las entidades en cuatro áreas conceptuales: organización, espacios, recursos
 humanos y comunicación.
 
-![Diagrama de clases del dominio](../../images/modelosUML/dominioClases.svg)
-<sub>[Código fuente](../../modelosUML/dominioClases.puml)</sub>
+![Diagrama de clases del dominio](../../modelosUML/svg/dominioClases.svg)
+<sub>[Código fuente](../../modelosUML/puml/dominioClases.puml)</sub>
 
 El área de **organización** refleja la jerarquía de roles mediante herencia: `Empleado` es el rol
 base; `Manager` lo extiende añadiendo la capacidad de tener una plaza asignada y de ceder; `RRHH`
@@ -72,24 +72,24 @@ Se documentan los ciclos de vida de las tres entidades con comportamiento dinám
 y solo puede transitar a cancelada. La restricción de unicidad (una plaza, un día, una reserva
 confirmada) se garantiza a nivel de base de datos mediante índices parciales.
 
-![Estados de Reserva](../../images/modelosUML/estadosReserva.svg)
-<sub>[Código fuente](../../modelosUML/estadosReserva.puml)</sub>
+![Estados de Reserva](../../modelosUML/svg/estadosReserva.svg)
+<sub>[Código fuente](../../modelosUML/puml/estadosReserva.puml)</sub>
 
 **Cesión.** Nace en estado disponible cuando el propietario la cede. Transita a reservada en
 cuanto un empleado genera una reserva sobre ella, o a cancelada si el propietario la retira antes
 de que sea reservada. Una cesión reservada también puede cancelarse, lo que libera la reserva
 asociada.
 
-![Estados de Cesión](../../images/modelosUML/estadosCesion.svg)
-<sub>[Código fuente](../../modelosUML/estadosCesion.puml)</sub>
+![Estados de Cesión](../../modelosUML/svg/estadosCesion.svg)
+<sub>[Código fuente](../../modelosUML/puml/estadosCesion.puml)</sub>
 
 **SolicitudAusencia.** Es el ciclo más complejo del sistema. Una solicitud nace como pendiente y
 requiere aprobación secuencial: primero el manager directo del empleado y después el equipo de
 RRHH. En cualquier punto anterior a la aprobación final el empleado puede cancelarla; el manager
 o RRHH pueden rechazarla en su respectivo nivel.
 
-![Estados de SolicitudAusencia](../../images/modelosUML/estadosSolicitudAusencia.svg)
-<sub>[Código fuente](../../modelosUML/estadosSolicitudAusencia.puml)</sub>
+![Estados de SolicitudAusencia](../../modelosUML/svg/estadosSolicitudAusencia.svg)
+<sub>[Código fuente](../../modelosUML/puml/estadosSolicitudAusencia.puml)</sub>
 
 ### 3.2.3. Glosario
 
@@ -137,8 +137,8 @@ ejecutables dentro de cada módulo se enumeran como comportamientos internos de 
 correspondiente, de forma que el diagrama sirve de índice navegable de toda la funcionalidad del
 sistema.
 
-![Diagrama de contexto](../../images/modelosUML/contexto.svg)
-<sub>[Código fuente](../../modelosUML/contexto.puml)</sub>
+![Diagrama de contexto](../../modelosUML/svg/contexto.svg)
+<sub>[Código fuente](../../modelosUML/puml/contexto.puml)</sub>
 
 ### 3.3.2. Actores del sistema
 
@@ -158,8 +158,8 @@ El siguiente diagrama presenta la totalidad de los casos de uso del sistema, agr
 y vinculados a los actores que los inician. La generalización entre actores refleja la herencia de
 capacidades: un Manager puede realizar todo lo que hace un Empleado, y así sucesivamente.
 
-![Diagrama de casos de uso](../../images/modelosUML/casosUso.svg)
-<sub>[Código fuente](../../modelosUML/casosUso.puml)</sub>
+![Diagrama de casos de uso](../../modelosUML/svg/casosUso.svg)
+<sub>[Código fuente](../../modelosUML/puml/casosUso.puml)</sub>
 
 La siguiente tabla recoge la priorización de los casos de uso conforme al método MoSCoW,
 estableciendo el alcance del MVP documentado en este trabajo.
@@ -207,32 +207,32 @@ disponible y elige entre las plazas libres para esa fecha, incluyendo las cesion
 sistema valida la unicidad (un empleado, una plaza, un día) y confirma la reserva. El flujo
 alternativo en azul recoge la cancelación en cualquier punto del proceso.
 
-![Detalle reservarPlaza()](../../images/modelosUML/cuReservarPlaza.svg)
-<sub>[Código fuente](../../modelosUML/cuReservarPlaza.puml)</sub>
+![Detalle reservarPlaza()](../../modelosUML/svg/cuReservarPlaza.svg)
+<sub>[Código fuente](../../modelosUML/puml/cuReservarPlaza.puml)</sub>
 
 **`cederPlaza()`** — El manager accede a su plaza asignada, selecciona la fecha en la que no la
 utilizará y confirma la cesión. El sistema registra la cesión en estado disponible y notifica a los
 empleados que tenían una alerta activa para esa fecha. Es el caso de uso que habilita el modelo de
 reutilización de plazas asignadas.
 
-![Detalle cederPlaza()](../../images/modelosUML/cuCederPlaza.svg)
-<sub>[Código fuente](../../modelosUML/cuCederPlaza.puml)</sub>
+![Detalle cederPlaza()](../../modelosUML/svg/cuCederPlaza.svg)
+<sub>[Código fuente](../../modelosUML/puml/cuCederPlaza.puml)</sub>
 
 **`aprobarSolicitudAusencia()`** — El manager accede a la bandeja de solicitudes pendientes de
 su equipo, revisa el detalle de la solicitud seleccionada y toma una decisión con nota opcional. Si
 aprueba, el sistema actualiza el estado a `aprobada_manager` y notifica al equipo de RRHH para la
 validación en segundo nivel.
 
-![Detalle aprobarSolicitudAusencia()](../../images/modelosUML/cuAprobarSolicitudAusencia.svg)
-<sub>[Código fuente](../../modelosUML/cuAprobarSolicitudAusencia.puml)</sub>
+![Detalle aprobarSolicitudAusencia()](../../modelosUML/svg/cuAprobarSolicitudAusencia.svg)
+<sub>[Código fuente](../../modelosUML/puml/cuAprobarSolicitudAusencia.puml)</sub>
 
 **`registrarVisitante()`** — El empleado introduce los datos del visitante (nombre, empresa,
 email) y la fecha de la visita, y selecciona una plaza de visitante disponible. El sistema crea la
 reserva y envía automáticamente un correo de confirmación al visitante. Este es el único caso de
 uso en el que el sistema interactúa con un actor externo pasivo sin acceso al portal.
 
-![Detalle registrarVisitante()](../../images/modelosUML/cuRegistrarVisitante.svg)
-<sub>[Código fuente](../../modelosUML/cuRegistrarVisitante.puml)</sub>
+![Detalle registrarVisitante()](../../modelosUML/svg/cuRegistrarVisitante.svg)
+<sub>[Código fuente](../../modelosUML/puml/cuRegistrarVisitante.puml)</sub>
 
 ### 3.3.5. Prototipos de interfaz
 
@@ -244,24 +244,24 @@ pantalla y el flujo de interacción, no en el diseño visual final.
 por día en la columna izquierda y lista de plazas disponibles para la fecha seleccionada en la
 derecha, con acción de confirmación.
 
-![Prototipo reservarPlaza()](../../images/modelosUML/protoReservarPlaza.svg)
-<sub>[Código fuente](../../modelosUML/protoReservarPlaza.puml)</sub>
+![Prototipo reservarPlaza()](../../modelosUML/svg/protoReservarPlaza.svg)
+<sub>[Código fuente](../../modelosUML/puml/protoReservarPlaza.puml)</sub>
 
 **Ceder plaza** — Vista centrada en la plaza asignada del manager, con selector de fecha y acción
 de cesión directa.
 
-![Prototipo cederPlaza()](../../images/modelosUML/protoCederPlaza.svg)
-<sub>[Código fuente](../../modelosUML/protoCederPlaza.puml)</sub>
+![Prototipo cederPlaza()](../../modelosUML/svg/protoCederPlaza.svg)
+<sub>[Código fuente](../../modelosUML/puml/protoCederPlaza.puml)</sub>
 
 **Aprobar solicitud de ausencia** — Vista de dos zonas: tabla de solicitudes pendientes del
 equipo en la parte superior y panel de detalle con acción de aprobación o rechazo con nota en la
 parte inferior.
 
-![Prototipo aprobarSolicitudAusencia()](../../images/modelosUML/protoAprobarSolicitudAusencia.svg)
-<sub>[Código fuente](../../modelosUML/protoAprobarSolicitudAusencia.puml)</sub>
+![Prototipo aprobarSolicitudAusencia()](../../modelosUML/svg/protoAprobarSolicitudAusencia.svg)
+<sub>[Código fuente](../../modelosUML/puml/protoAprobarSolicitudAusencia.puml)</sub>
 
 **Registrar visitante** — Formulario estructurado en dos bloques: datos del visitante y detalles
 de la visita (fecha y selección de plaza), con acción de registro y envío automático de confirmación.
 
-![Prototipo registrarVisitante()](../../images/modelosUML/protoRegistrarVisitante.svg)
-<sub>[Código fuente](../../modelosUML/protoRegistrarVisitante.puml)</sub>
+![Prototipo registrarVisitante()](../../modelosUML/svg/protoRegistrarVisitante.svg)
+<sub>[Código fuente](../../modelosUML/puml/protoRegistrarVisitante.puml)</sub>

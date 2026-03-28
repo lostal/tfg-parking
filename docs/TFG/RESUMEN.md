@@ -7,10 +7,9 @@ previamente existente en los flujos de trabajo y coordinación entre sedes. El p
 actual en a3innuva tiene muchos fallos y solo lo usan para nóminas y burocracia.
 
 Se propone añadir módulos clave como gestión de plazas de parking con visitantes y plazas de
-oficina para agilizar el trabajo híbrido y evitar cambiar a oficinas más grandes. Los módulos
-iniciales son parking, oficinas y directorio de usuarios ya en MVP, extensibles a nóminas
-integrable con APIs como Personio, vacaciones y tablón. El portal del empleado modular usa
-Next.js, TypeScript y Supabase, integrado en Microsoft 365. Este trabajo analiza la situación,
+oficina para agilizar el trabajo híbrido y evitar cambiar a oficinas más grandes. Los módulos del MVP son parking con visitantes, oficinas, vacaciones y tablón de anuncios,
+extensibles en el futuro a la gestión de nóminas y documentación laboral. El portal del empleado modular usa
+Next.js, TypeScript y PostgreSQL autoalojado, integrado en Microsoft 365. Este trabajo analiza la situación,
 diseña e implementa el MVP, lo evalúa con pruebas y métricas, y propone mejoras con roadmap
 de evolución.
 
@@ -26,9 +25,7 @@ offices. Main issue is workflow fragmentation between sites. Current a3innuva em
 is faulty, used only for payroll and admin.
 
 Proposal adds parking with visitors and office desks modules to enable hybrid work without
-office expansion. Initial modules: parking, offices, user directory in MVP, extensible to payroll
-via Personio API, vacations, bulletin. Modular employee portal built with Next.js, TypeScript,
-Supabase, integrated in Microsoft 365. Work analyzes situation, designs/implements MVP,
+office expansion. Initial MVP modules: parking with visitors, offices, vacations and bulletin board, extensible to payroll and HR document management in future iterations. Modular employee portal built with Next.js, TypeScript and self-hosted PostgreSQL, integrated in Microsoft 365. Work analyzes situation, designs/implements MVP,
 evaluates with tests/metrics, proposes improvements and evolution roadmap.
 
 **Keywords:** Employee portal, multi-site space management, M365 integration, modular
