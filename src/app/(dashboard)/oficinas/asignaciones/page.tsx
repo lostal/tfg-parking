@@ -21,7 +21,7 @@ export default async function OficinaAsignacionesPage() {
   ]);
 
   return (
-    <SpotsProvider defaultResourceType="office">
+    <SpotsProvider defaultResourceType="office" resourceTypeLocked>
       <Header fixed>
         <Search />
         <div className="ms-auto flex items-center space-x-4">

@@ -14,6 +14,8 @@ type SpotsContextType = {
   /** Tipo de recurso activo en la pestaña actual — determina el default en "Nueva plaza" */
   activeResourceType: "parking" | "office";
   setActiveResourceType: (rt: "parking" | "office") => void;
+  /** Si true, el selector de recurso no se muestra en los dialogs */
+  resourceTypeLocked: boolean;
 };
 
 const SpotsContext = React.createContext<SpotsContextType | null>(null);
@@ -21,9 +23,11 @@ const SpotsContext = React.createContext<SpotsContextType | null>(null);
 export function SpotsProvider({
   children,
   defaultResourceType = "parking",
+  resourceTypeLocked = false,
 }: {
   children: React.ReactNode;
   defaultResourceType?: "parking" | "office";
+  resourceTypeLocked?: boolean;
 }) {
   const [open, setOpen] = useDialogState<SpotsDialogType>(null);
   const [currentRow, setCurrentRow] = useState<Spot | null>(null);
@@ -40,6 +44,7 @@ export function SpotsProvider({
         setCurrentRow,
         activeResourceType,
         setActiveResourceType,
+        resourceTypeLocked,
       }}
     >
       {children}

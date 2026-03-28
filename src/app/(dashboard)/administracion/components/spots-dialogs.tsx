@@ -58,7 +58,7 @@ const addSchema = z.object({
 type AddForm = z.infer<typeof addSchema>;
 
 function AddSpotDialog() {
-  const { open, setOpen, activeResourceType } = useSpots();
+  const { open, setOpen, activeResourceType, resourceTypeLocked } = useSpots();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -135,24 +135,30 @@ function AddSpotDialog() {
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="resource_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Recurso</FormLabel>
-                    <FormControl>
-                      <SelectDropdown
-                        defaultValue={field.value}
-                        onValueChange={field.onChange}
-                        items={resourceTypeItems}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div
+              className={
+                resourceTypeLocked ? undefined : "grid grid-cols-2 gap-3"
+              }
+            >
+              {!resourceTypeLocked && (
+                <FormField
+                  control={form.control}
+                  name="resource_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Recurso</FormLabel>
+                      <FormControl>
+                        <SelectDropdown
+                          defaultValue={field.value}
+                          onValueChange={field.onChange}
+                          items={resourceTypeItems}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <FormField
                 control={form.control}
                 name="type"
@@ -201,7 +207,8 @@ const ACTIVE_SENTINEL = "__active__";
 const INACTIVE_SENTINEL = "__inactive__";
 
 function EditSpotDialog() {
-  const { open, setOpen, currentRow, setCurrentRow } = useSpots();
+  const { open, setOpen, currentRow, setCurrentRow, resourceTypeLocked } =
+    useSpots();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -265,25 +272,31 @@ function EditSpotDialog() {
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="resource_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Recurso</FormLabel>
-                    <FormControl>
-                      <SelectDropdown
-                        defaultValue={field.value}
-                        onValueChange={field.onChange}
-                        items={resourceTypeItems}
-                        isControlled
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div
+              className={
+                resourceTypeLocked ? undefined : "grid grid-cols-2 gap-3"
+              }
+            >
+              {!resourceTypeLocked && (
+                <FormField
+                  control={form.control}
+                  name="resource_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Recurso</FormLabel>
+                      <FormControl>
+                        <SelectDropdown
+                          defaultValue={field.value}
+                          onValueChange={field.onChange}
+                          items={resourceTypeItems}
+                          isControlled
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <FormField
                 control={form.control}
                 name="type"

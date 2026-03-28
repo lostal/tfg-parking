@@ -21,7 +21,7 @@ export default async function ParkingAsignacionesPage() {
   ]);
 
   return (
-    <SpotsProvider defaultResourceType="parking">
+    <SpotsProvider defaultResourceType="parking" resourceTypeLocked>
       <Header fixed>
         <Search />
         <div className="ms-auto flex items-center space-x-4">
