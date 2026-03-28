@@ -23,6 +23,7 @@ import {
   deleteUserSchema,
 } from "@/lib/validations";
 import { getActiveEntityId } from "@/lib/queries/active-entity";
+import { isUniqueViolation } from "@/lib/db/helpers";
 import { eq, and, ne } from "drizzle-orm";
 
 // ─── Spot CRUD ───────────────────────────────────────────────
@@ -58,11 +59,7 @@ export const createSpot = actionClient
       return { id: spot.id };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (
-        msg.includes("unique") ||
-        msg.includes("duplicate") ||
-        msg.includes("23505")
-      ) {
+      if (isUniqueViolation(err)) {
         throw new Error(
           `Ya existe una plaza con la etiqueta "${parsedInput.label}"`
         );
@@ -122,11 +119,7 @@ export const updateSpot = actionClient
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (
-        msg.includes("unique") ||
-        msg.includes("duplicate") ||
-        msg.includes("23505")
-      ) {
+      if (isUniqueViolation(err)) {
         throw new Error("Ya existe una plaza con esa etiqueta");
       }
       console.error("[admin] updateSpot DB error:", msg);

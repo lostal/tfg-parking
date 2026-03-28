@@ -19,6 +19,7 @@ import {
   getUserCessions,
   type CessionWithDetails,
 } from "@/lib/queries/cessions";
+import { isUniqueViolation } from "@/lib/db/helpers";
 import { eq, and } from "drizzle-orm";
 
 type ResourceType = "parking" | "office";
@@ -100,11 +101,7 @@ export function buildCessionActions(cfg: CessionConfig) {
         return { count: inserted.length };
       } catch (err) {
         const msg = err instanceof Error ? err.message : "";
-        if (
-          msg.includes("23505") ||
-          msg.includes("unique") ||
-          msg.includes("duplicate")
-        ) {
+        if (isUniqueViolation(err)) {
           throw new Error(
             `Ya existe una cesión para est${cfg.noun === "plaza" ? "a" : "e"} ${cfg.noun} en uno de los días seleccionados`
           );

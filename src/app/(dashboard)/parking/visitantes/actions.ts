@@ -14,6 +14,7 @@ import { es } from "date-fns/locale";
 
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
 import { db } from "@/lib/db";
+import { isUniqueViolation } from "@/lib/db/helpers";
 import { spots, visitorReservations } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -217,11 +218,7 @@ export const createVisitorReservation = actionClient
       reservationId = inserted.id;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (
-        msg.includes("23505") ||
-        msg.includes("unique") ||
-        msg.includes("duplicate")
-      ) {
+      if (isUniqueViolation(err)) {
         throw new Error(
           "Esta plaza ya tiene una reserva de visitante para este día"
         );
@@ -333,11 +330,7 @@ export const updateVisitorReservation = actionClient
         .returning({ id: visitorReservations.id });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (
-        msg.includes("23505") ||
-        msg.includes("unique") ||
-        msg.includes("duplicate")
-      ) {
+      if (isUniqueViolation(err)) {
         throw new Error(
           "Esta plaza ya tiene una reserva de visitante para ese día"
         );

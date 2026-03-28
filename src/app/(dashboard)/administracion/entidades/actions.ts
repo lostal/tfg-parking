@@ -19,6 +19,7 @@ import {
   deleteEntitySchema,
   toggleEntityModuleSchema,
 } from "@/lib/validations";
+import { isUniqueViolation } from "@/lib/db/helpers";
 
 // ─── Entity CRUD ──────────────────────────────────────────────
 
@@ -45,11 +46,7 @@ export const createEntity = actionClient
       return { id: entity.id };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (
-        msg.includes("unique") ||
-        msg.includes("duplicate") ||
-        msg.includes("23505")
-      ) {
+      if (isUniqueViolation(err)) {
         throw new Error("Ya existe una sede con ese nombre o código");
       }
       console.error("[entities] createEntity DB error:", msg);
@@ -77,11 +74,7 @@ export const updateEntity = actionClient
       await db.update(entities).set(updateValues).where(eq(entities.id, id));
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (
-        msg.includes("unique") ||
-        msg.includes("duplicate") ||
-        msg.includes("23505")
-      ) {
+      if (isUniqueViolation(err)) {
         throw new Error("Ya existe una sede con ese nombre o código");
       }
       console.error("[entities] updateEntity DB error:", msg);

@@ -10,6 +10,7 @@
 import { revalidatePath } from "next/cache";
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
 import { db } from "@/lib/db";
+import { isUniqueViolation, isExclusionViolation } from "@/lib/db/helpers";
 import { spots, reservations } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth/helpers";
 import {
@@ -228,14 +229,8 @@ export const createOfficeReservation = actionClient
       return { id: inserted.id };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      // Handle exclusion constraint violation (solapamiento de franjas)
-      if (
-        msg.includes("23P01") ||
-        msg.includes("23505") ||
-        msg.includes("reservations_no_overlap") ||
-        msg.includes("unique") ||
-        msg.includes("duplicate")
-      ) {
+      // Handle unique and exclusion constraint violations (solapamiento de franjas)
+      if (isUniqueViolation(err) || isExclusionViolation(err)) {
         throw new Error(
           "Esta franja horaria ya está reservada para este puesto"
         );

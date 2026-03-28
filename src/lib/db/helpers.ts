@@ -46,6 +46,29 @@ function isValidChannel(
   return ["teams", "email", "both"].includes(channel);
 }
 
+// ─── Error Helpers ───────────────────────────────────────────
+
+function isPgCode(err: unknown, code: string): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code: unknown }).code === code
+  );
+}
+
+/** Violación de restricción UNIQUE de PostgreSQL (código 23505). */
+export function isUniqueViolation(err: unknown): boolean {
+  return isPgCode(err, "23505");
+}
+
+/** Violación de restricción EXCLUSION de PostgreSQL (código 23P01). */
+export function isExclusionViolation(err: unknown): boolean {
+  return isPgCode(err, "23P01");
+}
+
+// ─── Preference Helpers ──────────────────────────────────────
+
 /**
  * Validates and converts database user preferences to application types.
  * Provides safe defaults for nullable fields.

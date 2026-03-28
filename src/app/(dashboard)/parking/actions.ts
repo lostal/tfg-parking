@@ -10,6 +10,7 @@
 import { revalidatePath } from "next/cache";
 import { actionClient, type ActionResult, success, error } from "@/lib/actions";
 import { db } from "@/lib/db";
+import { isUniqueViolation } from "@/lib/db/helpers";
 import {
   spots,
   reservations,
@@ -247,11 +248,7 @@ export const createReservation = actionClient
       return { id: inserted.id };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (
-        msg.includes("23505") ||
-        msg.includes("unique") ||
-        msg.includes("duplicate")
-      ) {
+      if (isUniqueViolation(err)) {
         // Check if it's a user duplicate
         const [userDuplicate] = await db
           .select({ id: reservations.id })
