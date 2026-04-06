@@ -11,6 +11,10 @@
 
 import { requireAuth } from "@/lib/auth/helpers";
 import { getEffectiveEntityId } from "@/lib/queries/active-entity";
+import { Header } from "@/components/layout";
+import { Search } from "@/components/search";
+import { ThemeSwitch } from "@/components/layout/theme-switch";
+import { ProfileDropdown } from "@/components/profile-dropdown";
 import { VisitantesClient } from "./_components/visitantes-client";
 
 export default async function VisitantesPage() {
@@ -18,10 +22,19 @@ export default async function VisitantesPage() {
   const entityId = await getEffectiveEntityId();
 
   return (
-    <VisitantesClient
-      key={entityId ?? "global"}
-      currentUserId={user.id}
-      currentUserRole={user.profile?.role === "admin" ? "admin" : "employee"}
-    />
+    <>
+      <Header fixed>
+        <Search />
+        <div className="ms-auto flex items-center space-x-4">
+          <ThemeSwitch />
+          <ProfileDropdown />
+        </div>
+      </Header>
+      <VisitantesClient
+        key={entityId ?? "global"}
+        currentUserId={user.id}
+        currentUserRole={user.profile?.role === "admin" ? "admin" : "employee"}
+      />
+    </>
   );
 }

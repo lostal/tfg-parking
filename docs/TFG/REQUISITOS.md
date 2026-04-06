@@ -31,8 +31,8 @@ dos niveles (manager y RRHH) para respetar la estructura organizativa actual de 
 ## 3.2. Modelo del dominio
 
 El modelo del dominio construye una abstracción de la realidad de GRUPOSIETE independiente
-de cualquier decisión de implementación. Sus artefactos —diagrama de clases, diagramas de
-estados y glosario— constituyen el vocabulario compartido entre cliente y desarrollador a lo largo
+de cualquier decisión de implementación. Sus artefactos (diagrama de clases, diagramas de
+estados y glosario) constituyen el vocabulario compartido entre cliente y desarrollador a lo largo
 de todo el proyecto.
 
 ### 3.2.1. Diagrama de clases del dominio

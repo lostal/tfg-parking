@@ -3,10 +3,7 @@
 import * as React from "react";
 import { toast } from "sonner";
 
-import { Header, Main } from "@/components/layout";
-import { Search } from "@/components/search";
-import { ThemeSwitch } from "@/components/layout/theme-switch";
-import { ProfileDropdown } from "@/components/profile-dropdown";
+import { Main } from "@/components/layout";
 
 import { getVisitorReservationsAction } from "../actions";
 import type { VisitorReservationWithDetails } from "@/lib/queries/visitor-reservations";
@@ -53,14 +50,6 @@ export function VisitantesClient({
       currentUserId={currentUserId}
       currentUserRole={currentUserRole}
     >
-      <Header fixed>
-        <Search />
-        <div className="ms-auto flex items-center space-x-4">
-          <ThemeSwitch />
-          <ProfileDropdown />
-        </div>
-      </Header>
-
       <Main className="flex flex-1 flex-col gap-4 sm:gap-6">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
