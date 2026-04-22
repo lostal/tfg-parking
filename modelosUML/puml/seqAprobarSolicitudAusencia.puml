@@ -1,0 +1,60 @@
+@startuml seqAprobarSolicitudAusencia
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam sequenceArrowThickness 1.2
+skinparam sequenceArrowColor #444444
+skinparam participantBorderThickness 1.5
+skinparam backgroundColor #FFFFFF
+
+title Secuencia: aprobarSolicitudAusencia()
+
+actor "Manager / RRHH\n(navegador)" as U
+participant "RSC Page\n/vacaciones/gestionar" as Page
+participant "LeaveRequestTable\n(Client Component)" as CC
+participant "approveLeaveRequest()\nServer Action" as SA
+participant "getCurrentUser()\nauth/helpers" as Auth
+participant "Drizzle ORM\n(db)" as DB
+database "PostgreSQL" as PG
+
+U -> Page : GET /vacaciones/gestionar
+Page -> DB : getLeaveRequestsForManager(managerId)
+DB -> PG : SELECT leave_requests WHERE manager_id = managerId
+PG --> DB : LeaveRequestRow[]
+Page --> U : tabla de solicitudes pendientes
+
+U -> CC : selecciona solicitud y pulsa "Aprobar"
+CC -> U : muestra panel de detalle con campo de notas (opcional)
+U -> CC : introduce notas y confirma
+
+CC -> SA : approveLeaveRequest({ id, notes })
+SA -> Auth : getCurrentUser()
+Auth --> SA : AuthUser { id, profile: { role } }
+
+alt role no es manager | hr | admin
+  SA --> CC : ActionError("Sin permisos")
+else
+  SA -> DB : SELECT status FROM leave_requests WHERE id = id
+  DB -> PG : query
+  PG --> DB : { status }
+
+  alt role = manager AND status = 'pending'
+    SA -> DB : UPDATE leave_requests SET status = 'manager_approved',\n  manager_id = user.id, manager_notes = notes
+    DB -> PG : UPDATE
+    PG --> DB : OK
+    SA -> SA : revalidatePath("/vacaciones/gestionar")
+    SA --> CC : ActionSuccess({ approved: true, newStatus: 'manager_approved' })
+  else role = hr|admin AND status = 'manager_approved' (o admin en cualquier estado)
+    SA -> DB : UPDATE leave_requests SET status = 'hr_approved',\n  hr_id = user.id, hr_notes = notes
+    DB -> PG : UPDATE
+    PG --> DB : OK
+    SA -> SA : revalidatePath("/vacaciones/gestionar")
+    SA --> CC : ActionSuccess({ approved: true, newStatus: 'hr_approved' })
+  else transición inválida
+    SA --> CC : ActionError("No puedes aprobar en estado actual con tu rol")
+  end
+end
+
+CC --> U : actualiza estado en tabla / mensaje de error
+
+@enduml

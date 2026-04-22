@@ -1,0 +1,69 @@
+@startuml seqReservarPlaza
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam sequenceArrowThickness 1.2
+skinparam sequenceArrowColor #444444
+skinparam sequenceBoxBorderColor #2d6a9f
+skinparam participantBorderThickness 1.5
+skinparam backgroundColor #FFFFFF
+
+title Secuencia: reservarPlaza()
+
+actor "Empleado\n(navegador)" as U
+participant "RSC Page\n/parking" as Page
+participant "ResourceCalendar\n(Client Component)" as CC
+participant "createReservation()\nServer Action" as SA
+participant "getCurrentUser()\nauth/helpers" as Auth
+participant "getAllResourceConfigs()\nconfig.ts" as Cfg
+participant "Drizzle ORM\n(db)" as DB
+database "PostgreSQL" as PG
+
+U -> Page : GET /parking
+Page -> DB : getAvailableSpots(date, entityId)
+DB -> PG : SELECT spots, reservations, cessions
+PG --> DB : rows
+DB --> Page : SpotWithStatus[]
+Page --> U : renders calendar + spot list
+
+U -> CC : selecciona fecha y plaza disponible
+CC -> U : muestra diálogo de confirmación
+U -> CC : confirma reserva
+
+CC -> SA : createReservation({ spot_id, date })
+SA -> Auth : getCurrentUser()
+Auth --> SA : AuthUser { id, profile }
+
+SA -> Cfg : getAllResourceConfigs("parking", entityId)
+Cfg --> SA : ResourceConfig { booking_enabled, max_advance_days, ... }
+
+alt booking_enabled = false
+  SA --> CC : ActionError("Las reservas están deshabilitadas")
+else booking_enabled = true
+  SA -> SA : validateBookingDate(date, config)
+  SA -> DB : SELECT FROM spots WHERE id = spot_id
+  DB -> PG : query
+  PG --> DB : Spot row
+  DB --> SA : { id, resourceType, entityId }
+
+  SA -> DB : SELECT FROM reservations WHERE userId = user.id AND date = date
+  DB -> PG : query
+  PG --> DB : []
+
+  SA -> DB : INSERT INTO reservations (spotId, userId, date)
+  DB -> PG : INSERT
+  alt constraint violation (spot o usuario ya reservado)
+    PG --> DB : UniqueViolationError
+    DB --> SA : error
+    SA --> CC : ActionError("Esta plaza ya está reservada")
+  else inserción exitosa
+    PG --> DB : { id }
+    DB --> SA : { id }
+    SA -> SA : revalidatePath("/parking")
+    SA --> CC : ActionSuccess({ id })
+  end
+end
+
+CC --> U : confirmación / mensaje de error
+
+@enduml
