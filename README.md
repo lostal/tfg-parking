@@ -157,7 +157,7 @@ Implementar control de acceso granular para tres roles con reglas complejas (ej:
 
 **La solución:**
 
-- Capa de autorización en `src/lib/auth/authorize.ts` con helpers componibles (`assertAdmin()`, `assertOwner()`, `assertHasAssignedSpot()`)
+- Capa de autorización en `src/lib/auth/helpers.ts` con helpers componibles (`requireAuth()`, `requireAdmin()`, `requireManagerOrAbove()`)
 - Cada Server Action verifica permisos antes de ejecutar la mutación
 - `requireAuth()`, `requireAdmin()`, `requireManagerOrAbove()` en helpers de servidor como building blocks
 - Auth.js JWT embebe `role` y `entityId` — sin roundtrips adicionales a la BD por autenticación

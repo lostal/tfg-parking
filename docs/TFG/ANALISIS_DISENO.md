@@ -54,7 +54,7 @@ El sistema interactúa con tres servicios externos, cada uno con una función es
 
 ### 4.3.1 Stack tecnológico
 
-Las tecnologías empleadas son Next.js 15 App Router, Auth.js v5, Drizzle ORM y PostgreSQL 16. Lo relevante aquí es cómo se articulan: un único lenguaje (TypeScript) para todo el stack, un único proceso de despliegue, sin capa de API REST separada. Las lecturas ocurren en Server Components directamente contra la base de datos.
+Las tecnologías empleadas son Next.js 16 App Router, Auth.js v5, Drizzle ORM y PostgreSQL 16. Lo relevante aquí es cómo se articulan: un único lenguaje (TypeScript) para todo el stack, un único proceso de despliegue, sin capa de API REST separada. Las lecturas ocurren en Server Components directamente contra la base de datos.
 
 ### 4.3.2 Patrón monolito modular plug-in
 
