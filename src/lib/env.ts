@@ -16,12 +16,12 @@ const envSchema = z.object({
   // Auth.js
   AUTH_SECRET: z.string().min(1),
 
-  // Microsoft Entra ID (optional until P3+)
-  MICROSOFT_CLIENT_ID: z.string().min(1).optional(),
-  MICROSOFT_CLIENT_SECRET: z.string().min(1).optional(),
-  MICROSOFT_TENANT_ID: z.string().min(1).optional(),
+  // Microsoft Entra ID (SSO obligatorio)
+  MICROSOFT_CLIENT_ID: z.string().min(1),
+  MICROSOFT_CLIENT_SECRET: z.string().min(1),
+  MICROSOFT_TENANT_ID: z.string().min(1),
 
-  // Resend (opcional hasta P1)
+  // Resend (opcional)
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.email().optional(),
 

@@ -6,15 +6,12 @@
  * Admin-only actions for managing users from the directory view.
  */
 
-import { randomBytes } from "node:crypto";
-
 import { actionClient } from "@/lib/actions";
 import { db } from "@/lib/db";
 import { profiles, users, userPreferences } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth/helpers";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
-import bcrypt from "bcryptjs";
 import { getActiveEntityId } from "@/lib/queries/active-entity";
 import {
   updateDirectorioUserSchema,
@@ -34,10 +31,6 @@ async function assertEntityInAdminScope(entityId?: string | null) {
     throw new Error("No tienes permisos para gestionar usuarios de otra sede");
   }
   return activeEntityId;
-}
-
-function createTemporaryPassword(): string {
-  return randomBytes(18).toString("base64url");
 }
 
 /**
@@ -83,6 +76,7 @@ export const updateDirectorioUser = actionClient
 
 /**
  * Crea un nuevo usuario con perfil y preferencias por defecto.
+ * El usuario podrá iniciar sesión con Microsoft Entra ID usando el mismo email.
  */
 export const createDirectorioUser = actionClient
   .schema(createDirectorioUserSchema)
@@ -101,17 +95,12 @@ export const createDirectorioUser = actionClient
       throw new Error("Ya existe un usuario con ese correo electrónico.");
     }
 
-    // Create a temporary hashed password (user should reset it)
-    const tempPassword = createTemporaryPassword();
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
-
-    // Create user
+    // Create user (without password — auth is handled by Microsoft Entra ID)
     const [user] = await db
       .insert(users)
       .values({
         email: parsedInput.correo,
         name: parsedInput.nombre,
-        password: hashedPassword,
       })
       .returning({ id: users.id });
 
@@ -138,5 +127,5 @@ export const createDirectorioUser = actionClient
       .onConflictDoNothing();
 
     revalidatePath("/directorio");
-    return { created: true, temp_password: tempPassword };
+    return { created: true };
   });

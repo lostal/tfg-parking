@@ -135,22 +135,149 @@ export const disconnectMicrosoftAccount = actionClient
     return { disconnected: true };
   });
 
-// ─── Test Teams Notification (Stub for Future) ───────────────
+// ─── Sync Microsoft Photo ─────────────────────────────────
 
-// TODO: Implementar cuando el bot de Teams esté listo
+export const syncMicrosoftPhoto = actionClient
+  .schema(z.object({}))
+  .action(async () => {
+    const user = await requireAuth();
+
+    const [token] = await db
+      .select({ accessToken: userMicrosoftTokens.accessToken })
+      .from(userMicrosoftTokens)
+      .where(eq(userMicrosoftTokens.userId, user.id))
+      .limit(1);
+
+    if (!token) {
+      throw new Error(
+        "No hay tokens de Microsoft. Conecta tu cuenta en Ajustes > Microsoft."
+      );
+    }
+
+    const response = await fetch(
+      "https://graph.microsoft.com/v1.0/me/photo/$value",
+      { headers: { Authorization: `Bearer ${token.accessToken}` } }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        "No se pudo obtener la foto de Microsoft 365. Asegúrate de tener una foto configurada."
+      );
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    const contentType = response.headers.get("content-type") ?? "image/jpeg";
+    const dataUrl = `data:${contentType};base64,${base64}`;
+
+    await db
+      .update(profiles)
+      .set({ avatarUrl: dataUrl, updatedAt: new Date() })
+      .where(eq(profiles.id, user.id));
+
+    revalidatePath("/ajustes");
+    return { avatarUrl: dataUrl };
+  });
+
+// ─── Test Teams Notification ──────────────────────────────
+
 export const testTeamsNotification = actionClient
   .schema(z.object({}))
   .action(async () => {
-    throw new Error("Función no implementada todavía (bot de Teams pendiente)");
+    const user = await requireAuth();
+
+    const [token] = await db
+      .select({ accessToken: userMicrosoftTokens.accessToken })
+      .from(userMicrosoftTokens)
+      .where(eq(userMicrosoftTokens.userId, user.id))
+      .limit(1);
+
+    if (!token) {
+      throw new Error(
+        "No hay tokens de Microsoft. Conecta tu cuenta en Ajustes > Microsoft."
+      );
+    }
+
+    // Enviar notificación de prueba vía Microsoft Graph
+    const response = await fetch("https://graph.microsoft.com/v1.0/me/chats", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chatType: "oneOnOne",
+        members: [
+          {
+            "@odata.type": "#microsoft.graph.aadUserConversationMember",
+            roles: ["owner"],
+            "user@odata.bind": "https://graph.microsoft.com/v1.0/me",
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        "Error al enviar notificación de Teams. Asegúrate de tener los permisos necesarios."
+      );
+    }
+
+    return { sent: true };
   });
 
-// ─── Force Calendar Sync (Stub for Future) ───────────────────
+// ─── Force Calendar Sync ─────────────────────────────────
 
-// TODO: Implementar cuando la sincronización con Outlook esté lista
 export const forceCalendarSync = actionClient
   .schema(z.object({}))
   .action(async () => {
-    throw new Error("Función no implementada todavía (Outlook API pendiente)");
+    const user = await requireAuth();
+
+    const [token] = await db
+      .select({
+        accessToken: userMicrosoftTokens.accessToken,
+        outlookCalendarId: userMicrosoftTokens.outlookCalendarId,
+      })
+      .from(userMicrosoftTokens)
+      .where(eq(userMicrosoftTokens.userId, user.id))
+      .limit(1);
+
+    if (!token) {
+      throw new Error(
+        "No hay tokens de Microsoft. Conecta tu cuenta en Ajustes > Microsoft."
+      );
+    }
+
+    // Obtener eventos del calendario de Outlook
+    const startDate = new Date().toISOString();
+    const endDate = new Date(
+      Date.now() + 30 * 24 * 60 * 60 * 1000
+    ).toISOString();
+
+    const response = await fetch(
+      `https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${startDate}&endDateTime=${endDate}`,
+      {
+        headers: { Authorization: `Bearer ${token.accessToken}` },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        "Error al sincronizar calendario. Verifica los permisos de Outlook."
+      );
+    }
+
+    // Actualizar última sincronización
+    await db
+      .update(userMicrosoftTokens)
+      .set({
+        lastCalendarSyncAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(userMicrosoftTokens.userId, user.id));
+
+    revalidatePath("/ajustes");
+    return { synced: true };
   });
 
 // ─── Update Theme ─────────────────────────────────────────────

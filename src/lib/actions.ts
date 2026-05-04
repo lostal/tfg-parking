@@ -93,6 +93,16 @@ export const actionClient: ActionBuilder = {
             const data = await handler({ parsedInput: result.data });
             return success(data);
           } catch (err) {
+            // Next.js uses NEXT_REDIRECT internally for redirect() calls.
+            // Re-throw so Next.js can handle the redirect properly.
+            if (
+              err instanceof Error &&
+              (err.message === "NEXT_REDIRECT" ||
+                err.message === "NEXT_NOT_FOUND")
+            ) {
+              throw err;
+            }
+
             // Evitar volcar stack traces completos en producción.
             if (err instanceof Error) {
               console.error("[action] error inesperado", {

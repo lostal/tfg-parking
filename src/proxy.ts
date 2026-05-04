@@ -38,7 +38,8 @@ export const config = {
      * - _next/image (image optimization)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
      * - public assets (svg, png, jpg, etc.)
+     * - Auth.js API routes (sign-in, callback, CSRF, etc.)
      */
-    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/auth|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json)$).*)",
   ],
 };

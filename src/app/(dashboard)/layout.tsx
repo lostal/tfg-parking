@@ -144,6 +144,7 @@ export default async function DashboardLayout({
           role={(user.profile?.role ?? "employee") as UserRole}
           displayName={user.profile?.fullName ?? ""}
           email={user.email ?? ""}
+          avatarUrl={user.profile?.avatarUrl ?? undefined}
           hasParkingSpot={hasParkingSpot}
           hasOfficeSpot={hasOfficeSpot}
           entities={entities}
