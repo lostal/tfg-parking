@@ -4,10 +4,12 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updateProfile } from "../actions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { updateProfile, syncMicrosoftPhoto } from "../actions";
 import {
   updateProfileSchema,
   type UpdateProfileInput,
@@ -20,11 +22,13 @@ interface ProfileFormProps {
 
 export function ProfileForm({ profile }: ProfileFormProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isDirty },
+    setValue,
   } = useForm<UpdateProfileInput>({
     resolver: zodResolver(updateProfileSchema),
     defaultValues: {
@@ -32,6 +36,18 @@ export function ProfileForm({ profile }: ProfileFormProps) {
       avatar_url: profile.avatarUrl || "",
     },
   });
+
+  const handleSyncPhoto = async () => {
+    setIsSyncing(true);
+    const result = await syncMicrosoftPhoto({});
+    setIsSyncing(false);
+    if (result.success) {
+      setValue("avatar_url", result.data.avatarUrl);
+      toast.success("Foto sincronizada desde Microsoft 365");
+    } else {
+      toast.error(result.error);
+    }
+  };
 
   const onSubmit = async (data: UpdateProfileInput) => {
     setIsLoading(true);
@@ -43,6 +59,13 @@ export function ProfileForm({ profile }: ProfileFormProps) {
       toast.success("Perfil actualizado correctamente");
     }
   };
+
+  const initials = (profile.fullName || profile.email)
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -75,22 +98,33 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         )}
       </div>
 
-      {/* Avatar URL */}
-      <div className="space-y-2">
-        <Label htmlFor="avatar_url">URL de Avatar (opcional)</Label>
-        <Input
-          id="avatar_url"
-          type="text"
-          placeholder="https://example.com/avatar.jpg"
-          {...register("avatar_url")}
-        />
-        {errors.avatar_url && (
-          <p className="text-destructive text-sm">
-            {errors.avatar_url.message}
-          </p>
-        )}
+      {/* Avatar */}
+      <div className="space-y-3">
+        <Label>Foto de perfil</Label>
+        <div className="flex items-center gap-4">
+          <Avatar className="h-16 w-16">
+            {profile.avatarUrl && (
+              <AvatarImage
+                src={profile.avatarUrl}
+                alt={profile.fullName || ""}
+              />
+            )}
+            <AvatarFallback className="text-lg">{initials}</AvatarFallback>
+          </Avatar>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isSyncing}
+            onClick={handleSyncPhoto}
+            className="gap-2"
+          >
+            <RefreshCw className={isSyncing ? "animate-spin" : ""} size={14} />
+            Sincronizar desde Microsoft 365
+          </Button>
+        </div>
         <p className="text-muted-foreground text-xs">
-          Deja vacío para usar tu foto de Microsoft 365
+          Usa el botón para traer tu foto actual de Microsoft 365
         </p>
       </div>
 

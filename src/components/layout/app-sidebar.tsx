@@ -28,6 +28,7 @@ interface AppSidebarProps {
   role: UserRole;
   displayName: string;
   email: string;
+  avatarUrl?: string;
   hasParkingSpot?: boolean;
   hasOfficeSpot?: boolean;
   /** Admin-only: list of entities for the switcher. Empty array = no migrations yet. */
@@ -47,6 +48,7 @@ export function AppSidebar({
   role,
   displayName,
   email,
+  avatarUrl,
   hasParkingSpot = false,
   hasOfficeSpot = false,
   entities,
@@ -98,7 +100,11 @@ export function AppSidebar({
         ))}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser displayName={displayName} email={email} />
+        <NavUser
+          displayName={displayName}
+          email={email}
+          avatarUrl={avatarUrl}
+        />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

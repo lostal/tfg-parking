@@ -13,7 +13,7 @@ import { useTransition } from "react";
 import { ChevronsUpDown, LogOut, Loader2, User } from "lucide-react";
 import { signOutAction } from "@/lib/auth/sign-out";
 import { ROUTES } from "@/lib/constants";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,9 +33,10 @@ import {
 interface NavUserProps {
   displayName: string;
   email: string;
+  avatarUrl?: string;
 }
 
-export function NavUser({ displayName, email }: NavUserProps) {
+export function NavUser({ displayName, email, avatarUrl }: NavUserProps) {
   const { isMobile } = useSidebar();
   const [isPending, startTransition] = useTransition();
 
@@ -62,6 +63,7 @@ export function NavUser({ displayName, email }: NavUserProps) {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
+                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
                 <AvatarFallback className="rounded-lg">
                   {initials}
                 </AvatarFallback>
@@ -82,6 +84,9 @@ export function NavUser({ displayName, email }: NavUserProps) {
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
+                  {avatarUrl && (
+                    <AvatarImage src={avatarUrl} alt={displayName} />
+                  )}
                   <AvatarFallback className="rounded-lg">
                     {initials}
                   </AvatarFallback>

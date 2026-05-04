@@ -2,7 +2,7 @@
  * Auth.js Type Augmentations
  *
  * Extends the default NextAuth types to include custom fields
- * embedded in the JWT token (role, entityId, fullName).
+ * embedded in the JWT token (role, entityId, fullName, Microsoft tokens).
  */
 
 import "next-auth";
@@ -27,5 +27,9 @@ declare module "next-auth/jwt" {
     role?: string;
     entityId?: string | null;
     fullName?: string;
+    accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpires?: number;
+    scope?: string;
   }
 }

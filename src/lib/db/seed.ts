@@ -2,9 +2,11 @@
  * Database Seed Script
  *
  * Creates initial development data:
- * - Admin user (admin@gruposiete.com / password)
  * - Default entity
- * - Sample spots
+ * - Sample parking and office spots
+ *
+ * Users are created via Microsoft Entra ID SSO — use that for login.
+ * Promote a logged-in user to admin via: docker exec ... -c "UPDATE profiles SET role='admin', updated_at=NOW();"
  *
  * Usage: npx tsx src/lib/db/seed.ts
  */
@@ -12,7 +14,6 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import bcrypt from "bcryptjs";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { format } from "node:util";
@@ -42,39 +43,7 @@ async function seed() {
   const entityId = entity?.id;
   log("Entity created: %s", entityId ?? "<none>");
 
-  // 2. Create admin user
-  const hashedPassword = await bcrypt.hash("password", 10);
-  const [adminUser] = await db
-    .insert(schema.users)
-    .values({
-      email: "admin@gruposiete.com",
-      name: "Administrador",
-      password: hashedPassword,
-    })
-    .onConflictDoNothing()
-    .returning();
-
-  if (adminUser) {
-    await db
-      .insert(schema.profiles)
-      .values({
-        id: adminUser.id,
-        email: adminUser.email,
-        fullName: "Administrador",
-        role: "admin",
-        entityId: entityId ?? null,
-      })
-      .onConflictDoNothing();
-
-    await db
-      .insert(schema.userPreferences)
-      .values({ userId: adminUser.id })
-      .onConflictDoNothing();
-
-    log("Admin user created: %s", adminUser.email);
-  }
-
-  // 3. Create sample parking spots
+  // 2. Create sample parking spots
   if (entityId) {
     const parkingSpots = Array.from({ length: 10 }, (_, i) => ({
       label: `P${String(i + 1).padStart(2, "0")}`,
@@ -87,7 +56,7 @@ async function seed() {
     await db.insert(schema.spots).values(parkingSpots).onConflictDoNothing();
     log("Created 10 parking spots");
 
-    // 4. Create sample office spots
+    // 3. Create sample office spots
     const officeSpots = Array.from({ length: 8 }, (_, i) => ({
       label: `D${String(i + 1).padStart(2, "0")}`,
       type: "standard" as const,

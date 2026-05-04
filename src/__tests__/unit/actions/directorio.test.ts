@@ -110,7 +110,7 @@ describe("createDirectorioUser", () => {
     vi.mocked(requireAdmin).mockResolvedValue(mockAdminUser as never);
   });
 
-  it("success → returns created user with a temporary password", async () => {
+  it("success → returns created user", async () => {
     // 1. select users (check existing) → empty
     setupSelectMock([]);
     // 2. insert users → new user
@@ -130,8 +130,6 @@ describe("createDirectorioUser", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.created).toBe(true);
-      expect(result.data.temp_password).toEqual(expect.any(String));
-      expect(result.data.temp_password.length).toBeGreaterThanOrEqual(20);
     }
     expect(revalidatePath).toHaveBeenCalledWith("/directorio");
   });

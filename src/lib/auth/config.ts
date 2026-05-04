@@ -2,64 +2,63 @@
  * Auth.js Configuration
  *
  * Configures NextAuth with:
- * - Credentials provider (email/password with bcrypt)
+ * - Microsoft Entra ID provider (SSO via OAuth 2.0 / OIDC)
  * - Drizzle adapter for session/account persistence
  * - JWT callbacks to embed role, entityId, fullName in the token
- *
- * Microsoft Entra ID will be added in a future iteration.
+ * - Token storage in userMicrosoftTokens for Microsoft Graph API access
  */
 
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
+import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 
 import { db } from "@/lib/db";
-import { profiles, userPreferences, users } from "@/lib/db/schema";
+import {
+  accounts,
+  profiles,
+  sessions,
+  userMicrosoftTokens,
+  userPreferences,
+  users,
+  verificationTokens,
+} from "@/lib/db/schema";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db),
+  adapter: DrizzleAdapter(db, {
+    usersTable: users,
+    accountsTable: accounts,
+    sessionsTable: sessions,
+    verificationTokensTable: verificationTokens,
+  }),
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
   },
   providers: [
-    Credentials({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
-
-        const email = credentials.email as string;
-        const password = credentials.password as string;
-
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, email))
-          .limit(1);
-
-        if (!user?.password) return null;
-
-        const isValid = await bcrypt.compare(password, user.password);
-        if (!isValid) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-        };
-      },
+    MicrosoftEntraID({
+      clientId: process.env.MICROSOFT_CLIENT_ID!,
+      clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
+      issuer: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID}/v2.0`,
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
-      // On initial sign-in or when update is triggered, embed profile data
+    async signIn({ account }) {
+      if (account?.provider === "microsoft-entra-id") {
+        return true;
+      }
+      return true;
+    },
+    async jwt({ token, user, account, trigger }) {
+      if (account && account.access_token) {
+        token.accessToken = account.access_token;
+        token.refreshToken = account.refresh_token;
+        token.accessTokenExpires = account.expires_at
+          ? account.expires_at * 1000
+          : undefined;
+        token.scope = account.scope;
+      }
+
       if (user || trigger === "update") {
         const userId = (user?.id ?? token.sub) as string;
 
@@ -75,6 +74,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.fullName = profile.fullName;
         }
       }
+
       return token;
     },
     async session({ session, token }) {
@@ -88,10 +88,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   events: {
+    async signIn({ user, account }) {
+      if (!user.id || !account?.access_token) return;
+
+      await db
+        .insert(userMicrosoftTokens)
+        .values({
+          userId: user.id,
+          accessToken: account.access_token,
+          refreshToken: account.refresh_token ?? "",
+          tokenExpiresAt: account.expires_at
+            ? new Date(account.expires_at * 1000)
+            : new Date(Date.now() + 3600 * 1000),
+          scopes: account.scope ? account.scope.split(" ") : [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: userMicrosoftTokens.userId,
+          set: {
+            accessToken: account.access_token,
+            refreshToken: account.refresh_token ?? "",
+            tokenExpiresAt: account.expires_at
+              ? new Date(account.expires_at * 1000)
+              : new Date(Date.now() + 3600 * 1000),
+            scopes: account.scope ? account.scope.split(" ") : [],
+            updatedAt: new Date(),
+          },
+        });
+    },
     async createUser({ user }) {
       if (!user.id) return;
 
-      // Create profile for new user (replaces Supabase handle_new_user trigger)
       await db
         .insert(profiles)
         .values({
@@ -103,7 +131,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         })
         .onConflictDoNothing();
 
-      // Create default preferences
       await db
         .insert(userPreferences)
         .values({ userId: user.id })

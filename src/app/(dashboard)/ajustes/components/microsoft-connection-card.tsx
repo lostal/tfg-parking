@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 import {
   Card,
@@ -41,11 +42,8 @@ export function MicrosoftConnectionCard({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  // Stub: OAuth flow not yet implemented
   const handleConnect = () => {
-    toast.info(
-      "La integración con Microsoft 365 estará disponible próximamente."
-    );
+    signIn("microsoft-entra-id", { callbackUrl: "/ajustes/microsoft" });
   };
 
   const handleDisconnectConfirmed = () => {
@@ -130,7 +128,7 @@ export function MicrosoftConnectionCard({
                 </p>
               </div>
 
-              <Button onClick={handleConnect} disabled>
+              <Button onClick={handleConnect}>
                 Conectar con Microsoft 365
               </Button>
             </>
@@ -204,7 +202,7 @@ export function MicrosoftConnectionCard({
               </div>
 
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleConnect} disabled>
+                <Button variant="outline" onClick={handleConnect}>
                   Reconectar
                 </Button>
                 <Button
